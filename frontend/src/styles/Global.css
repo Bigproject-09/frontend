@@ -1,0 +1,91 @@
+/* 기본 페이지 구성 */
+.title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 40px;
+    align-self: flex-start;
+    margin-left: 40px;
+}
+
+.label {
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+/* 버튼 */
+.textButton_center {
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 400;
+    padding: 4px 8px;
+    margin-top : 30px;
+}
+
+.textButton_center:hover {
+    text-decoration: underline;
+}
+
+.textButton_right {
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 400;
+    padding: 4px 8px;
+    margin-top : 30px;
+    margin-left: 250px;
+}
+
+.textButton_right:hover {
+    text-decoration: underline;
+}
+
+.button_center{
+    padding: 6px 14px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    width: 100px;
+    margin-top: 30px;
+}
+
+.button_right{
+    padding: 6px 14px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    width: 100px;
+    margin-top: 30px;
+    margin-left: 250px;
+}
+
+.actionRow {
+    display: flex;
+    justify-content: flex-end;
+    gap: 30px;
+}
+
+/* 빈 칸 */
+.inputGroup {
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+
+.input {
+    height: 36px;
+    background-color: #e0e0e0;
+    border: none;
+    outline: none;
+    padding: 0 10px;
+    border-radius: 4px;
+    }
