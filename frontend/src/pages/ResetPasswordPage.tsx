@@ -3,10 +3,10 @@ import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import "../styles/Global.css";
 
-const LoginPage: React.FC = () => {
+const ResetPasswordPage: React.FC = () => {
     const navigate = useNavigate();
 
-    const handleLogin = () => {
+    const handleResetPassword = () => {
         console.log("로그인 시도");
     };
 
@@ -14,7 +14,18 @@ const LoginPage: React.FC = () => {
         <Wrapper>
             <LoginBox>
                 <div className="title">
-                    로그인
+                    비밀번호 재설정
+                </div>
+
+                <div className="inputGroup">
+                    <div className="label">
+                        이름
+                    </div>
+                    <input
+                    type="text"
+                    className="input"
+                    placeholder="이름"
+                    />
                 </div>
 
                 <div className="inputGroup">
@@ -28,41 +39,12 @@ const LoginPage: React.FC = () => {
                     />
                 </div>
 
-                <div className="inputGroup">
-                    <div className="label">
-                        비밀번호
-                    </div>
-                    <input
-                    type="password"
-                    className="input"
-                    placeholder="비밀번호"
-                    />
-                </div>
-
-                <div className="actionRow">
-                    <button
-                        type="button"
-                        className="button_center"
-                        onClick={() => navigate("/signup")}
-                        >
-                        회원가입
-                    </button>
-
-                    <button
-                        type="button"
-                        className="button_center"
-                        onClick={handleLogin}
-                        >
-                        로그인
-                    </button>
-                </div>
-
                 <button
                     type = "button"
-                    className="textButton_right"
-                    onClick={() => navigate("/resetPassword")}
+                    className="button_right"
+                    onClick={handleResetPassword}
                     >
-                    비밀번호 분실
+                    비밀번호 재설정
                 </button>
             </LoginBox>
         </Wrapper>
@@ -89,4 +71,4 @@ const LoginBox = styled.div`
   justify-content: center;
 `;
 
-export default LoginPage;
+export default ResetPasswordPage;
