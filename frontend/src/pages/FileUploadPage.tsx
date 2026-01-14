@@ -150,7 +150,7 @@ const FileUploadPage: React.FC = () => {
         </div>
 
         {!hasAnyFile ? (
-          // ✅ 초기 화면(왼쪽 이미지 느낌)
+          // 초기 화면
           <EmptyStage
             data-dragover={dragOverEmpty}
             onDragOver={onEmptyDragOver}
@@ -167,11 +167,11 @@ const FileUploadPage: React.FC = () => {
               <br />
               성능이 떨어질 수 있습니다
               <br />
-              _느낌의 안내말
+              느낌의 안내말
             </Guide>
           </EmptyStage>
         ) : (
-          // ✅ 파일 1개 이상일 때 리스트 화면(오른쪽 이미지 느낌)
+          // 파일 1개 이상일 때 리스트 화면
           <ListStage>
             <ListPanel>
               <ListHeader>파일명</ListHeader>
@@ -378,7 +378,7 @@ const SubmitArea = styled.div`
   bottom: 28px;
 `;
 
-/* 버튼(오른쪽 이미지 스타일) */
+/* 버튼 */
 const SmallBtn = styled.button`
   width: 130px;
   height: 40px;
