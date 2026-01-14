@@ -8,6 +8,7 @@ import RegistrationPage from "./pages/RegistrationPage";
 
 import NoticeAlertPage from "./pages/NoticeAlertPage";
 import NoticeNewPage from "./pages/NoticeNewPage";
+import FileUploadPage from "./pages/FileUploadPage";
 
 function App() {
   return (
@@ -21,10 +22,11 @@ function App() {
         {/* 레이아웃 적용 페이지 */}
         <Route element={<Layout />}>
           <Route path="/" element={<MainPage />} />
-
-          {/* 공고 알림 */}
+          {/* 공고 */}
           <Route path="/notice" element={<NoticeAlertPage />} />
           <Route path="/notice/new" element={<NoticeNewPage />} />
+          {/* 파일 업로드 */}
+          <Route path="/upload" element={<FileUploadPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
