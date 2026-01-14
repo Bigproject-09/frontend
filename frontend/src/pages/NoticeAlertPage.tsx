@@ -9,66 +9,93 @@ type NoticeItem = {
   dday: string; // "D-7"
   score: number;
   isRead: boolean;
-  url?: string; // 공고 URL
+  url?: string;
 
-  // 상세(추후 API 연동 시 채워질 것)
-  org?: string; // 기관
-  budget?: string; // 예산
-  period?: string; // 기간
-  summary?: string; // 요약
+  org?: string;
+  budget?: string;
+  period?: string; // "YYYY-MM-DD ~ YYYY-MM-DD"
+  summary?: string;
 };
 
+const STORAGE_KEY = "bb_notices_v1";
 const PAGE_SIZE = 6;
 
 type ReadFilter = "ALL" | "READ" | "UNREAD";
 type DdayFilter = "ALL" | "D0_1" | "D2_3" | "D4_7" | "D8PLUS";
 type ScoreFilter = "ALL" | "S80" | "S70" | "S60" | "S0";
 
+const DUMMY_ITEMS: NoticeItem[] = [
+  {
+    id: 1,
+    title: "공고 제목",
+    dday: "D-7",
+    score: 86,
+    url: "https://example.com/notice/1",
+    isRead: true,
+    org: "중소벤처기업부",
+    budget: "1억",
+    period: "2026-01-01 ~ 2026-02-01",
+    summary: "소상공인 디지털 전환 관련 지원사업 공고(예시).",
+  },
+  {
+    id: 2,
+    title: "공고 제목",
+    dday: "D-7",
+    score: 75,
+    url: "https://example.com/notice/2",
+    isRead: false,
+    org: "정보통신산업진흥원",
+    budget: "5천만",
+    period: "2026-01-10 ~ 2026-01-25",
+    summary: "AI 도입/활용 바우처 관련 공고(예시).",
+  },
+  { id: 3, title: "공고 제목", dday: "D-1", score: 70, isRead: true },
+  { id: 4, title: "공고 제목", dday: "D-3", score: 64, isRead: true },
+  { id: 5, title: "공고 제목", dday: "D-7", score: 63, isRead: true },
+  { id: 6, title: "공고 제목", dday: "D-6", score: 63, isRead: false },
+  { id: 7, title: "공고 제목", dday: "D-10", score: 61, isRead: false },
+  { id: 8, title: "요시", dday: "D-2", score: 90, isRead: true },
+];
+
+const loadStored = (): NoticeItem[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as NoticeItem[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveStored = (list: NoticeItem[]) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  } catch {
+    // ignore
+  }
+};
+
+const mergeUniqueById = (base: NoticeItem[], stored: NoticeItem[]) => {
+  // stored(신규/수정)이 우선
+  const map = new Map<number, NoticeItem>();
+  [...stored, ...base].forEach((it) => map.set(it.id, it));
+  return Array.from(map.values());
+};
+
 const NoticeAlertPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // 추후 이 부분 연동 필요
-  const [items, setItems] = useState<NoticeItem[]>([
-    {
-      id: 1,
-      title: "공고 제목",
-      dday: "D-7",
-      score: 86,
-      url: "https://example.com/notice/1",
-      isRead: true,
-      org: "중소벤처기업부",
-      budget: "1억",
-      period: "2026-01-01 ~ 2026-02-01",
-      summary: "소상공인 디지털 전환 관련 지원사업 공고(예시).",
-    },
-    {
-      id: 2,
-      title: "공고 제목",
-      dday: "D-7",
-      score: 75,
-      url: "https://example.com/notice/2",
-      isRead: false,
-      org: "정보통신산업진흥원",
-      budget: "5천만",
-      period: "2026-01-10 ~ 2026-01-25",
-      summary: "AI 도입/활용 바우처 관련 공고(예시).",
-    },
-    { id: 3, title: "공고 제목", dday: "D-1", score: 70, isRead: true },
-    { id: 4, title: "공고 제목", dday: "D-3", score: 64, isRead: true },
-    { id: 5, title: "공고 제목", dday: "D-7", score: 63, isRead: true },
-    { id: 6, title: "공고 제목", dday: "D-6", score: 63, isRead: false },
-    { id: 7, title: "공고 제목", dday: "D-10", score: 61, isRead: false },
-    { id: 8, title: "요시", dday: "D-2", score: 90, isRead: true },
-  ]);
+  const [items, setItems] = useState<NoticeItem[]>(() => {
+    const stored = loadStored();
+    return mergeUniqueById(DUMMY_ITEMS, stored);
+  });
 
-  // ✅ 선택형 필터 상태들
+  // ✅ 선택형 필터
   const [readFilter, setReadFilter] = useState<ReadFilter>("ALL");
   const [ddayFilter, setDdayFilter] = useState<DdayFilter>("ALL");
   const [scoreFilter, setScoreFilter] = useState<ScoreFilter>("ALL");
-
-  // (선택) 제목 검색도 유지하고 싶으면 남겨두기
   const [filterText, setFilterText] = useState("");
-
   const [page, setPage] = useState(1);
 
   // ✅ 모달 상태
@@ -106,7 +133,6 @@ const NoticeAlertPage: React.FC = () => {
 
   const filtered = useMemo(() => {
     const t = filterText.trim().toLowerCase();
-
     return items
       .filter((it) => (t ? it.title.toLowerCase().includes(t) : true))
       .filter(passRead)
@@ -121,33 +147,38 @@ const NoticeAlertPage: React.FC = () => {
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, page]);
 
-  const removeItem = (id: number) => setItems((prev) => prev.filter((it) => it.id !== id));
-  const handleApply = (id: number) => {
-    console.log("신청:", id);
-    // navigate(`/apply/${id}`)
-  };
-
-  // 필터 바뀌면 1페이지로
   const resetToFirstPage = () => setPage(1);
 
-  // ✅ 제목 클릭 시: 모달 열기 + (미확인이라면) 한번만 확인 처리
+  const syncStorage = (next: NoticeItem[]) => {
+    setItems(next);
+
+    // 더미는 저장하지 않고 “사용자 등록/변경분만” 저장하고 싶으면 필터링 필요.
+    // 지금은 단순화를 위해 전체를 저장.
+    saveStored(next);
+  };
+
+  const removeItem = (id: number) => {
+    const next = items.filter((it) => it.id !== id);
+    syncStorage(next);
+
+    if (selected?.id === id) setSelected(null);
+  };
+
+  // ✅ 제목 클릭 시: 모달 열기 + (미확인이라면) 한 번만 확인 처리
   const openNotice = (notice: NoticeItem) => {
-    // 모달 열기(일단 열고)
     setSelected(notice);
 
-    // 미확인이면 읽음 처리(한 번만)
     if (!notice.isRead) {
-      setItems((prev) =>
-        prev.map((it) => (it.id === notice.id ? { ...it, isRead: true } : it))
-      );
+      const next = items.map((it) => (it.id === notice.id ? { ...it, isRead: true } : it));
+      syncStorage(next);
 
-      // 모달에도 즉시 반영
-      setSelected((prev) => {
-        if (!prev) return prev;
-        if (prev.id !== notice.id) return prev;
-        return { ...prev, isRead: true };
-      });
+      // 모달 즉시 반영
+      setSelected((prev) => (prev && prev.id === notice.id ? { ...prev, isRead: true } : prev));
     }
+  };
+
+  const handleApply = (id: number) => {
+    console.log("신청:", id);
   };
 
   return (
@@ -157,7 +188,7 @@ const NoticeAlertPage: React.FC = () => {
           공고 알림 페이지
         </div>
 
-        {/* ✅ 필터: 선택형 */}
+        {/* 필터 */}
         <Section>
           <div className="label">필터</div>
           <FilterRow>
@@ -245,7 +276,6 @@ const NoticeAlertPage: React.FC = () => {
                   X
                 </DeleteBtn>
 
-                {/* ✅ 제목 클릭 → 모달 + 자동 확인 처리 */}
                 <TitleButton type="button" onClick={() => openNotice(it)} title="공고 상세 보기">
                   {it.title}
                 </TitleButton>
@@ -263,7 +293,6 @@ const NoticeAlertPage: React.FC = () => {
             ))
           )}
 
-          {/* 페이지네이션 */}
           <Pagination>
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
               <PageBtn
@@ -285,7 +314,7 @@ const NoticeAlertPage: React.FC = () => {
           </MiniOutlineBtn>
         </BottomRight>
 
-        {/* ✅ 모달 */}
+        {/* 모달 */}
         {selected && (
           <ModalOverlay onClick={() => setSelected(null)}>
             <ModalCard onClick={(e) => e.stopPropagation()}>
@@ -306,19 +335,21 @@ const NoticeAlertPage: React.FC = () => {
 
                 <div className="label">URL</div>
                 <div>
-                    {selected.url ? (
+                  {selected.url ? (
                     <a href={selected.url} target="_blank" rel="noreferrer">
-                        {selected.url}
+                      {selected.url}
                     </a>
-                    ) : (
+                  ) : (
                     "-"
-                    )}
+                  )}
                 </div>
               </ModalGrid>
 
               <ModalSummary>
                 <div className="label">요약</div>
-                <div style={{ marginTop: 6 }}>{selected.summary ?? "상세 정보가 없습니다."}</div>
+                <div style={{ marginTop: 6 }}>
+                  {selected.summary ?? "상세 정보가 없습니다."}
+                </div>
               </ModalSummary>
 
               <ModalActions>
@@ -434,9 +465,6 @@ const TitleButton = styled.button`
   font-size: 14px;
   text-align: left;
   padding: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 
   &:hover {
     text-decoration: underline;
@@ -460,6 +488,7 @@ const Actions = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  align-items: center;
 `;
 
 const MiniBtn = styled.button`
@@ -526,7 +555,7 @@ const MiniOutlineBtn = styled.button`
   }
 `;
 
-/* ✅ 모달 */
+/* 모달 */
 const ModalOverlay = styled.div`
   position: fixed;
   inset: 0;
