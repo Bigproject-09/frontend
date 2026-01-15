@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import "../styles/Global.css";
 
@@ -11,13 +12,18 @@ const uid = () => `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
 const FileUploadPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const navigate = useNavigate();
 
-  // slots가 비어있으면 "초기 화면(왼쪽 이미지)"로 간주
+  // slots가 비어있으면 "초기 화면"으로 간주
   const [slots, setSlots] = useState<Slot[]>([]);
 
   // 드래그 하이라이트(행 단위)
   const [dragOverSlotId, setDragOverSlotId] = useState<string | null>(null);
   const [dragOverEmpty, setDragOverEmpty] = useState(false);
+
+  // ✅ 업로드 완료 모달
+  const [showDone, setShowDone] = useState(false);
+  const [submittedCount, setSubmittedCount] = useState(0);
 
   const hasAnyFile = useMemo(() => slots.some((s) => s.file), [slots]);
 
@@ -86,17 +92,16 @@ const FileUploadPage: React.FC = () => {
     setSlots((prev) => {
       const next = prev.map((s) => (s.id === slotId ? { ...s, file: null } : s));
 
-      // 뒤쪽 연속 빈 슬롯 정리: 맨 끝에 빈 슬롯 1개만 남기기
-      // (단, 파일이 하나도 없으면 []로)
-      // 1) 파일이 있는 슬롯만 남기고
+      // 파일이 있는 슬롯만 남기고
       const withFiles = next.filter((s) => s.file !== null);
       if (withFiles.length === 0) return [];
 
-      // 2) 파일 슬롯 뒤에 빈 슬롯 1개 붙이기
+      // 파일 슬롯 뒤에 빈 슬롯 1개 붙이기
       return [...withFiles, { id: uid(), file: null }];
     });
   };
 
+  // ✅ 제출: "업로드 완료 모달"을 띄우고, 확인 시 다음 페이지로 이동
   const submitFiles = () => {
     const files = slots.filter((s) => s.file).map((s) => s.file!) as File[];
     if (files.length === 0) {
@@ -104,12 +109,11 @@ const FileUploadPage: React.FC = () => {
       return;
     }
 
-    // TODO: API 연동 시 여기서 FormData로 업로드하면 됨
-    // const fd = new FormData();
-    // files.forEach(f => fd.append("files", f));
+    // TODO: API 연동 시 여기서 FormData로 업로드(성공 후 모달 띄우기)
     console.log("제출 파일:", files);
 
-    alert(`총 ${files.length}개 파일 제출(콘솔 확인)`);
+    setSubmittedCount(files.length);
+    setShowDone(true);
   };
 
   // ---------------------------
@@ -185,21 +189,16 @@ const FileUploadPage: React.FC = () => {
                     onDragLeave={onRowDragLeave}
                     onDrop={(e) => onRowDrop(e, idx)}
                     onClick={() => {
-                      // 빈 행 클릭 시 파일 선택해서 해당 행부터 채우고 싶으면:
-                      // -> "한번에 여러개 선택"하면 해당 행부터 순서대로 들어감
-                      if (slot.file === null) {
-                        // 파일 피커 열고, 선택 후 "현재 idx부터" 채우려면
-                        // 기본 input은 startIndex를 못 받으니,
-                        // 간단하게: 한번 클릭으로는 전체 add(첫 빈칸부터)로 두고,
-                        // 드롭으로 행지정 기능을 쓰는 방식도 OK.
-                        // 여기서는 UX 편의로: 빈 행 클릭해도 그냥 파일 피커 열기
-                        openFilePicker();
-                      }
+                      if (slot.file === null) openFilePicker();
                     }}
                     title="이 행에 파일 드롭 가능"
                   >
                     <FileName>
-                      {slot.file ? slot.file.name : <Placeholder>여기에 파일을 드래그해서 추가</Placeholder>}
+                      {slot.file ? (
+                        slot.file.name
+                      ) : (
+                        <Placeholder>여기에 파일을 드래그해서 추가</Placeholder>
+                      )}
                     </FileName>
 
                     <RowActions>
@@ -231,11 +230,36 @@ const FileUploadPage: React.FC = () => {
           ref={fileInputRef}
           type="file"
           multiple
-          // 필요하면 확장자 제한
           // accept=".hwp,.hwpx,.pdf,.xlsx,.xls,.doc,.docx,.ppt,.pptx,.zip,.png,.jpg,.jpeg"
           style={{ display: "none" }}
           onChange={onPickFiles}
         />
+
+        {/* ✅ 업로드 완료 모달(B) */}
+        {showDone && (
+          <ModalOverlay
+            onClick={() => {
+              setShowDone(false);
+            }}
+          >
+            <ModalCard onClick={(e) => e.stopPropagation()}>
+              <ModalTitle>업로드 완료</ModalTitle>
+              <ModalDesc>총 {submittedCount}개 파일이 제출되었습니다.</ModalDesc>
+
+              <ModalActions>
+                <SmallBtn
+                  type="button"
+                  onClick={() => {
+                    setShowDone(false);
+                    navigate("/draft");
+                  }}
+                >
+                  확인
+                </SmallBtn>
+              </ModalActions>
+            </ModalCard>
+          </ModalOverlay>
+        )}
       </Card>
     </Page>
   );
@@ -318,16 +342,15 @@ const ListStage = styled.div`
 `;
 
 const ListPanel = styled.div`
-  position: relative;     
+  position: relative;
   margin-top: 14px;
   background: #d9d9d9;
   border-radius: 0px;
   padding: 26px 28px;
-  padding-bottom: 90px; 
+  padding-bottom: 90px;
   min-height: 520px;
   box-sizing: border-box;
 `;
-
 
 const ListHeader = styled.div`
   font-size: 14px;
@@ -406,4 +429,43 @@ const SmallGhostBtn = styled.button`
   &:hover {
     background: #f7f7f7;
   }
+`;
+
+/* 업로드 완료 모달 */
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  box-sizing: border-box;
+`;
+
+const ModalCard = styled.div`
+  width: 420px;
+  max-width: 92vw;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 18px;
+  box-sizing: border-box;
+`;
+
+const ModalTitle = styled.div`
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 10px;
+`;
+
+const ModalDesc = styled.div`
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.75);
+  line-height: 1.5;
+`;
+
+const ModalActions = styled.div`
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
 `;
