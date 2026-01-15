@@ -8,7 +8,6 @@ type FieldKey = "need1" | "need2" | "need3" | "need4";
 const DraftPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // ✅ textarea 한 개로 관리 (엔터 치면 자동 줄바꿈)
   const [need1, setNeed1] = useState("");
   const [need2, setNeed2] = useState("");
   const [need3, setNeed3] = useState("");
@@ -48,7 +47,6 @@ const DraftPage: React.FC = () => {
   const submitDraft = () => {
     if (focusFirstEmpty()) return;
 
-    // ✅ 서버에 배열로 보내고 싶으면 줄바꿈 기준으로 분리
     const toLines = (v: string) =>
       v
         .split(/\r?\n/)
@@ -64,7 +62,6 @@ const DraftPage: React.FC = () => {
 
     console.log("초안 제출:", payload);
     alert("초안이 제출되었습니다. (콘솔 확인)");
-    // navigate("/something");
   };
 
   return (
@@ -131,10 +128,6 @@ const DraftPage: React.FC = () => {
 };
 
 export default DraftPage;
-
-/* =========================
-   styled-components
-========================= */
 
 const Page = styled.div`
   width: 100%;

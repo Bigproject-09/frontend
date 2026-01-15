@@ -14,21 +14,17 @@ const FileUploadPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
 
-  // slots가 비어있으면 "초기 화면"으로 간주
   const [slots, setSlots] = useState<Slot[]>([]);
 
-  // 드래그 하이라이트(행 단위)
   const [dragOverSlotId, setDragOverSlotId] = useState<string | null>(null);
   const [dragOverEmpty, setDragOverEmpty] = useState(false);
 
-  // ✅ 업로드 완료 모달
   const [showDone, setShowDone] = useState(false);
   const [submittedCount, setSubmittedCount] = useState(0);
 
   const hasAnyFile = useMemo(() => slots.some((s) => s.file), [slots]);
 
   const ensureTrailingEmpty = (arr: Slot[]) => {
-    // 마지막이 file=null인 슬롯이 없으면 하나 추가
     if (arr.length === 0) return arr;
     const last = arr[arr.length - 1];
     if (last.file !== null) arr.push({ id: uid(), file: null });
@@ -36,7 +32,6 @@ const FileUploadPage: React.FC = () => {
   };
 
   const normalizeEmptyState = (arr: Slot[]) => {
-    // 파일이 하나도 없으면 slots를 []로 만들어 초기 화면으로 돌림
     const any = arr.some((s) => s.file);
     if (!any) return [];
     return ensureTrailingEmpty(arr);
@@ -52,31 +47,26 @@ const FileUploadPage: React.FC = () => {
     setSlots((prev) => {
       let next = [...prev];
 
-      // 초기 화면(아무 슬롯 없음)에서 파일 들어오면 슬롯 생성
       if (next.length === 0) {
         next = files.map((f) => ({ id: uid(), file: f }));
-        next.push({ id: uid(), file: null }); // 다음 입력을 위한 빈 줄
+        next.push({ id: uid(), file: null }); 
         return next;
       }
 
-      // startIndex가 없으면 "첫 빈 슬롯"부터 채우기
       let idx =
         typeof startIndex === "number"
           ? startIndex
           : next.findIndex((s) => s.file === null);
 
-      if (idx < 0) idx = next.length; // 빈 슬롯이 없으면 맨 끝부터
+      if (idx < 0) idx = next.length; 
 
-      // 필요한 만큼 슬롯 확장
       const need = idx + files.length;
       while (next.length < need) next.push({ id: uid(), file: null });
 
-      // 채우기(연속)
       files.forEach((f, i) => {
         next[idx + i] = { ...next[idx + i], file: f };
       });
 
-      // 마지막 빈 줄 보장 + 파일 0개면 초기 화면 처리
       return normalizeEmptyState(next);
     });
   };
@@ -84,7 +74,6 @@ const FileUploadPage: React.FC = () => {
   const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = e.target.files ? Array.from(e.target.files) : [];
     addFilesToSlots(list);
-    // 같은 파일 다시 선택 가능하도록 초기화
     e.target.value = "";
   };
 
@@ -92,16 +81,13 @@ const FileUploadPage: React.FC = () => {
     setSlots((prev) => {
       const next = prev.map((s) => (s.id === slotId ? { ...s, file: null } : s));
 
-      // 파일이 있는 슬롯만 남기고
       const withFiles = next.filter((s) => s.file !== null);
       if (withFiles.length === 0) return [];
 
-      // 파일 슬롯 뒤에 빈 슬롯 1개 붙이기
       return [...withFiles, { id: uid(), file: null }];
     });
   };
 
-  // ✅ 제출: "업로드 완료 모달"을 띄우고, 확인 시 다음 페이지로 이동
   const submitFiles = () => {
     const files = slots.filter((s) => s.file).map((s) => s.file!) as File[];
     if (files.length === 0) {
@@ -109,16 +95,12 @@ const FileUploadPage: React.FC = () => {
       return;
     }
 
-    // TODO: API 연동 시 여기서 FormData로 업로드(성공 후 모달 띄우기)
     console.log("제출 파일:", files);
 
     setSubmittedCount(files.length);
     setShowDone(true);
   };
 
-  // ---------------------------
-  // 드래그&드롭 (초기 화면)
-  // ---------------------------
   const onEmptyDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOverEmpty(true);
@@ -131,9 +113,6 @@ const FileUploadPage: React.FC = () => {
     addFilesToSlots(files);
   };
 
-  // ---------------------------
-  // 드래그&드롭 (행 단위)
-  // ---------------------------
   const onRowDragOver = (e: React.DragEvent, slotId: string) => {
     e.preventDefault();
     setDragOverSlotId(slotId);
@@ -154,7 +133,6 @@ const FileUploadPage: React.FC = () => {
         </div>
 
         {!hasAnyFile ? (
-          // 초기 화면
           <EmptyStage
             data-dragover={dragOverEmpty}
             onDragOver={onEmptyDragOver}
@@ -175,7 +153,6 @@ const FileUploadPage: React.FC = () => {
             </Guide>
           </EmptyStage>
         ) : (
-          // 파일 1개 이상일 때 리스트 화면
           <ListStage>
             <ListPanel>
               <ListHeader>파일명</ListHeader>
@@ -235,7 +212,7 @@ const FileUploadPage: React.FC = () => {
           onChange={onPickFiles}
         />
 
-        {/* ✅ 업로드 완료 모달(B) */}
+        {/* 업로드 완료 모달 */}
         {showDone && (
           <ModalOverlay
             onClick={() => {
@@ -267,10 +244,6 @@ const FileUploadPage: React.FC = () => {
 
 export default FileUploadPage;
 
-/* =========================
-   styled-components
-========================= */
-
 const Page = styled.div`
   width: 100%;
   min-height: 100vh;
@@ -290,7 +263,6 @@ const Card = styled.div`
   box-sizing: border-box;
 `;
 
-/* 초기 화면 */
 const EmptyStage = styled.div`
   height: 520px;
   border-radius: 12px;
@@ -336,7 +308,6 @@ const Guide = styled.div`
   color: rgba(0, 0, 0, 0.7);
 `;
 
-/* 리스트 화면 */
 const ListStage = styled.div`
   margin-top: 8px;
 `;
@@ -401,7 +372,6 @@ const SubmitArea = styled.div`
   bottom: 28px;
 `;
 
-/* 버튼 */
 const SmallBtn = styled.button`
   width: 130px;
   height: 40px;
@@ -431,7 +401,6 @@ const SmallGhostBtn = styled.button`
   }
 `;
 
-/* 업로드 완료 모달 */
 const ModalOverlay = styled.div`
   position: fixed;
   inset: 0;

@@ -6,14 +6,14 @@ import "../styles/Global.css";
 type NoticeItem = {
   id: number;
   title: string;
-  dday: string; // "D-7"
+  dday: string;
   score: number;
   isRead: boolean;
   url?: string;
 
   org?: string;
   budget?: string;
-  period?: string; // "YYYY-MM-DD ~ YYYY-MM-DD"
+  period?: string;
   summary?: string;
 };
 
@@ -72,12 +72,10 @@ const saveStored = (list: NoticeItem[]) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
   } catch {
-    // ignore
   }
 };
 
 const mergeUniqueById = (base: NoticeItem[], stored: NoticeItem[]) => {
-  // stored(신규/수정)이 우선
   const map = new Map<number, NoticeItem>();
   [...stored, ...base].forEach((it) => map.set(it.id, it));
   return Array.from(map.values());
@@ -91,17 +89,14 @@ const NoticeAlertPage: React.FC = () => {
     return mergeUniqueById(DUMMY_ITEMS, stored);
   });
 
-  // ✅ 선택형 필터
   const [readFilter, setReadFilter] = useState<ReadFilter>("ALL");
   const [ddayFilter, setDdayFilter] = useState<DdayFilter>("ALL");
   const [scoreFilter, setScoreFilter] = useState<ScoreFilter>("ALL");
   const [filterText, setFilterText] = useState("");
   const [page, setPage] = useState(1);
 
-  // ✅ 모달 상태
   const [selected, setSelected] = useState<NoticeItem | null>(null);
 
-  // ---- helpers ----
   const parseDday = (dday: string) => {
     const n = Number(dday.replace("D-", ""));
     return Number.isNaN(n) ? 9999 : n;
@@ -138,7 +133,6 @@ const NoticeAlertPage: React.FC = () => {
       .filter(passRead)
       .filter(passDday)
       .filter(passScore);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, filterText, readFilter, ddayFilter, scoreFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -151,9 +145,6 @@ const NoticeAlertPage: React.FC = () => {
 
   const syncStorage = (next: NoticeItem[]) => {
     setItems(next);
-
-    // 더미는 저장하지 않고 “사용자 등록/변경분만” 저장하고 싶으면 필터링 필요.
-    // 지금은 단순화를 위해 전체를 저장.
     saveStored(next);
   };
 
@@ -164,15 +155,12 @@ const NoticeAlertPage: React.FC = () => {
     if (selected?.id === id) setSelected(null);
   };
 
-  // ✅ 제목 클릭 시: 모달 열기 + (미확인이라면) 한 번만 확인 처리
   const openNotice = (notice: NoticeItem) => {
     setSelected(notice);
 
     if (!notice.isRead) {
       const next = items.map((it) => (it.id === notice.id ? { ...it, isRead: true } : it));
       syncStorage(next);
-
-      // 모달 즉시 반영
       setSelected((prev) => (prev && prev.id === notice.id ? { ...prev, isRead: true } : prev));
     }
   };
@@ -370,10 +358,6 @@ const NoticeAlertPage: React.FC = () => {
 
 export default NoticeAlertPage;
 
-/* =========================
-   styled-components
-========================= */
-
 const Page = styled.div`
   width: 100%;
   min-height: 100vh;
@@ -555,7 +539,6 @@ const MiniOutlineBtn = styled.button`
   }
 `;
 
-/* 모달 */
 const ModalOverlay = styled.div`
   position: fixed;
   inset: 0;
