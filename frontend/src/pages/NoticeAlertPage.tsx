@@ -178,7 +178,6 @@ const NoticeAlertPage: React.FC = () => {
 
         {/* 필터 */}
         <Section>
-          <div className="label">필터</div>
           <FilterRow>
             <input
               className="input"
@@ -249,7 +248,7 @@ const NoticeAlertPage: React.FC = () => {
         {/* 리스트 */}
         <Section>
           <HeaderRow>
-            <div style={{ paddingLeft: 28 }}>공고 제목</div>
+            <div style={{ paddingLeft: 54 }}>공고 제목</div>
             <Center>기한</Center>
             <Center>추천점수</Center>
             <div />
@@ -427,7 +426,7 @@ const HeaderRow = styled.div`
 
 const Row = styled.div`
   display: grid;
-  grid-template-columns: 28px 1fr 120px 120px 220px;
+  grid-template-columns: 54px 1fr 120px 120px 220px;
   align-items: center;
   padding: 10px 0;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
