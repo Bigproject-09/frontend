@@ -18,11 +18,14 @@ type NoticeItem = {
 };
 
 const STORAGE_KEY = "bb_notices_v1";
+const FAV_KEY = "bb_notice_favs_v1";
 const PAGE_SIZE = 6;
 
 type ReadFilter = "ALL" | "READ" | "UNREAD";
 type DdayFilter = "ALL" | "D0_1" | "D2_3" | "D4_7" | "D8PLUS";
 type ScoreFilter = "ALL" | "S80" | "S70" | "S60" | "S0";
+
+type TabKey = "ALL" | "HASHTAG" | "FAV";
 
 const DUMMY_ITEMS: NoticeItem[] = [
   {
@@ -71,14 +74,30 @@ const loadStored = (): NoticeItem[] => {
 const saveStored = (list: NoticeItem[]) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  } catch {
-  }
+  } catch {}
 };
 
 const mergeUniqueById = (base: NoticeItem[], stored: NoticeItem[]) => {
   const map = new Map<number, NoticeItem>();
   [...stored, ...base].forEach((it) => map.set(it.id, it));
   return Array.from(map.values());
+};
+
+const loadFavIds = (): number[] => {
+  try {
+    const raw = localStorage.getItem(FAV_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as number[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveFavIds = (ids: number[]) => {
+  try {
+    localStorage.setItem(FAV_KEY, JSON.stringify(ids));
+  } catch {}
 };
 
 const NoticeAlertPage: React.FC = () => {
@@ -88,6 +107,10 @@ const NoticeAlertPage: React.FC = () => {
     const stored = loadStored();
     return mergeUniqueById(DUMMY_ITEMS, stored);
   });
+
+  const [favIds, setFavIds] = useState<number[]>(() => loadFavIds());
+
+  const [tab, setTab] = useState<TabKey>("ALL");
 
   const [readFilter, setReadFilter] = useState<ReadFilter>("ALL");
   const [ddayFilter, setDdayFilter] = useState<DdayFilter>("ALL");
@@ -126,31 +149,29 @@ const NoticeAlertPage: React.FC = () => {
     return s < 60;
   };
 
-  const filtered = useMemo(() => {
-    const t = filterText.trim().toLowerCase();
-    return items
-      .filter((it) => (t ? it.title.toLowerCase().includes(t) : true))
-      .filter(passRead)
-      .filter(passDday)
-      .filter(passScore);
-  }, [items, filterText, readFilter, ddayFilter, scoreFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pagedItems = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, page]);
-
-  const resetToFirstPage = () => setPage(1);
-
   const syncStorage = (next: NoticeItem[]) => {
     setItems(next);
     saveStored(next);
   };
 
+  const toggleFav = (id: number) => {
+    setFavIds((prev) => {
+      const has = prev.includes(id);
+      const next = has ? prev.filter((x) => x !== id) : [...prev, id];
+      saveFavIds(next);
+      return next;
+    });
+  };
+
   const removeItem = (id: number) => {
     const next = items.filter((it) => it.id !== id);
     syncStorage(next);
+
+    setFavIds((prev) => {
+      const nextFav = prev.filter((x) => x !== id);
+      saveFavIds(nextFav);
+      return nextFav;
+    });
 
     if (selected?.id === id) setSelected(null);
   };
@@ -169,211 +190,340 @@ const NoticeAlertPage: React.FC = () => {
     console.log("신청:", id);
   };
 
+  const baseByTab = useMemo(() => {
+    if (tab === "ALL") return items;
+    if (tab === "FAV") return items.filter((it) => favIds.includes(it.id));
+    return []; // HASHTAG: 추후 매칭 로직
+  }, [items, favIds, tab]);
+
+  const filtered = useMemo(() => {
+    const t = filterText.trim().toLowerCase();
+    return baseByTab
+      .filter((it) => (t ? it.title.toLowerCase().includes(t) : true))
+      .filter(passRead)
+      .filter(passDday)
+      .filter(passScore);
+  }, [baseByTab, filterText, readFilter, ddayFilter, scoreFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pagedItems = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
+
+  const resetToFirstPage = () => setPage(1);
+
+  // ✅ 탭 변경 시: 필터 기본값으로 초기화 + 페이지 1 + 모달 닫기
+  const changeTab = (next: TabKey) => {
+    setTab(next);
+    setSelected(null);
+
+    setFilterText("");
+    setReadFilter("ALL");
+    setDdayFilter("ALL");
+    setScoreFilter("ALL");
+
+    setPage(1);
+  };
+
   return (
-    <Page>
-      <Card>
-        <div className="title" style={{ marginLeft: 0, marginBottom: 18 }}>
-          공고 알림 페이지
-        </div>
+    <Shell>
+      <Layout>
+        {/* 좌측 탭 */}
+        <Side>
+          <BrandRow>Biz & Busy</BrandRow>
 
-        {/* 필터 */}
-        <Section>
-          <FilterRow>
-            <input
-              className="input"
-              style={{ width: 320 }}
-              placeholder="공고 제목 검색"
-              value={filterText}
-              onChange={(e) => {
-                setFilterText(e.target.value);
-                resetToFirstPage();
-              }}
-            />
+          <SideTab type="button" data-active={tab === "ALL"} onClick={() => changeTab("ALL")}>
+            전체 탭
+          </SideTab>
+          <SideTab
+            type="button"
+            data-active={tab === "HASHTAG"}
+            onClick={() => changeTab("HASHTAG")}
+          >
+            해시태그 탭
+          </SideTab>
+          <SideTab type="button" data-active={tab === "FAV"} onClick={() => changeTab("FAV")}>
+            찜 탭
+          </SideTab>
+        </Side>
 
-            <Select
-              value={readFilter}
-              onChange={(e) => {
-                setReadFilter(e.target.value as ReadFilter);
-                resetToFirstPage();
-              }}
-            >
-              <option value="ALL">전체</option>
-              <option value="UNREAD">미확인</option>
-              <option value="READ">확인</option>
-            </Select>
+        {/* 우측 콘텐츠 */}
+        <Main>
+          <Title>공고 알림 페이지</Title>
 
-            <Select
-              value={ddayFilter}
-              onChange={(e) => {
-                setDdayFilter(e.target.value as DdayFilter);
-                resetToFirstPage();
-              }}
-            >
-              <option value="ALL">마감일 전체</option>
-              <option value="D0_1">D-1 이하</option>
-              <option value="D2_3">D-2 ~ D-3</option>
-              <option value="D4_7">D-4 ~ D-7</option>
-              <option value="D8PLUS">D-8 이상</option>
-            </Select>
+          {/* 필터 */}
+          <Section>
+            <FilterRow>
+              <input
+                className="input"
+                style={{ width: 320 }}
+                placeholder="공고 제목 검색"
+                value={filterText}
+                onChange={(e) => {
+                  setFilterText(e.target.value);
+                  resetToFirstPage();
+                }}
+              />
 
-            <Select
-              value={scoreFilter}
-              onChange={(e) => {
-                setScoreFilter(e.target.value as ScoreFilter);
-                resetToFirstPage();
-              }}
-            >
-              <option value="ALL">점수 전체</option>
-              <option value="S80">80점 이상</option>
-              <option value="S70">70~79점</option>
-              <option value="S60">60~69점</option>
-              <option value="S0">60점 미만</option>
-            </Select>
-
-            <ClearBtn
-              type="button"
-              onClick={() => {
-                setFilterText("");
-                setReadFilter("ALL");
-                setDdayFilter("ALL");
-                setScoreFilter("ALL");
-                setPage(1);
-              }}
-            >
-              초기화
-            </ClearBtn>
-          </FilterRow>
-        </Section>
-
-        {/* 리스트 */}
-        <Section>
-          <HeaderRow>
-            <div style={{ paddingLeft: 54 }}>공고 제목</div>
-            <Center>기한</Center>
-            <Center>추천점수</Center>
-            <div />
-          </HeaderRow>
-
-          {pagedItems.length === 0 ? (
-            <Empty>조건에 맞는 공고가 없습니다.</Empty>
-          ) : (
-            pagedItems.map((it) => (
-              <Row key={it.id}>
-                <DeleteBtn type="button" onClick={() => removeItem(it.id)}>
-                  X
-                </DeleteBtn>
-
-                <TitleButton type="button" onClick={() => openNotice(it)} title="공고 상세 보기">
-                  {it.title}
-                </TitleButton>
-
-                <Center>{it.dday}</Center>
-                <Center>{it.score}</Center>
-
-                <Actions>
-                  {!it.isRead && <UnreadBadge>미확인</UnreadBadge>}
-                  <MiniBtn type="button" onClick={() => handleApply(it.id)}>
-                    신청
-                  </MiniBtn>
-                </Actions>
-              </Row>
-            ))
-          )}
-
-          <Pagination>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <PageBtn
-                key={p}
-                type="button"
-                data-active={p === page}
-                onClick={() => setPage(p)}
+              <Select
+                value={readFilter}
+                onChange={(e) => {
+                  setReadFilter(e.target.value as ReadFilter);
+                  resetToFirstPage();
+                }}
               >
-                {p}
-              </PageBtn>
-            ))}
-          </Pagination>
-        </Section>
+                <option value="ALL">전체</option>
+                <option value="UNREAD">미확인</option>
+                <option value="READ">확인</option>
+              </Select>
 
-        {/* 우하단 버튼 */}
-        <BottomRight>
-          <MiniOutlineBtn type="button" onClick={() => navigate("/notice/new")}>
-            신규 공고 등록
-          </MiniOutlineBtn>
-        </BottomRight>
+              <Select
+                value={ddayFilter}
+                onChange={(e) => {
+                  setDdayFilter(e.target.value as DdayFilter);
+                  resetToFirstPage();
+                }}
+              >
+                <option value="ALL">마감일 전체</option>
+                <option value="D0_1">D-1 이하</option>
+                <option value="D2_3">D-2 ~ D-3</option>
+                <option value="D4_7">D-4 ~ D-7</option>
+                <option value="D8PLUS">D-8 이상</option>
+              </Select>
 
-        {/* 모달 */}
-        {selected && (
-          <ModalOverlay onClick={() => setSelected(null)}>
-            <ModalCard onClick={(e) => e.stopPropagation()}>
-              <ModalTitle>
-                {selected.title}
-                {!selected.isRead && <ModalBadge>미확인</ModalBadge>}
-              </ModalTitle>
+              <Select
+                value={scoreFilter}
+                onChange={(e) => {
+                  setScoreFilter(e.target.value as ScoreFilter);
+                  resetToFirstPage();
+                }}
+              >
+                <option value="ALL">점수 전체</option>
+                <option value="S80">80점 이상</option>
+                <option value="S70">70~79점</option>
+                <option value="S60">60~69점</option>
+                <option value="S0">60점 미만</option>
+              </Select>
 
-              <ModalGrid>
-                <div className="label">기관</div>
-                <div>{selected.org ?? "-"}</div>
+              <ClearBtn
+                type="button"
+                onClick={() => {
+                  setFilterText("");
+                  setReadFilter("ALL");
+                  setDdayFilter("ALL");
+                  setScoreFilter("ALL");
+                  setPage(1);
+                }}
+              >
+                초기화
+              </ClearBtn>
+            </FilterRow>
 
-                <div className="label">예산</div>
-                <div>{selected.budget ?? "-"}</div>
+            {tab === "HASHTAG" && (
+              <Hint>
+                해시태그 매칭 데이터가 준비되면, 여기서 “내 회사 해시태그와 일치하는 공고만” 보여주게
+                됩니다.
+              </Hint>
+            )}
+          </Section>
 
-                <div className="label">기간</div>
-                <div>{selected.period ?? "-"}</div>
+          {/* 리스트 */}
+          <Section>
+            <HeaderRow>
+              <div style={{ paddingLeft: 54 }}>공고 제목</div>
+              <Center>기한</Center>
+              <Center>추천점수</Center>
+              <ActionHeader>
+                <ActionHeaderItem>찜</ActionHeaderItem>
+              </ActionHeader>
+            </HeaderRow>
 
-                <div className="label">URL</div>
-                <div>
-                  {selected.url ? (
-                    <a href={selected.url} target="_blank" rel="noreferrer">
-                      {selected.url}
-                    </a>
-                  ) : (
-                    "-"
-                  )}
-                </div>
-              </ModalGrid>
+            {pagedItems.length === 0 ? (
+              <Empty>
+                {tab === "HASHTAG"
+                  ? "해시태그 매칭 공고가 아직 없습니다."
+                  : "조건에 맞는 공고가 없습니다."}
+              </Empty>
+            ) : (
+              pagedItems.map((it) => {
+                const isFav = favIds.includes(it.id);
+                return (
+                  <Row key={it.id}>
+                    <DeleteBtn type="button" onClick={() => removeItem(it.id)}>
+                      X
+                    </DeleteBtn>
 
-              <ModalSummary>
-                <div className="label">요약</div>
-                <div style={{ marginTop: 6 }}>
-                  {selected.summary ?? "상세 정보가 없습니다."}
-                </div>
-              </ModalSummary>
+                    <TitleButton type="button" onClick={() => openNotice(it)} title="공고 상세 보기">
+                      {it.title}
+                    </TitleButton>
 
-              <ModalActions>
-                <MiniBtn type="button" onClick={() => handleApply(selected.id)}>
-                  신청
-                </MiniBtn>
-                <MiniBtn type="button" onClick={() => setSelected(null)}>
-                  닫기
-                </MiniBtn>
-              </ModalActions>
-            </ModalCard>
-          </ModalOverlay>
-        )}
-      </Card>
-    </Page>
+                    <Center>{it.dday}</Center>
+                    <Center>{it.score}</Center>
+
+                    <Actions>
+                      {/* 미확인 -> 찜(별) -> 신청 */}
+                      {!it.isRead && <UnreadBadge>미확인</UnreadBadge>}
+
+                      {/* 요청: 별이 버튼 정중앙 */}
+                      <FavBtn
+                        type="button"
+                        data-active={isFav}
+                        onClick={() => toggleFav(it.id)}
+                        aria-label="찜"
+                        title={isFav ? "찜 해제" : "찜"}
+                      >
+                        <FavIcon aria-hidden>{isFav ? "★" : "☆"}</FavIcon>
+                      </FavBtn>
+
+                      <MiniBtn type="button" onClick={() => handleApply(it.id)}>
+                        신청
+                      </MiniBtn>
+                    </Actions>
+                  </Row>
+                );
+              })
+            )}
+
+            <Pagination>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <PageBtn key={p} type="button" data-active={p === page} onClick={() => setPage(p)}>
+                  {p}
+                </PageBtn>
+              ))}
+            </Pagination>
+          </Section>
+
+          {/* ✅ 요청: 신규 공고 등록 버튼은 아래로 */}
+          <BottomRight>
+            <MiniOutlineBtn type="button" onClick={() => navigate("/notice/new")}>
+              신규 공고 등록
+            </MiniOutlineBtn>
+          </BottomRight>
+        </Main>
+      </Layout>
+
+      {/* 모달 */}
+      {selected && (
+        <ModalOverlay onClick={() => setSelected(null)}>
+          <ModalCard onClick={(e) => e.stopPropagation()}>
+            <ModalTitle>
+              {selected.title}
+              {!selected.isRead && <ModalBadge>미확인</ModalBadge>}
+            </ModalTitle>
+
+            <ModalGrid>
+              <div className="label">기관</div>
+              <div>{selected.org ?? "-"}</div>
+
+              <div className="label">예산</div>
+              <div>{selected.budget ?? "-"}</div>
+
+              <div className="label">기간</div>
+              <div>{selected.period ?? "-"}</div>
+
+              <div className="label">URL</div>
+              <div>
+                {selected.url ? (
+                  <a href={selected.url} target="_blank" rel="noreferrer">
+                    {selected.url}
+                  </a>
+                ) : (
+                  "-"
+                )}
+              </div>
+            </ModalGrid>
+
+            <ModalSummary>
+              <div className="label">요약</div>
+              <div style={{ marginTop: 6 }}>{selected.summary ?? "상세 정보가 없습니다."}</div>
+            </ModalSummary>
+
+            <ModalActions>
+              <MiniBtn type="button" onClick={() => handleApply(selected.id)}>
+                신청
+              </MiniBtn>
+              <MiniBtn type="button" onClick={() => setSelected(null)}>
+                닫기
+              </MiniBtn>
+            </ModalActions>
+          </ModalCard>
+        </ModalOverlay>
+      )}
+    </Shell>
   );
 };
 
 export default NoticeAlertPage;
 
-const Page = styled.div`
+/* =========================
+   styled-components
+========================= */
+
+const Shell = styled.div`
   width: 100%;
   min-height: 100vh;
   background: #d9d9d9;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 30px 0;
   box-sizing: border-box;
 `;
 
-const Card = styled.div`
-  width: 1100px;
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 28px;
+const Layout = styled.div`
+  width: 100%;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+`;
+
+const Side = styled.aside`
+  background: #efefef;
+  border-right: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 16px 12px;
   box-sizing: border-box;
+`;
+
+const BrandRow = styled.div`
+  height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-weight: 700;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.75);
+  margin-bottom: 10px;
+`;
+
+const SideTab = styled.button`
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  padding: 0 12px;
+
+  background: transparent;
+  border: 1px solid transparent;
+
+  &[data-active="true"] {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.15);
+    font-weight: 700;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.65);
+  }
+`;
+
+const Main = styled.main`
+  padding: 24px;
+  box-sizing: border-box;
+`;
+
+const Title = styled.div`
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 14px;
 `;
 
 const Section = styled.div`
@@ -415,9 +565,15 @@ const ClearBtn = styled.button`
   }
 `;
 
+const Hint = styled.div`
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.65);
+`;
+
 const HeaderRow = styled.div`
   display: grid;
-  grid-template-columns: 1fr 120px 120px 220px;
+  grid-template-columns: 1fr 120px 120px 260px;
   align-items: center;
   padding: 6px 0 10px;
   font-size: 13px;
@@ -426,11 +582,26 @@ const HeaderRow = styled.div`
 
 const Row = styled.div`
   display: grid;
-  grid-template-columns: 54px 1fr 120px 120px 220px;
+  grid-template-columns: 54px 1fr 120px 120px 260px;
   align-items: center;
   padding: 10px 0;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
   box-sizing: border-box;
+`;
+
+const ActionHeader = styled.div`
+  display: grid;
+  grid-template-columns: 196px;
+  gap: 10px;
+  justify-content: end;
+  align-items: center;
+  padding-right: 2px;
+`;
+
+const ActionHeaderItem = styled.div`
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+  text-align: center;
 `;
 
 const DeleteBtn = styled.button`
@@ -460,6 +631,8 @@ const UnreadBadge = styled.span`
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.08);
   align-self: center;
+  text-align: center;
+  min-width: 56px; /* 헤더 폭과 맞추기 */
 `;
 
 const Center = styled.div`
@@ -472,6 +645,39 @@ const Actions = styled.div`
   justify-content: flex-end;
   gap: 10px;
   align-items: center;
+`;
+
+const FavBtn = styled.button`
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  cursor: pointer;
+
+  position: relative;
+  display: block;
+
+  &[data-active="true"] {
+    border-color: rgba(0, 0, 0, 0.35);
+  }
+
+  &:hover {
+    background: #f7f7f7;
+  }
+`;
+
+const FavIcon = styled.span`
+  position: absolute;
+  left: 50%;
+  top: 45%;
+
+  transform: translate(-50%, -50%);
+
+  font-size: 18px;
+  line-height: 1;
+  display: block;
 `;
 
 const MiniBtn = styled.button`
@@ -522,7 +728,7 @@ const Empty = styled.div`
 const BottomRight = styled.div`
   display: flex;
   justify-content: flex-end;
-  margin-top: 6px;
+  margin-top: 8px;
 `;
 
 const MiniOutlineBtn = styled.button`
@@ -547,6 +753,7 @@ const ModalOverlay = styled.div`
   align-items: center;
   padding: 24px;
   box-sizing: border-box;
+  z-index: 9999;
 `;
 
 const ModalCard = styled.div`
