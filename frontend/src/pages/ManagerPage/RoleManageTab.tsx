@@ -1,13 +1,41 @@
 import React from "react";
 import styled from "styled-components";
-import ManagerLayout from "../../components/ManagerLayout";
 import { useNavigate } from "react-router-dom";
+import Sidebar from "../../components/Sidebar";
 
 const RoleTab: React.FC = () => {
   const navigate = useNavigate();
 
+    const menus = [
+    {
+      name: "토큰 확인",
+      path: "/manager/tokentab",
+      onClick:() => navigate("/manager/tokentab")
+    },
+    {
+      name: "역할 관리",
+      path: "/manager/rolemanagetab",
+      onClick:() => navigate("/manager/rolemanagetab"),
+      gap : true
+    },
+    {
+      name: "사용자 관리",
+      path: "/manager/usermanagetab",
+      onClick:() => navigate("/manager/usermanagetab")
+    },
+    {
+      name: "회사 정보 수정",
+      path: "/registration",
+      onClick:() => navigate("/registration"),
+      gap : true
+    }
+  ]
+
   return (
-    <ManagerLayout>
+    <Sidebar
+      sidebarMenus={menus}
+    >
+
       <Container>
         <div className="title">
             역할 관리
@@ -61,7 +89,7 @@ const RoleTab: React.FC = () => {
             </button>
         </Footer>
       </Container>
-    </ManagerLayout>
+    </Sidebar>
   );
 };
 

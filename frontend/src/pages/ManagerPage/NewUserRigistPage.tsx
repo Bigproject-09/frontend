@@ -1,6 +1,7 @@
 import React, {useState} from "react";
 import styled from "styled-components";
-import ManagerLayout from "../../components/ManagerLayout";
+import Sidebar from "../../components/Sidebar";
+import { useNavigate } from "react-router-dom";
 
 const NewUserRegistPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -8,6 +9,34 @@ const NewUserRegistPage: React.FC = () => {
   const [id, setID] = useState("");
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string>("");
+
+  const navigate = useNavigate();
+
+    const menus = [
+    {
+      name: "토큰 확인",
+      path: "/manager/tokentab",
+      onClick:() => navigate("/manager/tokentab")
+    },
+    {
+      name: "역할 관리",
+      path: "/manager/rolemanagetab",
+      onClick:() => navigate("/manager/rolemanagetab"),
+      gap : true
+    },
+    {
+      name: "사용자 관리",
+      path: "/manager/usermanagetab",
+      onClick:() => navigate("/manager/usermanagetab")
+    },
+    {
+      name: "회사 정보 수정",
+      path: "/registration",
+      onClick:() => navigate("/registration"),
+      gap : true
+    }
+  ]
+
 
   // 실제 역할 목록 예시
 const options = [
@@ -26,7 +55,9 @@ const getLabel = () => {
 
 
   return (
-    <ManagerLayout>
+    <Sidebar
+    sidebarMenus={menus}
+    >
       <Container>
         <div className="title">
             새 사용자 등록
@@ -110,7 +141,7 @@ const getLabel = () => {
             </button>
         </Footer>
       </Container>
-    </ManagerLayout>
+    </Sidebar>
   );
 };
 
