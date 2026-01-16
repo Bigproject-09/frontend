@@ -20,7 +20,7 @@ const Layout: React.FC = () => {
           </div>
           <div className="nav-group-right">
             <div className="nav-center">
-              <Link to="/samples" className="nav-btn">예시 샘플</Link>
+              <Link to="/notice" className="nav-btn">공고</Link>
               <Link to="/faq" className="nav-btn">FAQ</Link>
               <Link to="/pricing" className="nav-btn">가격</Link>
           </div>
