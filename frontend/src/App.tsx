@@ -37,8 +37,6 @@ function App() {
           <Route path="/notice" element={<NoticeAlertPage />} />
           <Route path="/notice/new" element={<NoticeNewPage />} />
 
-        <Route element={<Layout />}>
-          <Route path="/" element={<MainPage />} />
           <Route path="/manager/tokentab" element={<TokenTab />} />
           <Route path="/manager/payment" element={<PaymentPage />} />
           <Route path="/manager/rolemanagetab" element={<RoleManageTab />} />
