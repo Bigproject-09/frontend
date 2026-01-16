@@ -11,7 +11,7 @@ const Layout: React.FC = () => {
         <nav className="nav">
           <div className="nav-center">
               <Link to="/samples" className="nav-btn">예시 샘플</Link>
-              <Link to="/qna" className="nav-btn">QnA</Link>
+              <Link to="/faq" className="nav-btn">FAQ</Link>
               <Link to="/pricing" className="nav-btn">가격</Link>
           </div>
           <button
