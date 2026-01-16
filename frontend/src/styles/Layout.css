@@ -19,15 +19,26 @@
   display: flex;
   align-items: center;
   justify-content: space-between; /* 좌측 정렬 */
-  padding: 0 4vw; /* 패딩 줄여서 가로 스크롤 예방 */
+  padding: 0 4vw 0 0; /* 상 우 하 좌 패딩 거리 */
   box-sizing: border-box;
+}
+
+.nav-left {
+  display: flex;
+  gap: 16px;
 }
 
 /* nav 중앙 메뉴 */
 .nav-center {
-  margin-left: auto;
+  /* margin-left: auto; */
   display: flex;
   gap: 24px; /* span 사이 간격 */
+  margin-right: 64px;
+}
+
+.nav-right {
+  display: flex;
+  gap: 12px;
 }
 
 .nav-center span {
@@ -51,7 +62,7 @@
 
 /* 로그인 버튼 */
 .login-btn {
-  margin-left: auto; /* 오른쪽 끝으로 이동 */
+  /*margin-left: auto;*/ /* 오른쪽 끝으로 이동 */
   margin-right: 10px;
   padding: 6px 14px;
   background-color: #007bff;
@@ -69,4 +80,27 @@
   padding: 0; /*전체 페이지 가로 길이 변경*/
   box-sizing: border-box;
   min-width: 0;
+}
+
+.logo {
+  padding: 20px;
+  font-weight: bold;
+  font-size: 30px;
+  border-bottom: 1px solid #ccc;
+}
+
+.logo-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+
+.nav-group-right {
+  display: flex;
+  gap: 20px;
+
+  /* 🔥 이 한 줄이 핵심 */
+  margin-left: auto;
 }
