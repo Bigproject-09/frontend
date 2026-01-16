@@ -1,17 +1,51 @@
 import React from "react";
 import styled from "styled-components";
-import ManagerLayout from "../../components/ManagerLayout";
+import Sidebar from "../../components/Sidebar";
 import { useNavigate } from "react-router-dom";
 
 const TokenTab: React.FC = () => {
   const navigate = useNavigate();
 
+  const menus = [
+    {
+      name: "토큰 확인",
+      path: "/manager/tokentab",
+      onClick:() => navigate("/manager/tokentab")
+    },
+    {
+      name: "역할 관리",
+      path: "/manager/rolemanagetab",
+      onClick:() => navigate("/manager/rolemanagetab"),
+      gap : true
+    },
+    {
+      name: "사용자 관리",
+      path: "/manager/usermanagetab",
+      onClick:() => navigate("/manager/usermanagetab")
+    },
+    {
+      name: "회사 정보 수정",
+      path: "/registration",
+      onClick:() => navigate("/registration"),
+      gap : true
+    }
+  ]
+
   return (
-    <ManagerLayout>
+    <Sidebar
+      //title="토큰 관리"
+      sidebarMenus={menus}
+      // headerButtons={
+      //   <button onClick={() => navigate("/manager/payment")}>
+      //     결제 관리
+      //   </button>
+      //}
+    >
       <Container>
         <div className="title">
-            토큰 확인
+          토큰 확인
         </div>
+
         <Header>
           <MonthControl>
             <Arrow>{"◀"}</Arrow>
@@ -29,7 +63,7 @@ const TokenTab: React.FC = () => {
           {mockData.map((v, i) => (
             <BarItem key={i}>
               <Bar height={v} />
-              <Label>{i+1}일</Label>
+              <Label>{i + 1}일</Label>
             </BarItem>
           ))}
         </Chart>
@@ -45,16 +79,16 @@ const TokenTab: React.FC = () => {
         </Usage>
 
         <Footer>
-            <button
-                type="button"
-                className="button_center"
-                onClick={() => navigate("/manager/payment")}
-                >
-                결제 관리
-            </button>
+          <button
+            type="button"
+            className="button_center"
+            onClick={() => navigate("/manager/payment")}
+          >
+            결제 관리
+          </button>
         </Footer>
       </Container>
-    </ManagerLayout>
+    </Sidebar>
   );
 };
 
