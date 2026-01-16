@@ -6,6 +6,12 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import RegistrationPage from "./pages/RegistrationPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import TokenTab from "./pages/ManagerPage/TokenTab";
+import PaymentPage from "./pages/ManagerPage/PaymentPage";
+import RoleManageTab from "./pages/ManagerPage/RoleManageTab";
+import NewRoleRegistPage from "./pages/ManagerPage/NewRoleRegistPage";
+import UserManageTab from "./pages/ManagerPage/UserManageTab";
+import NewUserRegistPage from "./pages/ManagerPage/NewUserRigistPage";
 
 import NoticeAlertPage from "./pages/NoticeAlertPage";
 import NoticeNewPage from "./pages/NoticeNewPage";
@@ -31,6 +37,14 @@ function App() {
           <Route path="/notice" element={<NoticeAlertPage />} />
           <Route path="/notice/new" element={<NoticeNewPage />} />
 
+        <Route element={<Layout />}>
+          <Route path="/" element={<MainPage />} />
+          <Route path="/manager/tokentab" element={<TokenTab />} />
+          <Route path="/manager/payment" element={<PaymentPage />} />
+          <Route path="/manager/rolemanagetab" element={<RoleManageTab />} />
+          <Route path="/manager/roleregist" element={<NewRoleRegistPage />} />
+          <Route path="/manager/usermanagetab" element={<UserManageTab />} />
+          <Route path="/manager/userregist" element={<NewUserRegistPage />} />
           {/* 파일 업로드 */}
           <Route path="/upload" element={<FileUploadPage />} />
 
