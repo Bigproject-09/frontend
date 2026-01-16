@@ -231,7 +231,7 @@ const NoticeAlertPage: React.FC = () => {
       <Layout>
         {/* 좌측 탭 */}
         <Side>
-          <BrandRow>Biz & Busy</BrandRow>
+          {/* <BrandRow>Biz & Busy</BrandRow> */}
 
           <SideTab type="button" data-active={tab === "ALL"} onClick={() => changeTab("ALL")}>
             전체 탭
@@ -460,26 +460,35 @@ export default NoticeAlertPage;
    styled-components
 ========================= */
 
+/* =========================
+   styled-components (수정본)
+========================= */
+
 const Shell = styled.div`
   width: 100%;
-  min-height: 100vh;
-  background: #d9d9d9;
-  box-sizing: border-box;
+  height: 100vh;
+  background-color: #f5f5f5;
 `;
 
 const Layout = styled.div`
-  width: 100%;
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 220px 1fr;
+  display: flex;
+  height: 100%;
 `;
 
+/* 👇 Sidebar.css와 동일 비율 */
 const Side = styled.aside`
-  background: #efefef;
+  width: 300px;
+  background: #e6e6e6;
+  color: black;
+
   border-right: 1px solid rgba(0, 0, 0, 0.12);
   padding: 16px 12px;
   box-sizing: border-box;
+
+  display: flex;
+  flex-direction: column;
 `;
+
 
 const BrandRow = styled.div`
   height: 48px;
@@ -494,12 +503,17 @@ const BrandRow = styled.div`
 
 const SideTab = styled.button`
   width: 100%;
-  height: 40px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+
   border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 18px;
   text-align: left;
-  padding: 0 12px;
+
+  padding: 0 20px;
 
   background: transparent;
   border: 1px solid transparent;
@@ -513,12 +527,19 @@ const SideTab = styled.button`
   &:hover {
     background: rgba(255, 255, 255, 0.65);
   }
+
+  & + & {
+    margin-top: 4px;
+  }
 `;
 
+
 const Main = styled.main`
-  padding: 24px;
+  flex: 1;
+  padding: 60px;      /* 👈 TokenTab Container와 동일 */
   box-sizing: border-box;
 `;
+
 
 const Title = styled.div`
   font-size: 20px;

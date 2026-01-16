@@ -33,13 +33,7 @@ const TokenTab: React.FC = () => {
 
   return (
     <Sidebar
-      //title="토큰 관리"
       sidebarMenus={menus}
-      // headerButtons={
-      //   <button onClick={() => navigate("/manager/payment")}>
-      //     결제 관리
-      //   </button>
-      //}
     >
       <Container>
         <div className="title">

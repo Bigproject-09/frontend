@@ -5,7 +5,7 @@ import { useLocation } from "react-router-dom";
 interface MenuItem {
   name: string;
   onClick: () => void;
-  path: string;
+  path?: string;
   gap?: boolean;
 }
 
