@@ -19,6 +19,9 @@ import FileUploadPage from "./pages/FileUploadPage";
 import DraftPage from "./pages/DraftPage";
 import FaqPage from "./pages/FaqPage";
 
+import ProposalPage from "./pages/ProposalPage";
+import MyProposalPage from "./pages/MyProposalPage";
+
 function App() {
   return (
 <BrowserRouter>
@@ -51,6 +54,12 @@ function App() {
 
           {/* FAQ */}
           <Route path="/faq" element={<FaqPage />} />
+
+          {/* 제안서 작성 */}
+          <Route path="/proposal" element={<ProposalPage />} />
+
+          {/* 내 제안서 목록 */}
+          <Route path="/myproposal" element={<MyProposalPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

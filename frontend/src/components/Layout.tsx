@@ -23,6 +23,8 @@ const Layout: React.FC = () => {
               <Link to="/notice" className="nav-btn">공고</Link>
               <Link to="/faq" className="nav-btn">FAQ</Link>
               <Link to="/pricing" className="nav-btn">가격</Link>
+              <Link to="/myproposal" className="nav-btn">내 제안서</Link>
+              <Link to="/manager/tokentab" className="nav-btn">관리자</Link>
           </div>
           </div>
           <div className="nav-right">

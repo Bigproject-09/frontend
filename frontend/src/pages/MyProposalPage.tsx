@@ -6,8 +6,9 @@ import "../styles/Global.css";
 type NoticeItem = {
   id: number;
   title: string;
-  dday: string;
-  score: number;
+//   dday: string;
+//   score: number;
+  progress: string;
   isRead: boolean;
   url?: string;
 
@@ -31,8 +32,9 @@ const DUMMY_ITEMS: NoticeItem[] = [
   {
     id: 1,
     title: "공고 제목",
-    dday: "D-7",
-    score: 86,
+    // dday: "D-7",
+    // score: 86,
+    progress: "작성 중",
     url: "https://example.com/notice/1",
     isRead: true,
     org: "중소벤처기업부",
@@ -43,8 +45,9 @@ const DUMMY_ITEMS: NoticeItem[] = [
   {
     id: 2,
     title: "공고 제목",
-    dday: "D-7",
-    score: 75,
+    // dday: "D-7",
+    // score: 75,
+    progress: "완료",
     url: "https://example.com/notice/2",
     isRead: false,
     org: "정보통신산업진흥원",
@@ -52,24 +55,34 @@ const DUMMY_ITEMS: NoticeItem[] = [
     period: "2026-01-10 ~ 2026-01-25",
     summary: "AI 도입/활용 바우처 관련 공고(예시).",
   },
-  { id: 3, title: "공고 제목", dday: "D-1", score: 70, isRead: true },
-  { id: 4, title: "공고 제목", dday: "D-3", score: 64, isRead: true },
-  { id: 5, title: "공고 제목", dday: "D-7", score: 63, isRead: true },
-  { id: 6, title: "공고 제목", dday: "D-6", score: 63, isRead: false },
-  { id: 7, title: "공고 제목", dday: "D-10", score: 61, isRead: false },
-  { id: 8, title: "요시", dday: "D-2", score: 90, isRead: true },
+  { id: 3, title: "공고 제목", /*dday: "D-1", score: 70,*/ progress: "작성 중", isRead: true },
+  { id: 4, title: "공고 제목", /*dday: "D-3", score: 64,*/ progress: "완료", isRead: true },
+  { id: 5, title: "공고 제목", /*dday: "D-7", score: 63,*/ progress: "완료", isRead: true },
+  { id: 6, title: "공고 제목", /*dday: "D-6", score: 63,*/ progress: "완료", isRead: false },
+  { id: 7, title: "공고 제목", /*dday: "D-10", score: 61,*/ progress: "완료", isRead: false },
+  { id: 8, title: "요시", /*dday: "D-2", score: 90,*/ progress: "완료", isRead: true },
 ];
 
 const loadStored = (): NoticeItem[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
+
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as NoticeItem[]) : [];
+
+    // 🔥 여기서 데이터 보정!
+    return Array.isArray(parsed)
+      ? parsed.map((it: any) => ({
+          ...it,
+          progress: it.progress || "작성 중",   // ← 핵심
+        }))
+      : [];
+
   } catch {
     return [];
   }
 };
+
 
 const saveStored = (list: NoticeItem[]) => {
   try {
@@ -100,7 +113,7 @@ const saveFavIds = (ids: number[]) => {
   } catch {}
 };
 
-const NoticeAlertPage: React.FC = () => {
+const MyProposalPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [items, setItems] = useState<NoticeItem[]>(() => {
@@ -120,34 +133,34 @@ const NoticeAlertPage: React.FC = () => {
 
   const [selected, setSelected] = useState<NoticeItem | null>(null);
 
-  const parseDday = (dday: string) => {
-    const n = Number(dday.replace("D-", ""));
-    return Number.isNaN(n) ? 9999 : n;
-  };
+//   const parseDday = (dday: string) => {
+//     const n = Number(dday.replace("D-", ""));
+//     return Number.isNaN(n) ? 9999 : n;
+//   };
 
-  const passRead = (it: NoticeItem) => {
-    if (readFilter === "ALL") return true;
-    if (readFilter === "READ") return it.isRead;
-    return !it.isRead;
-  };
+//   const passRead = (it: NoticeItem) => {
+//     if (readFilter === "ALL") return true;
+//     if (readFilter === "READ") return it.isRead;
+//     return !it.isRead;
+//   };
 
-  const passDday = (it: NoticeItem) => {
-    const d = parseDday(it.dday);
-    if (ddayFilter === "ALL") return true;
-    if (ddayFilter === "D0_1") return d <= 1;
-    if (ddayFilter === "D2_3") return d >= 2 && d <= 3;
-    if (ddayFilter === "D4_7") return d >= 4 && d <= 7;
-    return d >= 8;
-  };
+//   const passDday = (it: NoticeItem) => {
+//     const d = parseDday(it.dday);
+//     if (ddayFilter === "ALL") return true;
+//     if (ddayFilter === "D0_1") return d <= 1;
+//     if (ddayFilter === "D2_3") return d >= 2 && d <= 3;
+//     if (ddayFilter === "D4_7") return d >= 4 && d <= 7;
+//     return d >= 8;
+//   };
 
-  const passScore = (it: NoticeItem) => {
-    const s = it.score;
-    if (scoreFilter === "ALL") return true;
-    if (scoreFilter === "S80") return s >= 80;
-    if (scoreFilter === "S70") return s >= 70 && s < 80;
-    if (scoreFilter === "S60") return s >= 60 && s < 70;
-    return s < 60;
-  };
+//   const passScore = (it: NoticeItem) => {
+//     const s = it.score;
+//     if (scoreFilter === "ALL") return true;
+//     if (scoreFilter === "S80") return s >= 80;
+//     if (scoreFilter === "S70") return s >= 70 && s < 80;
+//     if (scoreFilter === "S60") return s >= 60 && s < 70;
+//     return s < 60;
+//   };
 
   const syncStorage = (next: NoticeItem[]) => {
     setItems(next);
@@ -200,9 +213,9 @@ const NoticeAlertPage: React.FC = () => {
     const t = filterText.trim().toLowerCase();
     return baseByTab
       .filter((it) => (t ? it.title.toLowerCase().includes(t) : true))
-      .filter(passRead)
-      .filter(passDday)
-      .filter(passScore);
+    //   .filter(passRead)
+    //   .filter(passDday)
+    //   .filter(passScore);
   }, [baseByTab, filterText, readFilter, ddayFilter, scoreFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -228,32 +241,13 @@ const NoticeAlertPage: React.FC = () => {
 
   return (
     <Shell>
-      <Layout>
         {/* 좌측 탭 */}
-        <Side>
-          {/* <BrandRow>Biz & Busy</BrandRow> */}
-
-          <SideTab type="button" data-active={tab === "ALL"} onClick={() => changeTab("ALL")}>
-            전체 공고
-          </SideTab>
-          <SideTab
-            type="button"
-            data-active={tab === "HASHTAG"}
-            onClick={() => changeTab("HASHTAG")}
-          >
-            해시태그
-          </SideTab>
-          <SideTab type="button" data-active={tab === "FAV"} onClick={() => changeTab("FAV")}>
-            찜
-          </SideTab>
-        </Side>
-
-        {/* 우측 콘텐츠 */}
         <Main>
-          <Title>공고 알림 페이지</Title>
+          <Title>내 제안서 목록</Title>
 
+{/* #region  */}
           {/* 필터 */}
-          <Section>
+          {/* <Section>
             <FilterRow>
               <input
                 className="input"
@@ -319,24 +313,20 @@ const NoticeAlertPage: React.FC = () => {
                 초기화
               </ClearBtn>
             </FilterRow>
-
-            {tab === "HASHTAG" && (
-              <Hint>
-                해시태그 매칭 데이터가 준비되면, 여기서 “내 회사 해시태그와 일치하는 공고만” 보여주게
-                됩니다.
-              </Hint>
-            )}
-          </Section>
-
+          </Section> */}
+{/* #endregion */}
           {/* 리스트 */}
           <Section>
             <HeaderRow>
-              <div style={{ paddingLeft: 54 }}>공고 제목</div>
-              <Center>기한</Center>
-              <Center>추천점수</Center>
-              <ActionHeader>
+              {/* {<div style={{ paddingLeft: 54 }}>공고 제목</div> */}
+              {<div >공고 제목</div>
+
+              /*<Center>기한</Center>
+              <Center>추천점수</Center> */}
+              {/* <ActionHeader>
                 <ActionHeaderItem>찜</ActionHeaderItem>
-              </ActionHeader>
+              </ActionHeader> */}
+              <Center>진행도</Center>
             </HeaderRow>
 
             {pagedItems.length === 0 ? (
@@ -347,38 +337,49 @@ const NoticeAlertPage: React.FC = () => {
               </Empty>
             ) : (
               pagedItems.map((it) => {
-                const isFav = favIds.includes(it.id);
+                // const isFav = favIds.includes(it.id);
                 return (
                   <Row key={it.id}>
-                    <DeleteBtn type="button" onClick={() => removeItem(it.id)}>
+                    {/* <DeleteBtn type="button" onClick={() => removeItem(it.id)}>
                       X
-                    </DeleteBtn>
+                    </DeleteBtn> */}
 
                     <TitleButton type="button" onClick={() => openNotice(it)} title="공고 상세 보기">
                       {it.title}
                     </TitleButton>
 
-                    <Center>{it.dday}</Center>
-                    <Center>{it.score}</Center>
+                    {/* <Center>{it.dday}</Center>
+                    <Center>{it.score}</Center> */}
+                    <div />
+                    
+                    <ProgressText status={it.progress}>
+                      {it.progress}
+                    </ProgressText>
+
+                        {/* <MiniBtn type="button" onClick={() => handleApply(it.id)}>
+                          확인
+                        </MiniBtn> */}
 
                     <Actions>
-                      {/* 미확인 -> 찜(별) -> 신청 */}
-                      {!it.isRead && <UnreadBadge>미확인</UnreadBadge>}
-
-                      {/* 요청: 별이 버튼 정중앙 */}
-                      <FavBtn
-                        type="button"
-                        data-active={isFav}
-                        onClick={() => toggleFav(it.id)}
-                        aria-label="찜"
-                        title={isFav ? "찜 해제" : "찜"}
+                      <button
+                          type="button"
+                          className="button_center"
+                          onClick={() => handleApply(it.id)}
                       >
-                        <FavIcon aria-hidden>{isFav ? "★" : "☆"}</FavIcon>
-                      </FavBtn>
+                          확인
+                      </button>
 
-                      <MiniBtn type="button" onClick={() => handleApply(it.id)}>
-                        신청
-                      </MiniBtn>
+                        {/* <MiniBtn type="button" onClick={() => handleApply(it.id)}>
+                          삭제
+                        </MiniBtn> */}
+
+                      <button
+                          type="button"
+                          className="button_center"
+                          onClick={() => handleApply(it.id)}
+                      >
+                          삭제
+                      </button>
                     </Actions>
                   </Row>
                 );
@@ -395,13 +396,12 @@ const NoticeAlertPage: React.FC = () => {
           </Section>
 
           {/* ✅ 요청: 신규 공고 등록 버튼은 아래로 */}
-          <BottomRight>
+          {/* <BottomRight>
             <MiniOutlineBtn type="button" onClick={() => navigate("/notice/new")}>
               신규 공고 등록
             </MiniOutlineBtn>
-          </BottomRight>
+          </BottomRight> */}
         </Main>
-      </Layout>
 
       {/* 모달 */}
       {selected && (
@@ -454,7 +454,7 @@ const NoticeAlertPage: React.FC = () => {
   );
 };
 
-export default NoticeAlertPage;
+export default MyProposalPage;
 
 /* =========================
    styled-components
@@ -596,16 +596,16 @@ const HeaderRow = styled.div`
   display: grid;
   grid-template-columns: 1fr 120px 120px 260px;
   align-items: center;
-  padding: 6px 0 10px;
+  padding: 4px 0 4px 54px;
   font-size: 13px;
   color: #333;
 `;
 
 const Row = styled.div`
   display: grid;
-  grid-template-columns: 54px 1fr 120px 120px 260px;
+  grid-template-columns: 1fr 120px 120px 350px;
   align-items: center;
-  padding: 10px 0;
+  padding: 4px 0 4px 54px;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
   box-sizing: border-box;
 `;
@@ -639,7 +639,7 @@ const TitleButton = styled.button`
   cursor: pointer;
   font-size: 14px;
   text-align: left;
-  padding: 0;
+  padding: 20px 8px;
 
   &:hover {
     text-decoration: underline;
@@ -664,7 +664,7 @@ const Center = styled.div`
 const Actions = styled.div`
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
 `;
 
@@ -824,4 +824,14 @@ const ModalActions = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+`;
+
+const ProgressText = styled.div<{ status: string }>`
+  font-size: 14px;
+  margin-right: 10px;
+
+    color: ${({ status }) =>
+    status === "완료" ? "#2e7d32" :
+    status === "작성 중" ? "#1565c0" :
+    "#333"};
 `;
