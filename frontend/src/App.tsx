@@ -12,6 +12,7 @@ import RoleManageTab from "./pages/ManagerPage/RoleManageTab";
 import NewRoleRegistPage from "./pages/ManagerPage/NewRoleRegistPage";
 import UserManageTab from "./pages/ManagerPage/UserManageTab";
 import NewUserRegistPage from "./pages/ManagerPage/NewUserRigistPage";
+import TermPage from "./pages/TermPage";
 
 import NoticeAlertPage from "./pages/NoticeAlertPage";
 import NoticeNewPage from "./pages/NoticeNewPage";
@@ -31,6 +32,7 @@ function App() {
     <Route path="/signup" element={<SignupPage />} />
     <Route path="/registration" element={<RegistrationPage />} />
     <Route path="/resetPassword" element={<ResetPasswordPage />} />
+    <Route path="/term" element={<TermPage />} />
     
         {/* 레이아웃 적용 페이지 */}
         <Route element={<Layout />}>
