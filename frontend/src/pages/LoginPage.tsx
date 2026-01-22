@@ -44,7 +44,7 @@ const LoginPage: React.FC = () => {
                         <button
                             type="button"
                             className="button_center"
-                            onClick={() => navigate("/signup")}
+                            onClick={() => navigate("/term")}
                         >
                             회원가입
                         </button>
