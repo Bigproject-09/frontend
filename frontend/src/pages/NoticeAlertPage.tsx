@@ -187,7 +187,9 @@ const NoticeAlertPage: React.FC = () => {
   };
 
   const handleApply = (id: number) => {
-    console.log("신청:", id);
+    navigate("/notice/new", {
+      state: {noticeId: id},
+    });
   };
 
   const baseByTab = useMemo(() => {
@@ -250,7 +252,8 @@ const NoticeAlertPage: React.FC = () => {
 
         {/* 우측 콘텐츠 */}
         <Main>
-          <Title>공고 알림 페이지</Title>
+          {/* <Title>공고 알림 페이지</Title> */}
+          <Title>공고 목록</Title>
 
           {/* 필터 */}
           <Section>
@@ -350,9 +353,10 @@ const NoticeAlertPage: React.FC = () => {
                 const isFav = favIds.includes(it.id);
                 return (
                   <Row key={it.id}>
-                    <DeleteBtn type="button" onClick={() => removeItem(it.id)}>
+                    {/* <DeleteBtn type="button" onClick={() => removeItem(it.id)}>
                       X
-                    </DeleteBtn>
+                    </DeleteBtn> */}
+                    <span style={{ display: "inline-block", width: 20 }} />
 
                     <TitleButton type="button" onClick={() => openNotice(it)} title="공고 상세 보기">
                       {it.title}
@@ -395,11 +399,11 @@ const NoticeAlertPage: React.FC = () => {
           </Section>
 
           {/* ✅ 요청: 신규 공고 등록 버튼은 아래로 */}
-          <BottomRight>
+          {/* <BottomRight>
             <MiniOutlineBtn type="button" onClick={() => navigate("/notice/new")}>
               신규 공고 등록
             </MiniOutlineBtn>
-          </BottomRight>
+          </BottomRight> */}
         </Main>
       </Layout>
 
@@ -434,14 +438,14 @@ const NoticeAlertPage: React.FC = () => {
               </div>
             </ModalGrid>
 
-            <ModalSummary>
+            {/* <ModalSummary>
               <div className="label">요약</div>
               <div style={{ marginTop: 6 }}>{selected.summary ?? "상세 정보가 없습니다."}</div>
-            </ModalSummary>
+            </ModalSummary> */}
 
             <ModalActions>
               <MiniBtn type="button" onClick={() => handleApply(selected.id)}>
-                신청
+                업로드
               </MiniBtn>
               <MiniBtn type="button" onClick={() => setSelected(null)}>
                 닫기

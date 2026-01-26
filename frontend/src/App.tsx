@@ -23,6 +23,8 @@ import FaqPage from "./pages/FaqPage";
 import ProposalPage from "./pages/ProposalPage";
 import MyProposalPage from "./pages/MyProposalPage";
 
+import PptDraftPage from "./pages/PptDraftPage";
+
 function App() {
   return (
 <BrowserRouter>
@@ -53,6 +55,8 @@ function App() {
 
           {/* 초안 작성 */}
           <Route path="/draft" element={<DraftPage />} />
+          {/* ppt 초안 작성 */}
+          <Route path="/pptdraft" element={<PptDraftPage />} />
 
           {/* FAQ */}
           <Route path="/faq" element={<FaqPage />} />
@@ -60,8 +64,8 @@ function App() {
           {/* 제안서 작성 */}
           <Route path="/proposal" element={<ProposalPage />} />
 
-          {/* 내 제안서 목록 */}
-          <Route path="/myproposal" element={<MyProposalPage />} />
+          {/* 내 제안서 목록
+          <Route path="/myproposal" element={<MyProposalPage />} /> */}
         </Route>
       </Routes>
     </BrowserRouter>
