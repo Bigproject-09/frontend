@@ -1,6 +1,6 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "../styles/Global.css";
 
 type NoticeItem = {
@@ -36,6 +36,27 @@ const NoticeNewPage: React.FC = () => {
   const urlRef = useRef<HTMLInputElement | null>(null);
   const summaryRef = useRef<HTMLTextAreaElement | null>(null);
 
+  const [files, setFiles] = useState<File[]>([]);
+  const location = useLocation();
+  const noticeId = location.state?.noticeId as number | undefined;
+
+  useEffect(() => {
+  if (!noticeId) return;
+
+  const items = loadItems();
+  const target = items.find((it) => it.id === noticeId);
+
+  if (!target) return;
+
+  setTitle(target.title ?? "");
+  setOrg(target.org ?? "");
+  setBudget(target.budget ?? "");
+  setPeriod(target.period ?? "");
+  setUrl(target.url ?? "");
+  setSummary(target.summary ?? "");
+}, [noticeId]);
+
+
   const requiredFields = useMemo(
     () => [
       { label: "제목", value: title, ref: titleRef },
@@ -43,7 +64,7 @@ const NoticeNewPage: React.FC = () => {
       { label: "예산", value: budget, ref: budgetRef },
       { label: "기간", value: period, ref: periodRef },
       { label: "URL", value: url, ref: urlRef },
-      { label: "요약", value: summary, ref: summaryRef },
+      // { label: "요약", value: summary, ref: summaryRef },
     ],
     [title, org, budget, period, url, summary]
   );
@@ -100,28 +121,29 @@ const NoticeNewPage: React.FC = () => {
     return maxId + 1;
   };
 
+  // 신규 공고 등록하면 발생하는 이벤트
   const handleSubmit = () => {
     if (focusFirstEmpty()) return;
 
-    const prev = loadItems();
+    // const prev = loadItems();
 
-    const newItem: NoticeItem = {
-      id: getNextId(prev),
-      title: title.trim(),
-      org: org.trim(),
-      budget: budget.trim(),
-      period: period.trim(),
-      url: url.trim(),
-      summary: summary.trim(),
-      dday: calcDdayFromPeriod(period.trim()),
-      score: 70, // 임시
-      isRead: false,
-    };
+    // const newItem: NoticeItem = {
+    //   id: getNextId(prev),
+    //   title: title.trim(),
+    //   org: org.trim(),
+    //   budget: budget.trim(),
+    //   period: period.trim(),
+    //   url: url.trim(),
+    //   summary: summary.trim(),
+    //   dday: calcDdayFromPeriod(period.trim()),
+    //   score: 70, // 임시
+    //   isRead: false,
+    // };
 
-    const next = [newItem, ...prev];
-    saveItems(next);
+    // const next = [newItem, ...prev];
+    // saveItems(next);
 
-    navigate("/notice");
+    // navigate("/notice");
   };
 
   return (
@@ -179,7 +201,7 @@ const NoticeNewPage: React.FC = () => {
             />
           </ModalGrid>
 
-          <ModalSummary>
+          {/* <ModalSummary>
             <div className="label">요약</div>
             <textarea
               ref={summaryRef}
@@ -189,7 +211,30 @@ const NoticeNewPage: React.FC = () => {
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
             />
-          </ModalSummary>
+          </ModalSummary> */}
+
+          <UploadArea>
+            <UploadLabel htmlFor="file">
+            공고파일 등록
+            </UploadLabel>
+            <HiddenInput
+              id="file"
+              type="file"
+              accept=".docx"
+              multiple
+              onChange={(e) => {
+                const selectedFiles = Array.from(e.target.files ?? []);
+                setFiles(selectedFiles);
+              }}
+            />
+              {files.length > 0 && (
+              <FileList>
+                {files.map((file, idx) => (
+                  <li key={idx}>{file.name}</li>
+                ))}
+              </FileList>
+            )}
+          </UploadArea>
 
           <ModalActions>
             <MiniBtn type="button" onClick={handleSubmit}>
@@ -249,18 +294,31 @@ const ModalGrid = styled.div`
   }
 `;
 
-const ModalSummary = styled.div`
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
-  font-size: 14px;
-  line-height: 1.45;
+/* 업로드 버튼 */
+const UploadLabel = styled.label`
+  padding: 14px 28px;
+  background-color: #2f6fff;
+  color: white;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
 
-  .input {
-    width: 100%;
-    box-sizing: border-box;
+  &:hover {
+    background-color: #2556cc;
   }
 `;
+
+const HiddenInput = styled.input`
+  display: none;
+`;
+
+const UploadArea = styled.div`
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
 
 const ModalActions = styled.div`
   margin-top: 18px;
@@ -280,5 +338,23 @@ const MiniBtn = styled.button`
 
   &:hover {
     background: #f7f7f7;
+  }
+`;
+
+// 올린 파일 리스트
+const FileList = styled.ul`
+  margin-top: 12px;
+  padding: 10px 14px;
+  width: 100%;
+  max-width: 420px;
+
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+
+  li {
+    font-size: 13px;
+    color: #333;
+    line-height: 1.6;
   }
 `;
