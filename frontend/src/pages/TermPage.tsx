@@ -64,11 +64,13 @@ const TermPage: React.FC = () => {
     return (
         <Wrapper>
             <LoginBox>
-                <ContentArea>
-                    <div className="logo">
-                        RanDi
-                    </div>
-                    </ContentArea>
+                {/* <ContentArea> */}
+                    <LogoArea>
+                        <div className="logo">
+                            RanDi
+                        </div>
+                    </LogoArea>
+                {/* </ContentArea> */}
                     <TermBox>
                         <TermHeader>
                             <label className={!scrolledEnd.service ? "disabled" : ""}>
@@ -290,15 +292,17 @@ const TermPage: React.FC = () => {
                         )}
                     </TermBox>
                     
-                    <ContentArea>
-                    <button
-                        type="button"
-                        className="button_center"
-                        onClick={() => navigate("/signup")}
-                        disabled={!(agree.service && agree.privacy)}>
-                        다음
-                    </button>
-                </ContentArea>
+                    {/* <ContentArea> */}
+                    <ButtonArea>
+                        <button
+                            type="button"
+                            className="button_center"
+                            onClick={() => navigate("/signup")}
+                            disabled={!(agree.service && agree.privacy)}>
+                            다음
+                        </button>
+                    </ButtonArea>
+                {/* </ContentArea> */}
             </LoginBox>
         </Wrapper>
     );
@@ -307,7 +311,12 @@ const TermPage: React.FC = () => {
 const Wrapper = styled.div`
   width: 100vw;
   height: 100vh;
-  background-color: #d9d9d9;
+  background: linear-gradient(
+    135deg,
+    #1f3a5f 0%,
+    #162c48 100%
+  );
+
   display: flex;
   justify-content: center;
   align-items: center;
@@ -315,13 +324,15 @@ const Wrapper = styled.div`
 
 const LoginBox = styled.div`
   width: 800px;
-  height: 800px;
+  height: 700px;
   background-color: #ffffff;
-  border-radius: 12px;
+  border-radius: 14px;
 
   display: flex;
   flex-direction: column;
   position: relative;
+
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
 `;
 
 const ContentArea = styled.div`
@@ -354,10 +365,9 @@ const TermHeader = styled.div`
 `;
 
 const TermBox = styled.div`
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 12px;
+  flex: 1;
+  overflow-y: auto;          /* ⭐ 여기만 스크롤 */
+  padding: 0 24px;
 `;
 
 const ToggleBtn = styled.button`
@@ -415,5 +425,20 @@ export const TermsScrollBox = styled.div`
   border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 8px;
 `;
+
+const LogoArea = styled.div`
+  height: 100px;            /* ⭐ 고정 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const ButtonArea = styled.div`
+  height: 100px;            /* ⭐ 고정 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
 
 export default TermPage;

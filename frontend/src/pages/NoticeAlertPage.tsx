@@ -471,7 +471,7 @@ export default NoticeAlertPage;
 const Shell = styled.div`
   width: 100%;
   height: 100vh;
-  background-color: #f5f5f5;
+  background-color: var(--color-bg-main);
 `;
 
 const Layout = styled.div`
@@ -481,16 +481,19 @@ const Layout = styled.div`
 
 /* 👇 Sidebar.css와 동일 비율 */
 const Side = styled.aside`
-  width: 300px;
-  background: #e6e6e6;
-  color: black;
+  width: 240px; /* 300 → 240 추천 */
+  background: var(--color-primary);
+  color: rgba(255, 255, 255, 0.85);
 
-  border-right: 1px solid rgba(0, 0, 0, 0.12);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
   padding: 16px 12px;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 
   display: flex;
   flex-direction: column;
+  gap: 6px;
 `;
 
 
@@ -506,34 +509,39 @@ const BrandRow = styled.div`
 `;
 
 const SideTab = styled.button`
-  width: 100%;
+  position: relative;
+  width: calc(100% + 14px);
   height: 42px;
+  margin-right: -14px;
 
   display: flex;
   align-items: center;
-
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 18px;
-  text-align: left;
-
   padding: 0 20px;
 
   background: transparent;
-  border: 1px solid transparent;
+  border: none;
+  outline: none;
+
+  font-size: 18px;
+  text-align: left;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.9);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &:focus,
+  &:focus-visible,
+  &:active {
+    outline: none;
+  }
 
   &[data-active="true"] {
     background: #ffffff;
-    border-color: rgba(0, 0, 0, 0.15);
-    font-weight: 700;
-  }
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.65);
-  }
-
-  & + & {
-    margin-top: 4px;
+    color: var(--color-primary);
+    font-weight: 600;
+    border-radius: 6px 0 0 6px;
   }
 `;
 
@@ -546,17 +554,19 @@ const Main = styled.main`
 
 
 const Title = styled.div`
-  font-size: 20px;
+  font-size: 35px;
   font-weight: 800;
   margin-bottom: 14px;
+  color: var(--color-primary);
 `;
 
 const Section = styled.div`
-  background: #efefef;
-  border-radius: 10px;
-  padding: 14px 16px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px 18px;
   box-sizing: border-box;
   margin-bottom: 16px;
+  border: 1px solid rgba(0,0,0,0.08);
 `;
 
 const FilterRow = styled.div`
@@ -568,25 +578,30 @@ const FilterRow = styled.div`
 
 const Select = styled.select`
   height: 36px;
-  background-color: #e0e0e0;
-  border: none;
+  background-color: #ffffff;
+  border: 1px solid rgba(0,0,0,0.15);
   outline: none;
   padding: 0 10px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 14px;
+
+  &:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(46,111,219,0.15);
+  }
 `;
 
 const ClearBtn = styled.button`
   height: 36px;
-  padding: 0 12px;
-  background: none;
-  border: 1px solid rgba(0, 0, 0, 0.25);
-  border-radius: 4px;
+  padding: 0 14px;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.2);
+  border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
 
   &:hover {
-    background: #f7f7f7;
+    background: #f5f7fa;
   }
 `;
 
@@ -602,16 +617,15 @@ const HeaderRow = styled.div`
   align-items: center;
   padding: 6px 0 10px;
   font-size: 13px;
-  color: #333;
+  color: #555;
 `;
 
 const Row = styled.div`
   display: grid;
   grid-template-columns: 54px 1fr 120px 120px 260px;
   align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-  box-sizing: border-box;
+  padding: 12px 0;
+  border-top: 1px solid rgba(0,0,0,0.06);
 `;
 
 const ActionHeader = styled.div`
@@ -652,12 +666,11 @@ const TitleButton = styled.button`
 
 const UnreadBadge = styled.span`
   font-size: 12px;
-  padding: 2px 6px;
+  padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.08);
-  align-self: center;
-  text-align: center;
-  min-width: 56px; /* 헤더 폭과 맞추기 */
+  background: rgba(46,111,219,0.12);
+  color: var(--color-accent);
+  font-weight: 600;
 `;
 
 const Center = styled.div`
@@ -675,21 +688,19 @@ const Actions = styled.div`
 const FavBtn = styled.button`
   width: 34px;
   height: 34px;
-  padding: 0;
   background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0,0,0,0.15);
   border-radius: 6px;
   cursor: pointer;
-
   position: relative;
-  display: block;
 
   &[data-active="true"] {
-    border-color: rgba(0, 0, 0, 0.35);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
   }
 
   &:hover {
-    background: #f7f7f7;
+    background: #f5f7fa;
   }
 `;
 
@@ -708,14 +719,15 @@ const FavIcon = styled.span`
 const MiniBtn = styled.button`
   width: 72px;
   height: 34px;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 4px;
+  background: var(--color-accent);
+  color: var(--color-text-white);
+  border: none;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
 
   &:hover {
-    background: #f7f7f7;
+    background: var(--color-accent-hover);
   }
 `;
 
@@ -732,12 +744,10 @@ const PageBtn = styled.button`
   cursor: pointer;
   font-size: 13px;
   padding: 4px 6px;
-  opacity: 0.75;
-  font-weight: 400;
-  text-decoration: none;
+  color: #666;
 
   &[data-active="true"] {
-    opacity: 1;
+    color: var(--color-accent);
     font-weight: 700;
     text-decoration: underline;
   }

@@ -74,20 +74,24 @@ const LoginPage: React.FC = () => {
 };
 
 const Title = styled.div`
-    position: absolute;
-    top: 50px;
-    left: 50px;
-    font-size: 48px;
-    font-weight: 600;
-    margin-bottom: 20px;
-    align-self: flex-start;
-    margin-left: 20px;
+  position: absolute;
+  top: 48px;
+  left: 48px;
+
+  font-size: 44px;
+  font-weight: 700;
+  color: var(--color-primary);
 `;
 
 const Wrapper = styled.div`
   width: 100vw;
   height: 100vh;
-  background-color: #d9d9d9;
+  background: linear-gradient(
+    135deg,
+    #1f3a5f 0%,
+    #162c48 100%
+  );
+
   display: flex;
   justify-content: center;
   align-items: center;
@@ -97,11 +101,13 @@ const LoginBox = styled.div`
   width: 800px;
   height: 550px;
   background-color: #ffffff;
-  border-radius: 12px;
+  border-radius: 14px;
 
   display: flex;
   flex-direction: column;
   position: relative;
+
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
 `;
 
 const ContentArea = styled.div`
@@ -136,13 +142,15 @@ const TextBtn = styled.button`
   background: none;
   border: none;
   padding: 0;
+  margin-top: 4px;
 
-  text-align: right;           /* 👉 텍스트도 우측 */
-  color: #555;
+  text-align: right;
+  color: #6b7280;
   font-size: 13px;
   cursor: pointer;
 
   &:hover {
+    color: var(--color-accent);
     text-decoration: underline;
   }
 `;
