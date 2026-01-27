@@ -23,6 +23,7 @@ import FaqPage from "./pages/FaqPage";
 import ProposalPage from "./pages/ProposalPage";
 import MyProposalPage from "./pages/MyProposalPage";
 
+import ProcessPage from "./pages/ProcessPage";
 import PptDraftPage from "./pages/PptDraftPage";
 
 function App() {
@@ -55,6 +56,9 @@ function App() {
 
           {/* 초안 작성 */}
           <Route path="/draft" element={<DraftPage />} />
+
+          {/* ppt 초안 작성 */}
+          <Route path="/process" element={<ProcessPage />} />
           {/* ppt 초안 작성 */}
           <Route path="/pptdraft" element={<PptDraftPage />} />
 
