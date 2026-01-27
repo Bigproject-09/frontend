@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../styles/Global.css";
+import { STORAGE_KEY } from "../common/constants";
 
 type NoticeItem = {
   id: number;
@@ -16,8 +17,6 @@ type NoticeItem = {
   period?: string;
   summary?: string;
 };
-
-const STORAGE_KEY = "bb_notices_v1";
 
 const NoticeNewPage: React.FC = () => {
   const navigate = useNavigate();
@@ -122,8 +121,13 @@ const NoticeNewPage: React.FC = () => {
   };
 
   // 신규 공고 등록하면 발생하는 이벤트
-  const handleSubmit = () => {
+  const handleSubmit = (id: number) => {
     if (focusFirstEmpty()) return;
+
+    navigate("/process", {
+      state: {noticeId: id},
+    });
+  };
 
     // const prev = loadItems();
 
@@ -144,74 +148,80 @@ const NoticeNewPage: React.FC = () => {
     // saveItems(next);
 
     // navigate("/notice");
-  };
+  //};
 
   return (
     <Page>
       <Card>
         <div className="title" style={{ marginLeft: 0, marginBottom: 18 }}>
-          신규 공고 등록
+          공고 선택
         </div>
 
         <Section>
           <ModalGrid>
             <div className="label">제목</div>
-            <input
+            <div className="text">{title}</div>
+            {/* <input
               ref={titleRef}
               className="input"
               placeholder="공고 제목"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-            />
+            /> */}
 
             <div className="label">기관</div>
-            <input
+            <div className="text">{org}</div>
+            {/* <input
               ref={orgRef}
               className="input"
               placeholder="기관명"
               value={org}
               onChange={(e) => setOrg(e.target.value)}
-            />
+            /> */}
 
-            <div className="label">예산</div>
-            <input
+            {/* <div className="label">예산</div>
+            <div className="text">{budget}</div> */}
+            {/* <input
               ref={budgetRef}
               className="input"
               placeholder="예: 1억 / 5천만"
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
-            />
+            /> */}
 
             <div className="label">기간</div>
-            <input
+            <div className="text">{period}</div>
+            {/* <input
               ref={periodRef}
               className="input"
               placeholder="예: 2026-01-01 ~ 2026-02-01"
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-            />
+            /> */}
 
             <div className="label">URL</div>
-            <input
+            <div className="text">{url}</div>
+            {/* <input
               ref={urlRef}
               className="input"
               placeholder="https://..."
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-            />
+            /> */}
           </ModalGrid>
 
-          {/* <ModalSummary>
+            <ModalSummary>
             <div className="label">요약</div>
-            <textarea
-              ref={summaryRef}
-              className="input"
-              style={{ height: 120, paddingTop: 10, resize: "none" }}
-              placeholder="공고 요약 내용을 입력"
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-            />
-          </ModalSummary> */}
+            <div className="text">{summary}</div>
+              {/* <textarea
+                ref={summaryRef}
+                className="input"
+                style={{ height: 120, paddingTop: 10, resize: "none" }}
+                placeholder="공고 요약 내용을 입력"
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+              /> */}
+            </ModalSummary>
 
           <UploadArea>
             <UploadLabel htmlFor="file">
@@ -237,8 +247,11 @@ const NoticeNewPage: React.FC = () => {
           </UploadArea>
 
           <ModalActions>
-            <MiniBtn type="button" onClick={handleSubmit}>
-              등록
+            <MiniBtn type="button" onClick={() => {
+              if (!noticeId) return;
+              handleSubmit(noticeId);
+            }}>
+              선택
             </MiniBtn>
             <MiniBtn type="button" onClick={() => navigate("/notice")}>
               닫기
@@ -311,6 +324,15 @@ const ModalGrid = styled.div`
     outline: none;
     border-color: var(--color-accent);
     box-shadow: 0 0 0 2px rgba(46, 111, 219, 0.15);
+  }
+`;
+
+const ModalSummary = styled.div`
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  font-size: 14px;
+  line-height:1.45;
   }
 `;
 

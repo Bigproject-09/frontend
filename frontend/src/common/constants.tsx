@@ -1,0 +1,1 @@
+export const STORAGE_KEY = "bb_notices_v1";

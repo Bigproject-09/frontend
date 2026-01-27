@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import "../styles/Global.css";
+import { STORAGE_KEY } from "../common/constants";
 
 type NoticeItem = {
   id: number;
@@ -17,7 +18,6 @@ type NoticeItem = {
   summary?: string;
 };
 
-const STORAGE_KEY = "bb_notices_v1";
 const FAV_KEY = "bb_notice_favs_v1";
 const PAGE_SIZE = 6;
 
@@ -438,10 +438,10 @@ const NoticeAlertPage: React.FC = () => {
               </div>
             </ModalGrid>
 
-            {/* <ModalSummary>
+            <ModalSummary>
               <div className="label">요약</div>
               <div style={{ marginTop: 6 }}>{selected.summary ?? "상세 정보가 없습니다."}</div>
-            </ModalSummary> */}
+            </ModalSummary>
 
             <ModalActions>
               <MiniBtn type="button" onClick={() => handleApply(selected.id)}>
