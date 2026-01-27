@@ -443,7 +443,7 @@ export default FaqPage;
 const Shell = styled.div`
   width: 100%;
   min-height: 100vh;
-  background: #d9d9d9;
+  background: var(--color-bg-main);;
   box-sizing: border-box;
 `;
 
@@ -461,16 +461,19 @@ const TopBar = styled.div`
 `;
 
 const Title = styled.div`
-  font-size: 20px;
-  font-weight: 900;
+  font-size: 35px;
+  font-weight: 800;
+  margin-bottom: 14px;
+  color: var(--color-primary);
 `;
 
 const Section = styled.div`
-  background: #efefef;
-  border-radius: 10px;
-  padding: 14px 16px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px 18px;
   box-sizing: border-box;
   margin-bottom: 16px;
+  border: 1px solid rgba(0,0,0,0.08);
 `;
 
 const FilterRow = styled.div`
@@ -482,12 +485,17 @@ const FilterRow = styled.div`
 
 const Select = styled.select`
   height: 36px;
-  background-color: #e0e0e0;
-  border: none;
+  background-color: #ffffff;
+  border: 1px solid rgba(0,0,0,0.15);
   outline: none;
   padding: 0 10px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 14px;
+
+  &:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(46,111,219,0.15);
+  }
 `;
 
 const CheckWrap = styled.label`

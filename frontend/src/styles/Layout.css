@@ -7,10 +7,37 @@
   overflow-x: hidden;
 }
 
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* 로고랑 글자 사이 간격 */
+}
+
+.logo img {
+  height: 40px;
+  width: auto;
+}
+
+.logo-text {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: var(--color-text-white);
+}
+
+.logo-btn {
+  background: none;
+  border: none;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+
 /* 헤더 */
 .header {
   height: 60px;
-  border-bottom: 1px solid #ddd;
+  background: var(--color-primary);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 /* 내비게이션 바 */
@@ -18,8 +45,8 @@
   height: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between; /* 좌측 정렬 */
-  padding: 0 4vw 0 0; /* 상 우 하 좌 패딩 거리 */
+  justify-content: space-between;
+  padding: 0 24px;
   box-sizing: border-box;
 }
 
@@ -34,6 +61,10 @@
   display: flex;
   gap: 24px; /* span 사이 간격 */
   margin-right: 64px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--color-text-muted);
 }
 
 .nav-right {
@@ -41,36 +72,42 @@
   gap: 12px;
 }
 
-.nav-center span {
-  cursor: pointer;
+.nav-center span:hover {
+  /* cursor: pointer;
   white-space : nowrap;
-  font-size: 14px;
+  font-size: 14px; */
+  color: var(--color-text-white);
 }
 
 .nav-btn {
   text-decoration: none;
-  color: #000;
+  color: var(--color-text-muted);
   font-size: 16px;
   padding: 8px 12px;
   border-radius: 6px;
 }
 
 .nav-btn:hover {
-  background-color: #f2f2f2;
+  background-color: rgba(255,255,255,0.12);
+  color: var(--color-text-white);
 }
+
 
 
 /* 로그인 버튼 */
 .login-btn {
-  /*margin-left: auto;*/ /* 오른쪽 끝으로 이동 */
   margin-right: 10px;
   padding: 6px 14px;
-  background-color: #007bff;
+  background-color: var(--color-accent);
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
+}
+
+.login-btn:hover {
+  background-color: var(--color-accent-hover);
 }
 
 /* 본문 콘텐츠 */
@@ -103,4 +140,31 @@
 
   /* 🔥 이 한 줄이 핵심 */
   margin-left: auto;
+}
+
+/* 헤더 메뉴 active */
+.nav-btn.active {
+  color: #ffffff;
+  position: relative;
+  font-weight: 600;
+}
+
+.nav-btn.active::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -6px;
+
+  height: 2px;
+  background-color: var(--color-accent);
+  border-radius: 2px;
+}
+
+.nav-btn:hover {
+  background-color: rgba(255,255,255,0.12);
+}
+
+.nav-btn.active:hover {
+  background-color: transparent;
 }

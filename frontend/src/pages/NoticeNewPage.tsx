@@ -257,7 +257,7 @@ export default NoticeNewPage;
 const Page = styled.div`
   width: 100%;
   min-height: 100vh;
-  background: #d9d9d9;
+  background: var(--color-bg-main);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -271,40 +271,60 @@ const Card = styled.div`
   border-radius: 12px;
   padding: 28px;
   box-sizing: border-box;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06)
 `;
 
 const Section = styled.div`
-  background: #efefef;
+  background: #f9fafb;
   border-radius: 10px;
-  padding: 14px 16px;
+  padding: 18px 20px;
   box-sizing: border-box;
   margin-bottom: 16px;
+  border: 1px solid #e5e7eb;
 `;
 
 const ModalGrid = styled.div`
   display: grid;
   grid-template-columns: 120px 1fr;
-  row-gap: 10px;
-  column-gap: 12px;
+  row-gap: 12px;
+  column-gap: 16px;
   align-items: center;
+
+  .label {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+  }
 
   .input {
     width: 100%;
+    height: 38px;
+    padding: 0 12px;
     box-sizing: border-box;
+
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+
+  .input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(46, 111, 219, 0.15);
   }
 `;
 
 /* 업로드 버튼 */
 const UploadLabel = styled.label`
-  padding: 14px 28px;
-  background-color: #2f6fff;
+  padding: 12px 26px;
+  background-color: var(--color-accent);
   color: white;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
 
   &:hover {
-    background-color: #2556cc;
+    background-color: var(--color-accent-hover);
   }
 `;
 
@@ -313,48 +333,52 @@ const HiddenInput = styled.input`
 `;
 
 const UploadArea = styled.div`
-  margin: 20px 0;
+  margin: 24px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 10px;
 `;
 
-
 const ModalActions = styled.div`
-  margin-top: 18px;
+  margin-top: 22px;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
 `;
 
+
 const MiniBtn = styled.button`
-  width: 72px;
-  height: 34px;
+  width: 80px;
+  height: 36px;
   background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
+  color: #374151;
 
   &:hover {
-    background: #f7f7f7;
+    background: #f9fafb;
   }
 `;
+
 
 // 올린 파일 리스트
 const FileList = styled.ul`
   margin-top: 12px;
-  padding: 10px 14px;
+  padding: 12px 16px;
   width: 100%;
   max-width: 420px;
 
   background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 
   li {
     font-size: 13px;
-    color: #333;
+    color: #374151;
     line-height: 1.6;
   }
 `;
+
