@@ -2,6 +2,26 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import Sidebar from "../../components/Sidebar";
 import { useNavigate } from "react-router-dom";
+import SubscribeButton from "../../components/SubscribeButton";
+
+type Plan = {
+  id: "PRO" | "PROPLUS";
+  name: string;
+  priceText: string;
+};
+
+const plans: Plan[] = [
+  {
+    id: "PRO",
+    name: "Pro",
+    priceText: "₩900 / 월",
+  },
+  {
+    id: "PROPLUS",
+    name: "PROPLUS",
+    priceText: "₩190,000,000 / 월",
+  },
+];
 
 const PaymentPage: React.FC = () => {
     const navigate = useNavigate();
@@ -40,27 +60,23 @@ const PaymentPage: React.FC = () => {
         </div>
 
         <ButtonGroup>
-            <PaymentBtn
-                //onClick={() => }
-                >
-                1단계 결제 <br /><br />
-                가격 : 100원<br /><br />
-                결제 내용을 입력하세요
-            </PaymentBtn>
-            <PaymentBtn 
-                //onClick={() => }
-                >
-                2단계 결제 <br /><br />
-                가격 : 천만원<br /><br />
-                결제 내용을 입력하세요
-            </PaymentBtn>
-            <PaymentBtn 
+          <SubscribeButton
+            planId="PRO"
+            title = "1단계 결제"
+            priceText="900원 / 월"
+            />
+          <SubscribeButton
+            planId="PROPLUS"
+            title="2단계 결제"
+            priceText="190,000,000원 / 월"
+            />
+            {/* <PaymentBtn 
                 //onClick={() => }
                 >
                 3단계 결제 <br /><br />
                 가격 : 1억<br /><br />
                 결제 내용을 입력하세요
-            </PaymentBtn>
+            </PaymentBtn> */}
         </ButtonGroup>
 
         </Container>
@@ -77,12 +93,15 @@ const Container = styled.div`
 `;
 
 const ButtonGroup = styled.div`
-display: grid;
-grid-template-columns: repeat(3, 1fr);
-gap: 12px;
+  display: grid;
+  width: 800px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 80px;
+
+  margin: 0 auto;
 `;
 
-const PaymentBtn = styled.button`
+const PaymentBtn = styled.div`
 padding: 12px;
 border-radius: 16px;
 border: 1px solid #ddd;
