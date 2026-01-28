@@ -153,7 +153,7 @@ export const ResultSection = styled.div`
 `;
 
 /* 다운로드 버튼 */
-export const DownloadButton = styled.a`
+const DownloadButton = styled.a`
   padding: 14px 28px;
   background-color: #00b894;
   color: white;

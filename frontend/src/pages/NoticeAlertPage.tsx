@@ -187,7 +187,7 @@ const NoticeAlertPage: React.FC = () => {
   };
 
   const handleApply = (id: number) => {
-    navigate("/notice/new", {
+    navigate("/process", {
       state: {noticeId: id},
     });
   };

@@ -1,8 +1,8 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
-import "../styles/Global.css";
-import { STORAGE_KEY } from "../common/constants";
+import "../../styles/Global.css";
+import { STORAGE_KEY } from "../../common/constants";
 
 type NoticeItem = {
   id: number;
@@ -18,7 +18,20 @@ type NoticeItem = {
   summary?: string;
 };
 
-const NoticeNewPage: React.FC = () => {
+type RFPStep =
+  | "UPLOAD_CHECK"
+  | "CHECKLIST_CREATE"
+  | "PURPOSE_SUMMARY"
+  | "CATEGORY_SUMMARY";
+
+const STEP_TEXT: Record<RFPStep, string> = {
+  UPLOAD_CHECK: "추가 파일 확인 중...",
+  CHECKLIST_CREATE: "체크리스트 생성 중...",
+  PURPOSE_SUMMARY: "사업 목적 요약 중...",
+  CATEGORY_SUMMARY: "평가항목 요약 중...",
+};
+
+const RFPSearchPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
@@ -27,6 +40,10 @@ const NoticeNewPage: React.FC = () => {
   const [period, setPeriod] = useState("");
   const [url, setUrl] = useState("");
   const [summary, setSummary] = useState("");
+  // 로딩 상태 추가
+  const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState<RFPStep>("UPLOAD_CHECK");
+  const [progress, setProgress] = useState(0);
 
   const titleRef = useRef<HTMLInputElement | null>(null);
   const orgRef = useRef<HTMLInputElement | null>(null);
@@ -79,14 +96,6 @@ const NoticeNewPage: React.FC = () => {
     }
   };
 
-  const saveItems = (list: NoticeItem[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    } catch {
-      // ignore
-    }
-  };
-
   const focusFirstEmpty = () => {
     const firstEmpty = requiredFields.find((f) => !f.value.trim());
     if (!firstEmpty) return false;
@@ -101,131 +110,98 @@ const NoticeNewPage: React.FC = () => {
     return true;
   };
 
-  const calcDdayFromPeriod = (periodText: string) => {
-    const parts = periodText.split("~").map((s) => s.trim());
-    const end = parts.length >= 2 ? parts[1] : "";
-    const endDate = new Date(end);
-    if (Number.isNaN(endDate.getTime())) return "D-?";
-
-    const today = new Date();
-    const base = new Date(today.getFullYear(), today.getMonth(), today.getDate()); // 00:00
-    const diffMs = endDate.getTime() - base.getTime();
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    const n = diffDays < 0 ? 0 : diffDays;
-    return `D-${n}`;
-  };
-
-  const getNextId = (list: NoticeItem[]) => {
-    const maxId = list.reduce((m, it) => Math.max(m, it.id), 0);
-    return maxId + 1;
-  };
-
-  // 신규 공고 등록하면 발생하는 이벤트
-  const handleSubmit = (id: number) => {
+  // 공고와 추가파일들을 업로드 후 분석하면 발생하는 이벤트
+  const handleSubmit = async(id: number) => {
     if (focusFirstEmpty()) return;
 
-    navigate("/process", {
+    setIsLoading(true);
+
+    try {
+      // 🔥 실제로는 여기서 API 호출
+      await runStep("UPLOAD_CHECK", 800);
+      await runStep("CHECKLIST_CREATE", 1400);
+      await runStep("PURPOSE_SUMMARY", 1200);
+      await runStep("CATEGORY_SUMMARY", 900);
+
+      navigate("/process/analysis/result", {
+        state: { noticeId: id },
+      });
+    } catch (e) {
+        alert("분석 중 오류가 발생했습니다.");
+        setIsLoading(false);
+    }
+  };
+
+  const handleBackToProcess = (id:number) => {
+      navigate("/process", {
       state: {noticeId: id},
+    });
+  }
+
+  const runStep = (s: RFPStep, duration: number) => {
+    return new Promise<void>((resolve) => {
+      setStep(s);
+      setProgress(0);
+
+      const start = Date.now();
+      const timer = setInterval(() => {
+        const elapsed = Date.now() - start;
+        const percent = Math.min(
+          Math.floor((elapsed / duration) * 100),
+          100
+        );
+        setProgress(percent);
+
+        if (percent >= 100) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, 60);
     });
   };
 
-    // const prev = loadItems();
-
-    // const newItem: NoticeItem = {
-    //   id: getNextId(prev),
-    //   title: title.trim(),
-    //   org: org.trim(),
-    //   budget: budget.trim(),
-    //   period: period.trim(),
-    //   url: url.trim(),
-    //   summary: summary.trim(),
-    //   dday: calcDdayFromPeriod(period.trim()),
-    //   score: 70, // 임시
-    //   isRead: false,
-    // };
-
-    // const next = [newItem, ...prev];
-    // saveItems(next);
-
-    // navigate("/notice");
-  //};
 
   return (
     <Page>
+      {/* 로딩 상태일 때 채워주는 페이지 */}
+      {isLoading && (
+        <LoadingOverlay>
+          <LoadingBox>
+            <Spinner />
+              {STEP_TEXT[step]}<br />
+              {progress}%
+          </LoadingBox>
+        </LoadingOverlay>
+      )}
+
       <Card>
         <div className="title" style={{ marginLeft: 0, marginBottom: 18 }}>
-          공고 선택
+          유관 RFP 검색
         </div>
 
         <Section>
           <ModalGrid>
             <div className="label">제목</div>
             <div className="text">{title}</div>
-            {/* <input
-              ref={titleRef}
-              className="input"
-              placeholder="공고 제목"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            /> */}
 
             <div className="label">기관</div>
             <div className="text">{org}</div>
-            {/* <input
-              ref={orgRef}
-              className="input"
-              placeholder="기관명"
-              value={org}
-              onChange={(e) => setOrg(e.target.value)}
-            /> */}
-
-            {/* <div className="label">예산</div>
-            <div className="text">{budget}</div> */}
-            {/* <input
-              ref={budgetRef}
-              className="input"
-              placeholder="예: 1억 / 5천만"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-            /> */}
 
             <div className="label">기간</div>
             <div className="text">{period}</div>
-            {/* <input
-              ref={periodRef}
-              className="input"
-              placeholder="예: 2026-01-01 ~ 2026-02-01"
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-            /> */}
 
             <div className="label">URL</div>
             <div className="text">{url}</div>
-            {/* <input
-              ref={urlRef}
-              className="input"
-              placeholder="https://..."
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-            /> */}
           </ModalGrid>
 
             <ModalSummary>
             <div className="label">요약</div>
             <div className="text">{summary}</div>
-              {/* <textarea
-                ref={summaryRef}
-                className="input"
-                style={{ height: 120, paddingTop: 10, resize: "none" }}
-                placeholder="공고 요약 내용을 입력"
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-              /> */}
             </ModalSummary>
 
           <UploadArea>
             <UploadLabel htmlFor="file">
-            공고파일 등록
+            추가파일 업로드
             </UploadLabel>
             <HiddenInput
               id="file"
@@ -251,9 +227,13 @@ const NoticeNewPage: React.FC = () => {
               if (!noticeId) return;
               handleSubmit(noticeId);
             }}>
-              선택
+              검색
             </MiniBtn>
-            <MiniBtn type="button" onClick={() => navigate("/notice")}>
+            <MiniBtn type="button" onClick={() => 
+            {
+              if(!noticeId) return;
+              handleBackToProcess(noticeId);
+            }}>
               닫기
             </MiniBtn>
           </ModalActions>
@@ -263,7 +243,7 @@ const NoticeNewPage: React.FC = () => {
   );
 };
 
-export default NoticeNewPage;
+export default RFPSearchPage;
 
 /* ===== styled-components ===== */
 
@@ -404,3 +384,37 @@ const FileList = styled.ul`
   }
 `;
 
+const LoadingOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const LoadingBox = styled.div`
+  background: #ffffff;
+  padding: 32px 40px;
+  border-radius: 14px;
+  text-align: center;
+  min-width: 240px;
+`;
+
+const Spinner = styled.div`
+  width: 42px;
+  height: 42px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #2563eb;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  margin: 0 auto 16px;
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;

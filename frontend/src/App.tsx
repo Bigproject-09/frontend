@@ -15,7 +15,6 @@ import NewUserRegistPage from "./pages/ManagerPage/NewUserRigistPage";
 import TermPage from "./pages/TermPage";
 
 import NoticeAlertPage from "./pages/NoticeAlertPage";
-import NoticeNewPage from "./pages/NoticeNewPage";
 import FileUploadPage from "./pages/FileUploadPage";
 import DraftPage from "./pages/DraftPage";
 import FaqPage from "./pages/FaqPage";
@@ -23,7 +22,12 @@ import FaqPage from "./pages/FaqPage";
 import ProposalPage from "./pages/ProposalPage";
 import MyProposalPage from "./pages/MyProposalPage";
 
-import ProcessPage from "./pages/ProcessPage";
+import ProcessPage from "./pages/ProcessPage/ProcessPage";
+import NoticeNewPage from "./pages/ProcessPage/NoticeNewPage";
+import NoticeNewPageResult from "./pages/ProcessPage/NoticeNewPageResult";
+import RFPSearchPage from "./pages/ProcessPage/RFPSearchPage";
+import AnnounceCreatePage from "./pages/ProcessPage/AnnounceCreatePage";
+import ScriptCreatePage from "./pages/ProcessPage/ScriptCreatePage";
 import PptDraftPage from "./pages/PptDraftPage";
 
 function App() {
@@ -43,7 +47,6 @@ function App() {
 
           {/* 공고 */}
           <Route path="/notice" element={<NoticeAlertPage />} />
-          <Route path="/notice/new" element={<NoticeNewPage />} />
 
           <Route path="/manager/tokentab" element={<TokenTab />} />
           <Route path="/manager/payment" element={<PaymentPage />} />
@@ -57,8 +60,16 @@ function App() {
           {/* 초안 작성 */}
           <Route path="/draft" element={<DraftPage />} />
 
-          {/* ppt 초안 작성 */}
           <Route path="/process" element={<ProcessPage />} />
+          {/* 공고문 분석 후, 체크리스트 제공, 사업목적과 평가항목 요약 페이지 */}
+          <Route path="/process/analysis" element={<NoticeNewPage />} />
+          <Route path="/process/analysis/result" element={<NoticeNewPageResult />} />
+          {/* 유관 RFP 검색 후 동일 주관 및 사내 유사 RFP 추천 */}
+          <Route path="/process/rfp" element={<RFPSearchPage />} />
+          {/* 발표 자료 제작, 스토리라인 및 키워드, 구조 그림 추출 */}
+          <Route path="/process/announce" element={<AnnounceCreatePage />} />
+          {/* 스크립트 제작, 예상질문 생성 */}
+          <Route path="/process/script" element={<ScriptCreatePage />} />
           {/* ppt 초안 작성 */}
           <Route path="/pptdraft" element={<PptDraftPage />} />
 
