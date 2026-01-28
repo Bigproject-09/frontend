@@ -1,7 +1,7 @@
-import React, {useState, useEffect, useRef} from "react";
+import React, {useState, useEffect} from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
-import { STORAGE_KEY } from "../common/constants";
+import { STORAGE_KEY } from "../../common/constants";
 
 type NoticeItem = {
   id: number;
@@ -28,13 +28,6 @@ const ProcessPage: React.FC = () => {
     const [url, setUrl] = useState("");
     const [summary, setSummary] = useState("");
 
-    const titleRef = useRef<HTMLInputElement | null>(null);
-    const orgRef = useRef<HTMLInputElement | null>(null);
-    const budgetRef = useRef<HTMLInputElement | null>(null);
-    const periodRef = useRef<HTMLInputElement | null>(null);
-    const urlRef = useRef<HTMLInputElement | null>(null);
-    const summaryRef = useRef<HTMLTextAreaElement | null>(null);
-
     const location = useLocation();
     const noticeId = location.state?.noticeId as number | undefined;
 
@@ -46,6 +39,34 @@ const ProcessPage: React.FC = () => {
         } catch {
         return [];
         }
+    };
+    
+    // 공고문 분석 버튼
+    const handleAnalysis = (id:number) => {
+        navigate("/process/analysis", {
+            state: {noticeId: id},
+        });
+    };
+
+    // 유관 RFP 검색 버튼
+    const handleRFPSearch = (id:number) => {
+        navigate("/process/rfp", {
+            state: {noticeId: id},
+        });
+    };
+
+    // 발표 자료 제작 버튼
+    const handleAnnounce = (id:number) => {
+        navigate("/process/announce", {
+            state: {noticeId: id},
+        });
+    };
+
+    // 스크립트 및 예상질문 생성
+    const handleScript = (id:number) => {
+        navigate("/process/script", {
+            state: {noticeId: id},
+        });
     };
 
     useEffect(() => {
@@ -82,7 +103,13 @@ const ProcessPage: React.FC = () => {
             </Section>
 
             <ButtonGroup>
-                <ProcessBtn>
+                <ProcessBtn
+                    type="button"
+                    onClick={() => {
+                        if(!noticeId)
+                            return;
+                        handleAnalysis(noticeId);
+                        }}>
                     <h3>공고문 분석</h3>
                     <ul>
                         <li>자격요건 체크리스트 제공</li>
@@ -90,14 +117,26 @@ const ProcessPage: React.FC = () => {
                         <li>평가항목 요약</li>
                     </ul>
                 </ProcessBtn>
-                <ProcessBtn>
+                <ProcessBtn
+                    type="button"
+                    onClick={() => {
+                        if(!noticeId)
+                            return;
+                        handleRFPSearch(noticeId);
+                        }}>
                     <h3>유관 RFP 검색</h3>
                     <ul>
                         <li>동일 주관 기관 내 유사 RFP 추천</li>
                         <li>사내 유사 RFP 추천</li>
                     </ul>
                 </ProcessBtn>
-                <ProcessBtn>
+                <ProcessBtn
+                    type="button"
+                    onClick={() => {
+                        if(!noticeId)
+                            return;
+                        handleAnnounce(noticeId);
+                        }}>
                     <h3>발표자료 제작</h3>
                     <ul>
                         <li>스토리라인 구성</li>
@@ -105,7 +144,13 @@ const ProcessPage: React.FC = () => {
                         <li>구조도/그림 생성</li>
                     </ul>
                 </ProcessBtn>
-                <ProcessBtn>
+                <ProcessBtn
+                    type="button"
+                    onClick={() => {
+                        if(!noticeId)
+                            return;
+                        handleScript(noticeId);
+                        }}>
                     <h3>스크립트 생성</h3>
                     <ul>
                     <li>스크립트 생성</li>
