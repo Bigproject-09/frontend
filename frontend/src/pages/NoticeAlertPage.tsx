@@ -11,6 +11,7 @@ type NoticeItem = {
   score: number;
   isRead: boolean;
   url?: string;
+  attachurl?: string[]; // 여러개일 경우
 
   org?: string;
   budget?: string;
@@ -34,6 +35,11 @@ const DUMMY_ITEMS: NoticeItem[] = [
     dday: "D-7",
     score: 86,
     url: "https://example.com/notice/1",
+    attachurl: [
+      "첨부파일url",
+      "첨부파일2",
+      "첨부파일3",
+    ],
     isRead: true,
     org: "중소벤처기업부",
     budget: "1억",
@@ -99,6 +105,16 @@ const saveFavIds = (ids: number[]) => {
     localStorage.setItem(FAV_KEY, JSON.stringify(ids));
   } catch {}
 };
+
+// 파일명 추출 유틸 함수
+const getFileName = (url: string) => {
+  try {
+    return decodeURIComponent(url.split("/").pop() ?? url);
+  } catch {
+    return url;
+  }
+};
+
 
 const NoticeAlertPage: React.FC = () => {
   const navigate = useNavigate();
@@ -420,8 +436,8 @@ const NoticeAlertPage: React.FC = () => {
               <div className="label">기관</div>
               <div>{selected.org ?? "-"}</div>
 
-              <div className="label">예산</div>
-              <div>{selected.budget ?? "-"}</div>
+              {/* <div className="label">예산</div>
+              <div>{selected.budget ?? "-"}</div> */}
 
               <div className="label">기간</div>
               <div>{selected.period ?? "-"}</div>
@@ -436,6 +452,21 @@ const NoticeAlertPage: React.FC = () => {
                   "-"
                 )}
               </div>
+
+              <div className="label">첨부파일 다운로드</div>
+              <div>
+                {selected.attachurl && selected.attachurl.length > 0 ? (
+                  <AttachFileList>
+                    {selected.attachurl.map((url, idx) => (
+                      <a key={idx} href={url} target="_blank" rel="noreferrer">
+                        {getFileName(url)}
+                      </a>
+                    ))}
+                  </AttachFileList>
+                ) : (
+                  "-"
+                )}
+              </div>
             </ModalGrid>
 
             <ModalSummary>
@@ -445,7 +476,7 @@ const NoticeAlertPage: React.FC = () => {
 
             <ModalActions>
               <MiniBtn type="button" onClick={() => handleApply(selected.id)}>
-                업로드
+                신청
               </MiniBtn>
               <MiniBtn type="button" onClick={() => setSelected(null)}>
                 닫기
@@ -822,7 +853,7 @@ const ModalGrid = styled.div`
   grid-template-columns: 120px 1fr;
   row-gap: 10px;
   column-gap: 12px;
-  align-items: center;
+  align-items: start;
 `;
 
 const ModalSummary = styled.div`
@@ -839,3 +870,21 @@ const ModalActions = styled.div`
   justify-content: flex-end;
   gap: 10px;
 `;
+
+const AttachFileList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  a {
+    font-size: 14px;
+    color: var(--color-accent);
+    text-decoration: underline;
+    word-break: break-all;
+
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+`;
+
