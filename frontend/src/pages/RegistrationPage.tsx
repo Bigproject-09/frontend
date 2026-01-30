@@ -50,6 +50,89 @@ const LoginPage: React.FC = () => {
                         placeholder="개업 일자"
                         />
                     </div>
+
+                    <div className="inputGroup">
+                        <div className="label">
+                            주소
+                        </div>
+                        <input
+                        type="text"
+                        className="input"
+                        placeholder="개업 일자"
+                        />
+                    </div>
+
+                    
+                    <div className="inputGroup">
+                        <div className="label">
+                            업종
+                        </div>
+                        <input
+                        type="text"
+                        className="input"
+                        placeholder="개업 일자"
+                        />
+                    </div>
+
+                    
+                    <div className="inputGroup">
+                        <div className="label">
+                            사원 수
+                        </div>
+                        <input
+                        type="text"
+                        className="input"
+                        placeholder="개업 일자"
+                        />
+                    </div>
+
+                    
+                    <div className="inputGroup">
+                        <div className="label">
+                            자산 규모
+                        </div>
+                        <input
+                        type="text"
+                        className="input"
+                        placeholder="개업 일자"
+                        />
+                    </div>
+
+                    
+                    <div className="inputGroup">
+                        <div className="label">
+                            연혁
+                        </div>
+                        <input
+                        type="text"
+                        className="input"
+                        placeholder="개업 일자"
+                        />
+                    </div>
+
+                    
+                    <div className="inputGroup">
+                        <div className="label">
+                            핵심기술
+                        </div>
+                        <input
+                        type="text"
+                        className="input"
+                        placeholder="개업 일자"
+                        />
+                    </div>
+
+                    
+                    <div className="inputGroup">
+                        <div className="label">
+                            강점
+                        </div>
+                        <input
+                        type="text"
+                        className="input"
+                        placeholder="개업 일자"
+                        />
+                    </div>
                 </ContentArea>
 
                 <FloatingButton
@@ -76,7 +159,7 @@ const Title = styled.div`
 
 const Wrapper = styled.div`
   width: 100vw;
-  height: 100vh;
+  height: 170vh;
   background: linear-gradient(
     135deg,
     #1f3a5f 0%,
@@ -90,7 +173,7 @@ const Wrapper = styled.div`
 
 const LoginBox = styled.div`
   width: 800px;
-  height: 750px;
+  height: 1500px;
   background-color: #ffffff;
   border-radius: 14px;
 

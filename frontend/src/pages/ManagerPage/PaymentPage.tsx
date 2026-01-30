@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import Sidebar from "../../components/Sidebar";
 import { useNavigate } from "react-router-dom";
-import SubscribeButton from "../../components/SubscribeButton";
+import PaymentButton from "../../components/PaymentButton";
 
 type Plan = {
   id: "PRO" | "PROPLUS";
@@ -43,9 +43,9 @@ const PaymentPage: React.FC = () => {
       onClick:() => navigate("/manager/usermanagetab")
     },
     {
-      name: "회사 정보 수정",
-      path: "/registration",
-      onClick:() => navigate("/registration"),
+      name: "회사 정보",
+      path: "/manager/companyinfo",
+      onClick:() => navigate("/manager/companyinfo"),
       gap : true
     }
   ]
@@ -60,12 +60,12 @@ const PaymentPage: React.FC = () => {
         </div>
 
         <ButtonGroup>
-          <SubscribeButton
+          <PaymentButton
             planId="PRO"
             title = "1단계 결제"
             priceText="900원 / 월"
             />
-          <SubscribeButton
+          <PaymentButton
             planId="PROPLUS"
             title="2단계 결제"
             priceText="190,000,000원 / 월"
