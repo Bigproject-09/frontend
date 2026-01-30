@@ -2,8 +2,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 
 import MainPage from "./pages/MainPage";
+// 회원가입 및 로그인
 import LoginPage from "./pages/LoginPage";
+import TermPage from "./pages/TermPage";
 import SignupPage from "./pages/SignupPage";
+
 import RegistrationPage from "./pages/RegistrationPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import TokenTab from "./pages/ManagerPage/TokenTab";
@@ -12,7 +15,7 @@ import RoleManageTab from "./pages/ManagerPage/RoleManageTab";
 import NewRoleRegistPage from "./pages/ManagerPage/NewRoleRegistPage";
 import UserManageTab from "./pages/ManagerPage/UserManageTab";
 import NewUserRegistPage from "./pages/ManagerPage/NewUserRigistPage";
-import TermPage from "./pages/TermPage";
+import CompanyInformationPage from "./pages/ManagerPage/CompanyInformationPage";
 
 import NoticeAlertPage from "./pages/NoticeAlertPage";
 import FileUploadPage from "./pages/FileUploadPage";
@@ -54,6 +57,7 @@ function App() {
           <Route path="/manager/roleregist" element={<NewRoleRegistPage />} />
           <Route path="/manager/usermanagetab" element={<UserManageTab />} />
           <Route path="/manager/userregist" element={<NewUserRegistPage />} />
+          <Route path="/manager/companyinfo" element={<CompanyInformationPage />} />
           {/* 파일 업로드 */}
           <Route path="/upload" element={<FileUploadPage />} />
 

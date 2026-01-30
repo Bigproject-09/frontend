@@ -29,9 +29,9 @@ const NewRoleRegistPage: React.FC = () => {
         onClick:() => navigate("/manager/usermanagetab")
       },
       {
-        name: "회사 정보 수정",
-        path: "/registration",
-        onClick:() => navigate("/registration"),
+        name: "회사 정보",
+        path: "/manager/companyinfo",
+        onClick:() => navigate("/manager/companyinfo"),
         gap : true
       }
     ]
