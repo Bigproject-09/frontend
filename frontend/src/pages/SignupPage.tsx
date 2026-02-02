@@ -55,12 +55,25 @@ const SignupPage: React.FC = () => {
     }
 
     try {
+      const emailValue = email.trim();
+
+      // 1) 중복 확인
+      const checkRes = await http.post("/api/auth/email/check", { email: emailValue });
+      const available = Boolean(checkRes.data?.available);
+
+      if (!available) {
+        setMessage(checkRes.data?.message || "이미 사용 중인 이메일입니다.");
+        setMessageType("error");
+        return; // 여기서 종료 (send 안 함)
+      }
+      
+      // 2) 사용 가능하면 인증 코드 발송
       await http.post("/api/auth/email/send", { email: email.trim() });
 
       setMessage("인증코드를 발송했습니다.");
       setMessageType("success");
 
-      setTimeLeft(600);
+      setTimeLeft(300);
       setShowTimer(true);
 
       setCode("");
