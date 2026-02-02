@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import "../styles/Global.css";
-import http from "../api/http"; // ✅ 추가
+import http from "../api/http";
+import { useAuth } from "../auth/AuthProvider";
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -13,6 +14,8 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const { refreshMe } = useAuth();
+  
   const handleLogin = async () => {
     setErrorMsg(null);
 
@@ -39,7 +42,7 @@ const LoginPage: React.FC = () => {
       }
 
       localStorage.setItem("accessToken", accessToken);
-
+      await refreshMe();
       // 로그인 성공 후 이동(원하는 경로로 바꿔도 됨)
       navigate("/");
     } catch (err: any) {
