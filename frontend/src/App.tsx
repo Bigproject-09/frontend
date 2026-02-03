@@ -6,6 +6,7 @@ import MainPage from "./pages/MainPage";
 import LoginPage from "./pages/LoginPage";
 import TermPage from "./pages/TermPage";
 import SignupPage from "./pages/SignupPage";
+import WithdrawPage from "./pages/WithdrawalPage";
 
 import RegistrationPage from "./pages/RegistrationPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -43,6 +44,7 @@ function App() {
     <Route path="/registration" element={<RegistrationPage />} />
     <Route path="/resetPassword" element={<ResetPasswordPage />} />
     <Route path="/term" element={<TermPage />} />
+    <Route path="/withdrawal" element={<WithdrawPage /> }/>
     
         {/* 레이아웃 적용 페이지 */}
         <Route element={<Layout />}>
