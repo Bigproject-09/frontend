@@ -2,6 +2,7 @@ import React from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import "../styles/Layout.css";
 import logo from "../assets/logo.png";
+import Footer from "./Footer";
 
 const Layout: React.FC = () => {
   const navigate = useNavigate();
@@ -55,9 +56,11 @@ const Layout: React.FC = () => {
         </nav>
       </header>
 
-      <main className="content">
+      <main style={{minHeight: "calc(100vh - 120px) "}}>
         <Outlet />
       </main>
+
+      <Footer />
     </div>
   );
 };
