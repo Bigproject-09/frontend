@@ -1,6 +1,5 @@
 import React, {useState, useEffect} from "react";
 import styled from "styled-components";
-import { useNavigate, useLocation } from "react-router-dom";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { STORAGE_KEY } from "../../common/constants";
 
@@ -22,6 +21,7 @@ const ProcessPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const noticeId = location.state?.noticeId as number | undefined;
+
     const [searchParams] = useSearchParams();
 
     const view = searchParams.get("view");
@@ -37,6 +37,16 @@ const ProcessPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const loadItems = (): NoticeItem[] => {
+        try {
+        if (!storage_key) return [];
+        const parsed = JSON.parse(storage_key);
+        return Array.isArray(parsed) ? (parsed as NoticeItem[]) : [];
+        } catch {
+        return [];
+        }
+    };
+    
     // 공고문 분석 버튼
     const handleAnalysis = (id:number) => {
         navigate("/process/analysis", {
@@ -73,7 +83,7 @@ const ProcessPage: React.FC = () => {
 
     // ✅ 백엔드 API에서 데이터 가져오기
     useEffect(() => {
-        if (!noticeId) {
+                if (!noticeId) {
             setError("공고 ID가 없습니다.");
             return;
         }
@@ -110,9 +120,9 @@ const ProcessPage: React.FC = () => {
                 setError("공고 정보를 불러오는데 실패했습니다.");
                 setLoading(false);
             });
-    }, [noticeId]);
+        }, [noticeId]);
 
-    // ✅ 로딩 중 표시
+            // ✅ 로딩 중 표시
     if (loading) {
         return (
             <Container>
@@ -150,7 +160,8 @@ const ProcessPage: React.FC = () => {
                     <label>기간</label>
                     <div className="text">{period}</div>
                     <label>URL</label>
-                    <div className="text">
+                    <div className="text">{url}</div>  
+                                        <div className="text">
                         {url !== "-" ? (
                             <a href={url} target="_blank" rel="noreferrer">
                                 {url}
@@ -158,7 +169,7 @@ const ProcessPage: React.FC = () => {
                         ) : (
                             url
                         )}
-                    </div>
+                    </div>   
                     <label>요약</label>
                     <div className="text">{summary}</div>                  
                 </ModalGrid>
@@ -255,7 +266,7 @@ const ProcessPage: React.FC = () => {
                 </ProcessBtn>
             </ButtonGroup>
         </Container>
-    );
+    ); 
 };
 
 export default ProcessPage;
@@ -280,13 +291,13 @@ const ModalGrid = styled.div`
   column-gap: 16px;
   align-items: center;
 
-  label {
+  .label {
     font-size: 14px;
     color: #374151;
     font-weight: 500;
   }
 
-  .text {
+    .text {
     font-size: 14px;
     color: #1f2937;
   }
@@ -319,6 +330,7 @@ const ProcessBtn = styled.button`
     display: flex;
     flex-direction: column;
 
+    /* 🔧 미세 조정 포인트 */
     --title-offset: 4px;
     --list-offset: 170px;
 
@@ -337,7 +349,7 @@ const ProcessBtn = styled.button`
     padding-left: 18px;
   }
 
-  &:hover {
+    &:hover {
     background: #f3f4f6;
     border-color: #d1d5db;
   }
