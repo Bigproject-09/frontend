@@ -2,6 +2,7 @@ import React from "react";
 import { Outlet, NavLink, useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Layout.css";
 import logo from "../assets/logo.png";
+import Footer from "./Footer";
 
 const Layout: React.FC = () => {
   const navigate = useNavigate();
@@ -58,9 +59,11 @@ const tab = searchParams.get("tab");
         </nav>
       </header>
 
-      <main className="content">
+      <main style={{minHeight: "calc(100vh - 120px) "}}>
         <Outlet />
       </main>
+
+      <Footer />
     </div>
   );
 };

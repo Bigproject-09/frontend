@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
+import Footer from "./components/Footer";
 
 import MainPage from "./pages/MainPage";
 // 회원가입 및 로그인
@@ -51,6 +52,7 @@ function App() {
     
         {/* 레이아웃 적용 페이지 */}
         <Route element={<Layout />}>
+
           <Route path="/" element={<MainPage />} />
 
           {/* 공고 */}
