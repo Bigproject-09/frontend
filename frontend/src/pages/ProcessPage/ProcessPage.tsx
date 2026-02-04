@@ -1,6 +1,5 @@
 import React, {useState, useEffect} from "react";
 import styled from "styled-components";
-import { useNavigate, useLocation } from "react-router-dom";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { STORAGE_KEY } from "../../common/constants";
 
