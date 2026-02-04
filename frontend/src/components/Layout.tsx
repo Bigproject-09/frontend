@@ -2,9 +2,16 @@ import React from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import "../styles/Layout.css";
 import logo from "../assets/logo.png";
+import { useAuth } from "../auth/AuthProvider";
 
 const Layout: React.FC = () => {
   const navigate = useNavigate();
+  const { me, logout } = useAuth();
+
+  const onLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   return (
     <div className="layout">
@@ -46,11 +53,15 @@ const Layout: React.FC = () => {
           </div>
           </div>
           <div className="nav-right">
-            <button
-              onClick={() => navigate("/login")} 
-              className="login-btn">
-                로그인
-            </button>
+              {me ? (
+                <button onClick={onLogout} className="login-btn">
+                  로그아웃
+                </button>
+              ) : (
+                <button onClick={() => navigate("/login")} className="login-btn">
+                  로그인
+                </button>
+              )}
           </div>
         </nav>
       </header>

@@ -16,7 +16,7 @@ type Props = {
   priceText: string;
 };
 
-const SubscribeButton: React.FC<Props> = ({
+const PaymentButton: React.FC<Props> = ({
   planId,
   title,
   priceText,
@@ -48,7 +48,7 @@ const SubscribeButton: React.FC<Props> = ({
   );
 };
 
-export default SubscribeButton;
+export default PaymentButton;
 
 /* ================= styled-components ================= */
 
