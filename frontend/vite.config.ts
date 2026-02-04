@@ -13,6 +13,15 @@ export default defineConfig({
         // rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
+    allowedHosts: [
+      "nonatomical-unmediaeval-sha.ngrok-free.dev",
+    ],
+    proxy: {
+      "/api": {
+        target: "http://localhost:8080", // 🔥 백엔드 포트
+        changeOrigin: true,
+      },
+    },
   },
 });
 
