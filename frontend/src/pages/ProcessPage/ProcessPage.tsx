@@ -1,7 +1,6 @@
 import React, {useState, useEffect} from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
-import { STORAGE_KEY } from "../../common/constants";
 
 type NoticeItem = {
   id: number;
@@ -10,7 +9,6 @@ type NoticeItem = {
   score: number;
   isRead: boolean;
   url?: string;
-
   org?: string;
   budget?: string;
   period?: string;
@@ -19,7 +17,8 @@ type NoticeItem = {
 
 const ProcessPage: React.FC = () => {
     const navigate = useNavigate();
-    const storage_key = localStorage.getItem(STORAGE_KEY);
+    const location = useLocation();
+    const noticeId = location.state?.noticeId as number | undefined;
 
     const [title, setTitle] = useState("");
     const [org, setOrg] = useState("");
@@ -27,20 +26,9 @@ const ProcessPage: React.FC = () => {
     const [period, setPeriod] = useState("");
     const [url, setUrl] = useState("");
     const [summary, setSummary] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const location = useLocation();
-    const noticeId = location.state?.noticeId as number | undefined;
-
-    const loadItems = (): NoticeItem[] => {
-        try {
-        if (!storage_key) return [];
-        const parsed = JSON.parse(storage_key);
-        return Array.isArray(parsed) ? (parsed as NoticeItem[]) : [];
-        } catch {
-        return [];
-        }
-    };
-    
     // 공고문 분석 버튼
     const handleAnalysis = (id:number) => {
         navigate("/process/analysis", {
@@ -69,21 +57,72 @@ const ProcessPage: React.FC = () => {
         });
     };
 
+    // ✅ 백엔드 API에서 데이터 가져오기
     useEffect(() => {
-        if (!noticeId) return;
-        
-        const items = loadItems();
-        const target = items.find((it) => it.id === noticeId);
-        
-        if (!target) return;
-        
-        setTitle(target.title ?? "");
-        setOrg(target.org ?? "");
-        setBudget(target.budget ?? "");
-        setPeriod(target.period ?? "");
-        setUrl(target.url ?? "");
-        setSummary(target.summary ?? "");
-        }, [noticeId]);
+        if (!noticeId) {
+            setError("공고 ID가 없습니다.");
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        fetch(`/api/notices/${noticeId}`)
+            .then((res) => {
+                if (!res.ok) {
+                    throw new Error(`API 오류: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then((data) => {
+                // HTML 태그 제거 함수
+                const stripHtml = (html: string) => {
+                    if (!html) return "-";
+                    const tmp = document.createElement("DIV");
+                    tmp.innerHTML = html;
+                    return tmp.textContent || tmp.innerText || "-";
+                };
+
+                setTitle(data.title || "-");
+                setOrg(data.author || data.excInsttNm || "-");
+                setPeriod(data.reqstDt || "-");
+                setUrl(data.link || "-");
+                setSummary(stripHtml(data.description));
+                setBudget("-"); // ✅ 백엔드에 예산 필드 추가 필요 시 수정
+                setLoading(false);
+            })
+            .catch((err) => {
+                console.error("공고 조회 오류:", err);
+                setError("공고 정보를 불러오는데 실패했습니다.");
+                setLoading(false);
+            });
+    }, [noticeId]);
+
+    // ✅ 로딩 중 표시
+    if (loading) {
+        return (
+            <Container>
+                <Section>
+                    <div style={{ textAlign: "center", padding: "40px" }}>
+                        로딩 중...
+                    </div>
+                </Section>
+            </Container>
+        );
+    }
+
+    // ✅ 에러 표시
+    if (error) {
+        return (
+            <Container>
+                <Section>
+                    <div style={{ textAlign: "center", padding: "40px", color: "red" }}>
+                        {error}
+                    </div>
+                </Section>
+            </Container>
+        );
+    }
 
     return (
         <Container>
@@ -96,9 +135,17 @@ const ProcessPage: React.FC = () => {
                     <label>기간</label>
                     <div className="text">{period}</div>
                     <label>URL</label>
-                    <div className="text">{url}</div>     
+                    <div className="text">
+                        {url !== "-" ? (
+                            <a href={url} target="_blank" rel="noreferrer">
+                                {url}
+                            </a>
+                        ) : (
+                            url
+                        )}
+                    </div>
                     <label>요약</label>
-                    <div className="text">{summary}</div>                  
+                    <div className="text">{summary}</div>
                 </ModalGrid>
             </Section>
 
@@ -159,7 +206,7 @@ const ProcessPage: React.FC = () => {
                 </ProcessBtn>
             </ButtonGroup>
         </Container>
-    ); 
+    );
 };
 
 export default ProcessPage;
@@ -184,10 +231,24 @@ const ModalGrid = styled.div`
   column-gap: 16px;
   align-items: center;
 
-  .label {
+  label {
     font-size: 14px;
     color: #374151;
     font-weight: 500;
+  }
+
+  .text {
+    font-size: 14px;
+    color: #1f2937;
+  }
+
+  a {
+    color: #2563eb;
+    text-decoration: underline;
+
+    &:hover {
+      opacity: 0.8;
+    }
   }
 `;
 
@@ -209,7 +270,6 @@ const ProcessBtn = styled.button`
     display: flex;
     flex-direction: column;
 
-    /* 🔧 미세 조정 포인트 */
     --title-offset: 4px;
     --list-offset: 170px;
 
@@ -226,5 +286,10 @@ const ProcessBtn = styled.button`
     flex-direction: column;
     gap: 6px;
     padding-left: 18px;
+  }
+
+  &:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
   }
 `;

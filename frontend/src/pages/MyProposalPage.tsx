@@ -1,3 +1,4 @@
+//MyProposalPage.tsx
 import React, { useMemo, useState } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
@@ -6,95 +7,20 @@ import "../styles/Global.css";
 type NoticeItem = {
   id: number;
   title: string;
-//   dday: string;
-//   score: number;
   progress: string;
   isRead: boolean;
-  url?: string;
 
+  url?: string;
   org?: string;
   budget?: string;
   period?: string;
   summary?: string;
 };
 
-const STORAGE_KEY = "bb_notices_v1";
 const FAV_KEY = "bb_notice_favs_v1";
-const PAGE_SIZE = 6;
-
-type ReadFilter = "ALL" | "READ" | "UNREAD";
-type DdayFilter = "ALL" | "D0_1" | "D2_3" | "D4_7" | "D8PLUS";
-type ScoreFilter = "ALL" | "S80" | "S70" | "S60" | "S0";
+const PAGE_SIZE = 10;
 
 type TabKey = "ALL" | "HASHTAG" | "FAV";
-
-const DUMMY_ITEMS: NoticeItem[] = [
-  {
-    id: 1,
-    title: "공고 제목",
-    // dday: "D-7",
-    // score: 86,
-    progress: "작성 중",
-    url: "https://example.com/notice/1",
-    isRead: true,
-    org: "중소벤처기업부",
-    budget: "1억",
-    period: "2026-01-01 ~ 2026-02-01",
-    summary: "소상공인 디지털 전환 관련 지원사업 공고(예시).",
-  },
-  {
-    id: 2,
-    title: "공고 제목",
-    // dday: "D-7",
-    // score: 75,
-    progress: "완료",
-    url: "https://example.com/notice/2",
-    isRead: false,
-    org: "정보통신산업진흥원",
-    budget: "5천만",
-    period: "2026-01-10 ~ 2026-01-25",
-    summary: "AI 도입/활용 바우처 관련 공고(예시).",
-  },
-  { id: 3, title: "공고 제목", /*dday: "D-1", score: 70,*/ progress: "작성 중", isRead: true },
-  { id: 4, title: "공고 제목", /*dday: "D-3", score: 64,*/ progress: "완료", isRead: true },
-  { id: 5, title: "공고 제목", /*dday: "D-7", score: 63,*/ progress: "완료", isRead: true },
-  { id: 6, title: "공고 제목", /*dday: "D-6", score: 63,*/ progress: "완료", isRead: false },
-  { id: 7, title: "공고 제목", /*dday: "D-10", score: 61,*/ progress: "완료", isRead: false },
-  { id: 8, title: "요시", /*dday: "D-2", score: 90,*/ progress: "완료", isRead: true },
-];
-
-const loadStored = (): NoticeItem[] => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-
-    // 🔥 여기서 데이터 보정!
-    return Array.isArray(parsed)
-      ? parsed.map((it: any) => ({
-          ...it,
-          progress: it.progress || "작성 중",   // ← 핵심
-        }))
-      : [];
-
-  } catch {
-    return [];
-  }
-};
-
-
-const saveStored = (list: NoticeItem[]) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  } catch {}
-};
-
-const mergeUniqueById = (base: NoticeItem[], stored: NoticeItem[]) => {
-  const map = new Map<number, NoticeItem>();
-  [...stored, ...base].forEach((it) => map.set(it.id, it));
-  return Array.from(map.values());
-};
 
 const loadFavIds = (): number[] => {
   try {
@@ -116,56 +42,34 @@ const saveFavIds = (ids: number[]) => {
 const MyProposalPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const [items, setItems] = useState<NoticeItem[]>(() => {
-    const stored = loadStored();
-    return mergeUniqueById(DUMMY_ITEMS, stored);
-  });
-
+  const [items, setItems] = useState<NoticeItem[]>([]);
   const [favIds, setFavIds] = useState<number[]>(() => loadFavIds());
-
   const [tab, setTab] = useState<TabKey>("ALL");
-
-  const [readFilter, setReadFilter] = useState<ReadFilter>("ALL");
-  const [ddayFilter, setDdayFilter] = useState<DdayFilter>("ALL");
-  const [scoreFilter, setScoreFilter] = useState<ScoreFilter>("ALL");
   const [filterText, setFilterText] = useState("");
   const [page, setPage] = useState(1);
-
   const [selected, setSelected] = useState<NoticeItem | null>(null);
 
-//   const parseDday = (dday: string) => {
-//     const n = Number(dday.replace("D-", ""));
-//     return Number.isNaN(n) ? 9999 : n;
-//   };
-
-//   const passRead = (it: NoticeItem) => {
-//     if (readFilter === "ALL") return true;
-//     if (readFilter === "READ") return it.isRead;
-//     return !it.isRead;
-//   };
-
-//   const passDday = (it: NoticeItem) => {
-//     const d = parseDday(it.dday);
-//     if (ddayFilter === "ALL") return true;
-//     if (ddayFilter === "D0_1") return d <= 1;
-//     if (ddayFilter === "D2_3") return d >= 2 && d <= 3;
-//     if (ddayFilter === "D4_7") return d >= 4 && d <= 7;
-//     return d >= 8;
-//   };
-
-//   const passScore = (it: NoticeItem) => {
-//     const s = it.score;
-//     if (scoreFilter === "ALL") return true;
-//     if (scoreFilter === "S80") return s >= 80;
-//     if (scoreFilter === "S70") return s >= 70 && s < 80;
-//     if (scoreFilter === "S60") return s >= 60 && s < 70;
-//     return s < 60;
-//   };
-
-  const syncStorage = (next: NoticeItem[]) => {
-    setItems(next);
-    saveStored(next);
-  };
+  // ✅ 내 제안서 목록 불러오기
+  useEffect(() => {
+    fetch("/api/proposals/my")
+      .then((res) => res.json())
+      .then((list) => {
+        setItems(
+          list.map((p: any) => ({
+            id: p.id,
+            title: p.noticeTitle,
+            progress: p.progress,
+            isRead: true,
+            org: p.agency,
+            budget: p.budget,
+            period: p.period,
+            summary: p.summary,
+            url: p.link,
+          }))
+        );
+      })
+      .catch(console.error);
+  }, []);
 
   const toggleFav = (id: number) => {
     setFavIds((prev) => {
@@ -176,47 +80,35 @@ const MyProposalPage: React.FC = () => {
     });
   };
 
-  const removeItem = (id: number) => {
-    const next = items.filter((it) => it.id !== id);
-    syncStorage(next);
-
-    setFavIds((prev) => {
-      const nextFav = prev.filter((x) => x !== id);
-      saveFavIds(nextFav);
-      return nextFav;
-    });
-
-    if (selected?.id === id) setSelected(null);
-  };
-
   const openNotice = (notice: NoticeItem) => {
     setSelected(notice);
-
-    if (!notice.isRead) {
-      const next = items.map((it) => (it.id === notice.id ? { ...it, isRead: true } : it));
-      syncStorage(next);
-      setSelected((prev) => (prev && prev.id === notice.id ? { ...prev, isRead: true } : prev));
-    }
   };
 
-  const handleApply = (id: number) => {
-    console.log("신청:", id);
+  const handleConfirm = (id: number) => {
+    navigate(`/proposal/${id}`);
+  };
+
+  const handleDelete = (id: number) => {
+    fetch(`/api/proposals/${id}`, { method: "DELETE" })
+      .then(() => {
+        setItems((prev) => prev.filter((it) => it.id !== id));
+        if (selected?.id === id) setSelected(null);
+      })
+      .catch(console.error);
   };
 
   const baseByTab = useMemo(() => {
     if (tab === "ALL") return items;
     if (tab === "FAV") return items.filter((it) => favIds.includes(it.id));
-    return []; // HASHTAG: 추후 매칭 로직
+    return [];
   }, [items, favIds, tab]);
 
   const filtered = useMemo(() => {
     const t = filterText.trim().toLowerCase();
-    return baseByTab
-      .filter((it) => (t ? it.title.toLowerCase().includes(t) : true))
-    //   .filter(passRead)
-    //   .filter(passDday)
-    //   .filter(passScore);
-  }, [baseByTab, filterText, readFilter, ddayFilter, scoreFilter]);
+    return baseByTab.filter((it) =>
+      t ? it.title.toLowerCase().includes(t) : true
+    );
+  }, [baseByTab, filterText]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pagedItems = useMemo(() => {
@@ -224,193 +116,70 @@ const MyProposalPage: React.FC = () => {
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, page]);
 
-  const resetToFirstPage = () => setPage(1);
-
-  // ✅ 탭 변경 시: 필터 기본값으로 초기화 + 페이지 1 + 모달 닫기
-  const changeTab = (next: TabKey) => {
-    setTab(next);
-    setSelected(null);
-
-    setFilterText("");
-    setReadFilter("ALL");
-    setDdayFilter("ALL");
-    setScoreFilter("ALL");
-
-    setPage(1);
-  };
-
   return (
     <Shell>
-        {/* 좌측 탭 */}
-        <Main>
-          <Title>내 제안서 목록</Title>
+      <Main>
+        <Title>내 제안서 목록</Title>
 
-{/* #region  */}
-          {/* 필터 */}
-          {/* <Section>
-            <FilterRow>
-              <input
-                className="input"
-                style={{ width: 320 }}
-                placeholder="공고 제목 검색"
-                value={filterText}
-                onChange={(e) => {
-                  setFilterText(e.target.value);
-                  resetToFirstPage();
-                }}
-              />
+        <Section>
+          <HeaderRow>
+            <div>공고 제목</div>
+            <Center>진행도</Center>
+          </HeaderRow>
 
-              <Select
-                value={readFilter}
-                onChange={(e) => {
-                  setReadFilter(e.target.value as ReadFilter);
-                  resetToFirstPage();
-                }}
-              >
-                <option value="ALL">전체</option>
-                <option value="UNREAD">미확인</option>
-                <option value="READ">확인</option>
-              </Select>
+          {pagedItems.length === 0 ? (
+            <Empty>제안서가 없습니다.</Empty>
+          ) : (
+            pagedItems.map((it) => (
+              <Row key={it.id}>
+                <TitleButton onClick={() => openNotice(it)}>
+                  {it.title}
+                </TitleButton>
 
-              <Select
-                value={ddayFilter}
-                onChange={(e) => {
-                  setDdayFilter(e.target.value as DdayFilter);
-                  resetToFirstPage();
-                }}
-              >
-                <option value="ALL">마감일 전체</option>
-                <option value="D0_1">D-1 이하</option>
-                <option value="D2_3">D-2 ~ D-3</option>
-                <option value="D4_7">D-4 ~ D-7</option>
-                <option value="D8PLUS">D-8 이상</option>
-              </Select>
+                <ProgressText status={it.progress}>
+                  {it.progress}
+                </ProgressText>
 
-              <Select
-                value={scoreFilter}
-                onChange={(e) => {
-                  setScoreFilter(e.target.value as ScoreFilter);
-                  resetToFirstPage();
-                }}
-              >
-                <option value="ALL">점수 전체</option>
-                <option value="S80">80점 이상</option>
-                <option value="S70">70~79점</option>
-                <option value="S60">60~69점</option>
-                <option value="S0">60점 미만</option>
-              </Select>
+                <Actions>
+                  <button
+                    type="button"
+                    className="button_center"
+                    onClick={() => handleConfirm(it.id)}
+                  >
+                    확인
+                  </button>
 
-              <ClearBtn
+                  <button
+                    type="button"
+                    className="button_center"
+                    onClick={() => handleDelete(it.id)}
+                  >
+                    삭제
+                  </button>
+                </Actions>
+              </Row>
+            ))
+          )}
+
+          <Pagination>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <PageBtn
+                key={p}
                 type="button"
-                onClick={() => {
-                  setFilterText("");
-                  setReadFilter("ALL");
-                  setDdayFilter("ALL");
-                  setScoreFilter("ALL");
-                  setPage(1);
-                }}
+                data-active={p === page}
+                onClick={() => setPage(p)}
               >
-                초기화
-              </ClearBtn>
-            </FilterRow>
-          </Section> */}
-{/* #endregion */}
-          {/* 리스트 */}
-          <Section>
-            <HeaderRow>
-              {/* {<div style={{ paddingLeft: 54 }}>공고 제목</div> */}
-              {<div >공고 제목</div>
+                {p}
+              </PageBtn>
+            ))}
+          </Pagination>
+        </Section>
+      </Main>
 
-              /*<Center>기한</Center>
-              <Center>추천점수</Center> */}
-              {/* <ActionHeader>
-                <ActionHeaderItem>찜</ActionHeaderItem>
-              </ActionHeader> */}
-              <Center>진행도</Center>
-            </HeaderRow>
-
-            {pagedItems.length === 0 ? (
-              <Empty>
-                {tab === "HASHTAG"
-                  ? "해시태그 매칭 공고가 아직 없습니다."
-                  : "조건에 맞는 공고가 없습니다."}
-              </Empty>
-            ) : (
-              pagedItems.map((it) => {
-                // const isFav = favIds.includes(it.id);
-                return (
-                  <Row key={it.id}>
-                    {/* <DeleteBtn type="button" onClick={() => removeItem(it.id)}>
-                      X
-                    </DeleteBtn> */}
-
-                    <TitleButton type="button" onClick={() => openNotice(it)} title="공고 상세 보기">
-                      {it.title}
-                    </TitleButton>
-
-                    {/* <Center>{it.dday}</Center>
-                    <Center>{it.score}</Center> */}
-                    <div />
-                    
-                    <ProgressText status={it.progress}>
-                      {it.progress}
-                    </ProgressText>
-
-                        {/* <MiniBtn type="button" onClick={() => handleApply(it.id)}>
-                          확인
-                        </MiniBtn> */}
-
-                    <Actions>
-                      <button
-                          type="button"
-                          className="button_center"
-                          onClick={() => handleApply(it.id)}
-                      >
-                          확인
-                      </button>
-
-                        {/* <MiniBtn type="button" onClick={() => handleApply(it.id)}>
-                          삭제
-                        </MiniBtn> */}
-
-                      <button
-                          type="button"
-                          className="button_center"
-                          onClick={() => handleApply(it.id)}
-                      >
-                          삭제
-                      </button>
-                    </Actions>
-                  </Row>
-                );
-              })
-            )}
-
-            <Pagination>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <PageBtn key={p} type="button" data-active={p === page} onClick={() => setPage(p)}>
-                  {p}
-                </PageBtn>
-              ))}
-            </Pagination>
-          </Section>
-
-          {/* ✅ 요청: 신규 공고 등록 버튼은 아래로 */}
-          {/* <BottomRight>
-            <MiniOutlineBtn type="button" onClick={() => navigate("/notice/new")}>
-              신규 공고 등록
-            </MiniOutlineBtn>
-          </BottomRight> */}
-        </Main>
-
-      {/* 모달 */}
       {selected && (
         <ModalOverlay onClick={() => setSelected(null)}>
           <ModalCard onClick={(e) => e.stopPropagation()}>
-            <ModalTitle>
-              {selected.title}
-              {!selected.isRead && <ModalBadge>미확인</ModalBadge>}
-            </ModalTitle>
+            <ModalTitle>{selected.title}</ModalTitle>
 
             <ModalGrid>
               <div className="label">기관</div>
@@ -436,14 +205,14 @@ const MyProposalPage: React.FC = () => {
 
             <ModalSummary>
               <div className="label">요약</div>
-              <div style={{ marginTop: 6 }}>{selected.summary ?? "상세 정보가 없습니다."}</div>
+              <div>{selected.summary ?? "-"}</div>
             </ModalSummary>
 
             <ModalActions>
-              <MiniBtn type="button" onClick={() => handleApply(selected.id)}>
-                신청
+              <MiniBtn onClick={() => handleConfirm(selected.id)}>
+                확인
               </MiniBtn>
-              <MiniBtn type="button" onClick={() => setSelected(null)}>
+              <MiniBtn onClick={() => setSelected(null)}>
                 닫기
               </MiniBtn>
             </ModalActions>
@@ -455,6 +224,7 @@ const MyProposalPage: React.FC = () => {
 };
 
 export default MyProposalPage;
+
 
 /* =========================
    styled-components
