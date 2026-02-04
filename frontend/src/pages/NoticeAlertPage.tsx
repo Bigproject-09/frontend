@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import styled from "styled-components";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Global.css";
 import { STORAGE_KEY } from "../common/constants";
 
@@ -118,6 +118,9 @@ const getFileName = (url: string) => {
 
 const NoticeAlertPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const view = searchParams.get("view");
 
   const [items, setItems] = useState<NoticeItem[]>(() => {
     const stored = loadStored();
@@ -203,7 +206,14 @@ const NoticeAlertPage: React.FC = () => {
   };
 
   const handleApply = (id: number) => {
-    navigate("/process", {
+    navigate("/process?view=notice", {
+      state: {noticeId: id},
+    });
+  };
+
+  // 서비스 탭을 통해 들어올 경우
+  const handleApply_Service = (id: number) => {
+    navigate("/process/analysis", {
       state: {noticeId: id},
     });
   };
@@ -396,9 +406,17 @@ const NoticeAlertPage: React.FC = () => {
                         <FavIcon aria-hidden>{isFav ? "★" : "☆"}</FavIcon>
                       </FavBtn>
 
-                      <MiniBtn type="button" onClick={() => handleApply(it.id)}>
-                        신청
-                      </MiniBtn>
+                      {view === "notice" && (
+                        <MiniBtn type="button" onClick={() => handleApply(it.id)}>
+                          신청
+                        </MiniBtn>
+                      )}
+                      {view === "service" && (
+                        <MiniBtn type="button" onClick={() => handleApply_Service(it.id)}>
+                          신청
+                        </MiniBtn>
+                      )}
+
                     </Actions>
                   </Row>
                 );
@@ -475,9 +493,17 @@ const NoticeAlertPage: React.FC = () => {
             </ModalSummary>
 
             <ModalActions>
+              {view === "notice" && (
               <MiniBtn type="button" onClick={() => handleApply(selected.id)}>
                 신청
               </MiniBtn>
+              )}
+              {view === "service" && (
+              <MiniBtn type="button" onClick={() => handleApply_Service(selected.id)}>
+                신청
+              </MiniBtn>
+              )}
+
               <MiniBtn type="button" onClick={() => setSelected(null)}>
                 닫기
               </MiniBtn>

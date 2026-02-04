@@ -30,8 +30,11 @@ import ProcessPage from "./pages/ProcessPage/ProcessPage";
 import NoticeNewPage from "./pages/ProcessPage/NoticeNewPage";
 import NoticeNewPageResult from "./pages/ProcessPage/NoticeNewPageResult";
 import RFPSearchPage from "./pages/ProcessPage/RFPSearchPage";
+import RFPSearchPageResult from "./pages/ProcessPage/RFPSearchPageResult";
 import AnnounceCreatePage from "./pages/ProcessPage/AnnounceCreatePage";
+import AnnounceCreatePageResult from "./pages/ProcessPage/AnnounceCreatePageResult";
 import ScriptCreatePage from "./pages/ProcessPage/ScriptCreatePage";
+import ScriptCreatePageResult from "./pages/ProcessPage/ScriptCreatePageResult";
 import PptDraftPage from "./pages/PptDraftPage";
 
 function App() {
@@ -72,10 +75,14 @@ function App() {
           <Route path="/process/analysis/result" element={<NoticeNewPageResult />} />
           {/* 유관 RFP 검색 후 동일 주관 및 사내 유사 RFP 추천 */}
           <Route path="/process/rfp" element={<RFPSearchPage />} />
+          <Route path="/process/rfp/result" element={<RFPSearchPageResult />} />
+
           {/* 발표 자료 제작, 스토리라인 및 키워드, 구조 그림 추출 */}
           <Route path="/process/announce" element={<AnnounceCreatePage />} />
+          <Route path="/process/announce/result" element={<AnnounceCreatePageResult />} />
           {/* 스크립트 제작, 예상질문 생성 */}
           <Route path="/process/script" element={<ScriptCreatePage />} />
+          <Route path="/process/script/result" element={<ScriptCreatePageResult />} />
           {/* ppt 초안 작성 */}
           <Route path="/pptdraft" element={<PptDraftPage />} />
 
