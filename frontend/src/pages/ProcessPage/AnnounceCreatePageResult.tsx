@@ -37,7 +37,7 @@ const DUMMY_DATA: AnalysisData = {
     ],
 };
 
-const NoticeNewPageResult: React.FC = () => {
+const AnnounceCreatePageResult: React.FC = () => {
     const navigate = useNavigate();
 
     const location = useLocation();
@@ -58,23 +58,23 @@ const NoticeNewPageResult: React.FC = () => {
     }, []);
 
     const handleBack = (id:number) => {
-        navigate("/process/analysis",{
+        navigate("/process/announce",{
             state: {noticeId: id},
         });
     };
 
-        // 체크박스 핸들러
-    const handleCheckboxChange = (id: number) => {
-        setCheckedItems(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(id)) {
-                newSet.delete(id);
-            } else {
-                newSet.add(id);
-            }
-            return newSet;
-        });
-    };
+    //     // 체크박스 핸들러
+    // const handleCheckboxChange = (id: number) => {
+    //     setCheckedItems(prev => {
+    //         const newSet = new Set(prev);
+    //         if (newSet.has(id)) {
+    //             newSet.delete(id);
+    //         } else {
+    //             newSet.add(id);
+    //         }
+    //         return newSet;
+    //     });
+    // };
 
     // PDF 다운로드 함수
     const handleDownloadPDF = () => {
@@ -183,18 +183,16 @@ const NoticeNewPageResult: React.FC = () => {
         <Container>
             <Card>
                 <div className="title" style={{ marginLeft: 0, marginBottom: 50 }}>
-                    공고문 분석
+                    발표 자료 제작
                 </div>
 
                 {/* <Row> */}
 
-                <ChecklistHeader>
+                {/* <ChecklistHeader>
                     <div className="title" style = {{fontSize: 15}}>
                         자격 요건 체크리스트
                     </div>
                     <PDFDownloadButton onClick={handleDownloadPDF}>
-                        {/* <DownloadIcon>📄</DownloadIcon>
-                        PDF 다운로드 */}
                     </PDFDownloadButton>
                 </ChecklistHeader>
 
@@ -212,7 +210,6 @@ const NoticeNewPageResult: React.FC = () => {
                                             />
                                             <RequirementTitle>{req.title}</RequirementTitle>
                                         </HeaderLeft>
-                                        {/* <RequirementTitle>{req.title}</RequirementTitle> */}
                                     </RequirementHeader>
                                     
                                     <RequirementContent>
@@ -221,13 +218,8 @@ const NoticeNewPageResult: React.FC = () => {
                                             <Text>{req.requirement}</Text>
                                         </ConfirmationBox>
                                     </RequirementContent>
-
-                                    {/* {req.confirmation_needed && ( */}
-                                         {/* <ConfirmationBox> */}
-                                            <Label>확인 필요:</Label>
-                                            <Text>{req.confirmation_needed}</Text>
-                                        {/* </ConfirmationBox> */}
-                                    {/* )} */}
+                                        <Label>확인 필요:</Label>
+                                        <Text>{req.confirmation_needed}</Text>
                                 </RequirementItem>
                             ))}
                         </RequirementList>
@@ -235,21 +227,28 @@ const NoticeNewPageResult: React.FC = () => {
                         <EmptyMessage>자격 요건 데이터가 없습니다.</EmptyMessage>
                     )}
                     </Section>
-                    <br />
+                    <br /> */}
 
                     <div className="title" style = {{fontSize: 15}}>
-                        사업 목적 요약
+                        스토리 라인 구성
                     </div>
                     <Section>
-                        사업 목적
+                        스토리 라인
                     </Section>
                     <br />
 
                     <div className="title" style = {{fontSize: 15}}>
-                        평가항목 요약
+                        키워드 추출
                     </div>
                     <Section>
-                        평가항목
+                        좌르륵
+                    </Section>
+
+                    <div className="title" style = {{fontSize: 15}}>
+                        구조도/그림 생성
+                    </div>
+                    <Section>
+                        쨘~
                     </Section>
 
                     <RightActionRow>
@@ -277,7 +276,7 @@ const NoticeNewPageResult: React.FC = () => {
     );
 };
 
-export default NoticeNewPageResult;
+export default AnnounceCreatePageResult;
 
 const Container = styled.div`
   width: 100%;

@@ -1,6 +1,6 @@
 //NoticeAlertpage.tsx
 import styled from "styled-components";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Global.css";
 import { STORAGE_KEY } from "../common/constants";
 import React, { useEffect, useMemo, useState } from "react";
@@ -21,6 +21,7 @@ type NoticeItem = {
     filePath: string;
   }>;
   org?: string;
+  budget?: string;
   period?: string;
   summary?: string;
   hashtags?: string[];
@@ -128,6 +129,9 @@ const getPageNumbers = (currentPage: number, totalPages: number): (number | stri
 ========================= */
 const NoticeAlertPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const view = searchParams.get("view");
 
   const [items, setItems] = useState<NoticeItem[]>([]);
   const [favIds, setFavIds] = useState<number[]>(loadFavIds);

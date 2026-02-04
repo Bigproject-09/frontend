@@ -123,7 +123,7 @@ const RFPSearchPage: React.FC = () => {
       await runStep("PURPOSE_SUMMARY", 1200);
       await runStep("CATEGORY_SUMMARY", 900);
 
-      navigate("/process/analysis/result", {
+      navigate("/process/rfp/result", {
         state: { noticeId: id },
       });
     } catch (e) {

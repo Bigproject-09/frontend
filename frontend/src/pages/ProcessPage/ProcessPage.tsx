@@ -1,6 +1,8 @@
 import React, {useState, useEffect} from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { STORAGE_KEY } from "../../common/constants";
 
 type NoticeItem = {
   id: number;
@@ -9,6 +11,7 @@ type NoticeItem = {
   score: number;
   isRead: boolean;
   url?: string;
+
   org?: string;
   budget?: string;
   period?: string;
@@ -19,6 +22,11 @@ const ProcessPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const noticeId = location.state?.noticeId as number | undefined;
+    const [searchParams] = useSearchParams();
+
+    const view = searchParams.get("view");
+
+    const storage_key = localStorage.getItem(STORAGE_KEY);
 
     const [title, setTitle] = useState("");
     const [org, setOrg] = useState("");
@@ -35,6 +43,12 @@ const ProcessPage: React.FC = () => {
             state: {noticeId: id},
         });
     };
+    const handleAnalysis_Service = (id:number) => {
+        navigate("/process/analysis", {
+            state: {noticeId: id},
+        });
+    };
+
 
     // 유관 RFP 검색 버튼
     const handleRFPSearch = (id:number) => {
@@ -126,6 +140,7 @@ const ProcessPage: React.FC = () => {
 
     return (
         <Container>
+            {view !== "service" && (
             <Section>
                 <ModalGrid>
                     <label>제목</label>
@@ -145,11 +160,14 @@ const ProcessPage: React.FC = () => {
                         )}
                     </div>
                     <label>요약</label>
-                    <div className="text">{summary}</div>
+                    <div className="text">{summary}</div>                  
                 </ModalGrid>
             </Section>
+            )}
 
             <ButtonGroup>
+                {/* 공고 버튼을 통해 들어왔을 때 */}
+                {view === "notice" && (
                 <ProcessBtn
                     type="button"
                     onClick={() => {
@@ -164,6 +182,23 @@ const ProcessPage: React.FC = () => {
                         <li>평가항목 요약</li>
                     </ul>
                 </ProcessBtn>
+                )}
+                {/* 서비스 버튼을 통해 들어왔을 때 */}
+                {view === "service" && (
+                    <ProcessBtn
+                    type="button"
+                    onClick={() => navigate("/notice?view=service")}>
+                    <h3>공고문 분석</h3>
+                    <ul>
+                        <li>자격요건 체크리스트 제공</li>
+                        <li>사업 목적 요약</li>
+                        <li>평가항목 요약</li>
+                    </ul>
+                </ProcessBtn>
+                )}
+
+                {/* 공고 버튼을 통해 들어왔을 때 */}
+                {view === "notice" && (
                 <ProcessBtn
                     type="button"
                     onClick={() => {
@@ -177,6 +212,20 @@ const ProcessPage: React.FC = () => {
                         <li>사내 유사 RFP 추천</li>
                     </ul>
                 </ProcessBtn>
+                )}
+                {/* 서비스 버튼을 통해 들어왔을 때 */}
+                {view === "service" && (
+                    <ProcessBtn
+                    type="button"
+                    onClick={() => navigate("/notice")}>
+                    <h3>유관 RFP 검색</h3>
+                    <ul>
+                        <li>동일 주관 기관 내 유사 RFP 추천</li>
+                        <li>사내 유사 RFP 추천</li>
+                    </ul>
+                </ProcessBtn>
+                )}
+
                 <ProcessBtn
                     type="button"
                     onClick={() => {
