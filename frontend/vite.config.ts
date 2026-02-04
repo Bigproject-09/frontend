@@ -5,7 +5,6 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: {
-<<<<<<< HEAD
     allowedHosts: [
       "nonatomical-unmediaeval-sha.ngrok-free.dev",
     ],
@@ -15,17 +14,6 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
-=======
-    port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        // rewrite: (path) => path.replace(/^\/api/, '')
-        secure: false,
-      }
-    }
->>>>>>> frontend_jh
   },
 });
 
