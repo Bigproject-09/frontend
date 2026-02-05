@@ -17,6 +17,12 @@ type RefRow = {
   url: string;
 };
 
+type StoredRaw = {
+  checklist?: any;
+  analysis?: any;
+  overall_eligibility?: any;
+};
+
 const NoticeNewPageResult: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,12 +35,13 @@ const NoticeNewPageResult: React.FC = () => {
 
   const [checklists, setChecklists] = useState<ChecklistRow[]>([]);
   const [references, setReferences] = useState<RefRow[]>([]);
+  const [storedRaw, setStoredRaw] = useState<StoredRaw>({});
 
   const analysisSummary = useMemo(() => {
-    const analysis = step1Result?.fastapi?.data?.analysis;
-    const overall = step1Result?.fastapi?.data?.checklist?.overall_eligibility;
+    const analysis = step1Result?.fastapi?.data?.analysis ?? storedRaw.analysis;
+    const overall = step1Result?.fastapi?.data?.checklist?.overall_eligibility ?? storedRaw.overall_eligibility;
     return { analysis, overall };
-  }, [step1Result]);
+  }, [step1Result, storedRaw]);
 
   useEffect(() => {
     if (!noticeId) {
@@ -50,6 +57,7 @@ const NoticeNewPageResult: React.FC = () => {
       .then(({ data }) => {
         setChecklists((data.checklists ?? []) as ChecklistRow[]);
         setReferences((data.references ?? []) as RefRow[]);
+        setStoredRaw((data.raw ?? {}) as StoredRaw);
       })
       .catch((e) => {
         console.error(e);

@@ -138,7 +138,7 @@ const NoticeNewPage: React.FC = () => {
       const { data: result } = await http.post(
         `/api/notices/${noticeId}/analyze`,
         null,
-        { params: { companyId: 1 } }
+        { params: { companyId: 4 } }
       );
 
       // (옵션) 심층 분석/요약 단계도 UI로만 보여줌
