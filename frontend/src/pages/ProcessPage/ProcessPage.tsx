@@ -16,8 +16,6 @@ type NoticeItem = {
   period?: string;
   summary?: string;
 };
-import { useNavigate, useLocation } from "react-router-dom";
-import http from "../../api/http";
 
 const ProcessPage: React.FC = () => {
     const navigate = useNavigate();
