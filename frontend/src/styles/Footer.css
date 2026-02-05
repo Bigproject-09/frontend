@@ -1,0 +1,76 @@
+.footer {
+  width: 100%;
+  padding: 24px 16px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 13px;
+}
+
+/* 공통 섹션 */
+.footer-section {
+  margin-bottom: 12px;
+}
+
+/* 시스템명 */
+.footer-system-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* 정책 버튼 영역 */
+.footer-policy {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.footer-policy button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #555;
+  font-size: 12px;
+}
+
+.footer-policy button:hover {
+  text-decoration: underline;
+}
+
+/* 메뉴 버튼 영역 */
+.footer-menu {
+  display: flex;
+  gap: 16px;
+}
+
+.footer-menu button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #333;
+  font-size: 13px;
+}
+
+.footer-menu button:hover {
+  text-decoration: underline;
+}
+
+/* 버전 */
+.footer-version {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* 보안 고지 */
+.footer-notice {
+  margin-top: 16px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* 카피라이트 */
+.footer-copy {
+  margin-top: 16px;
+  font-size: 12px;
+  opacity: 0.7;
+}
