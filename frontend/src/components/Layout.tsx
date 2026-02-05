@@ -2,11 +2,8 @@ import React from "react";
 import { Outlet, NavLink, useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Layout.css";
 import logo from "../assets/logo.png";
-<<<<<<< HEAD
 import { useAuth } from "../auth/AuthProvider";
-=======
 import Footer from "./Footer";
->>>>>>> origin/frontend
 
 const Layout: React.FC = () => {
   const navigate = useNavigate();
@@ -49,14 +46,18 @@ const tab = searchParams.get("tab");
                 서비스
               </NavLink>
 
-              <NavLink to="/faq" className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}>
+              {/* <NavLink to="/faq" className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}>
                 FAQ
-              </NavLink>
+              </NavLink> */}
 
-              <NavLink to="/manager/tokentab" className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}>
-                관리자
-              </NavLink>
-
+              {me && (
+                <NavLink
+                  to="/manager/tokentab"
+                  className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}
+                >
+                  관리자
+                </NavLink>
+              )}
           </div>
           </div>
           <div className="nav-right">
