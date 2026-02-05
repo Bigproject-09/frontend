@@ -11,7 +11,7 @@ type NoticeItem = {
   id: number;
   title: string;
   dday: string;
-  score: number;
+  // score: number;
   isRead: boolean;
 
   url?: string;
@@ -27,7 +27,16 @@ type NoticeItem = {
   hashtags?: string[];
 };
 
-const FAV_KEY = "bb_notice_favs_v1";
+type NoticeMeta = {
+  fav : boolean;
+  read : boolean;
+}
+
+type NoticeMetaMap = Record<number, NoticeMeta>;
+
+const META_KEY = "bb_notice_meta_v1"; // 찜하기, 미확인이 저장되는 키
+
+const FAV_KEY = "bb_notice_favs_v1"; // 찜하기만 저장되는 키
 const PAGE_SIZE = 6;
 
 type ReadFilter = "ALL" | "READ" | "UNREAD";
@@ -50,8 +59,25 @@ const loadFavIds = (): number[] => {
 const saveFavIds = (ids: number[]) => {
   try {
     localStorage.setItem(FAV_KEY, JSON.stringify(ids));
+  } catch { }
+};
+
+// 찜하기와 안읽음 저장
+const loadMetaMap = (): NoticeMetaMap => {
+  try {
+    const raw = localStorage.getItem(META_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveMetaMap = (map: NoticeMetaMap) => {
+  try {
+    localStorage.setItem(META_KEY, JSON.stringify(map));
   } catch {}
 };
+
 
 const calcDday = (endDate?: string) => {
   if (!endDate) return "-";
@@ -134,7 +160,9 @@ const NoticeAlertPage: React.FC = () => {
   const view = searchParams.get("view");
 
   const [items, setItems] = useState<NoticeItem[]>([]);
-  const [favIds, setFavIds] = useState<number[]>(loadFavIds);
+  // const [favIds, setFavIds] = useState<number[]>(loadFavIds);
+  const [metaMap, setMetaMap] = useState<NoticeMetaMap>(loadMetaMap);
+
   const [tab, setTab] = useState<TabKey>("ALL");
 
   const [readFilter, setReadFilter] = useState<ReadFilter>("ALL");
@@ -154,16 +182,30 @@ const NoticeAlertPage: React.FC = () => {
       .then((data) => {
         const list = data.content ?? data;
 
-        const normalized: NoticeItem[] = list.map((n: any) => ({
+        // const normalized: NoticeItem[] = list.map((n: any) => ({
+        //   id: n.noticeId,
+        //   title: n.title,
+        //   score: n.score ?? 0,
+        //   isRead: false,
+        //   dday: calcDday(n.reqstDt),
+        //   hashtags: n.hashtags ?? [],
+        //   org: n.excInsttNm ?? "-",
+        //   period: n.reqstDt ?? "-",
+        // }));
+
+        const normalized: NoticeItem[] = list.map((n: any) => {
+        const meta = metaMap[n.noticeId];
+
+        return {
           id: n.noticeId,
           title: n.title,
-          score: n.score ?? 0,
-          isRead: false,
+          isRead: meta?.read ?? false,
           dday: calcDday(n.reqstDt),
           hashtags: n.hashtags ?? [],
           org: n.excInsttNm ?? "-",
           period: n.reqstDt ?? "-",
-        }));
+        };
+      });
 
         setItems(normalized);
       })
@@ -182,8 +224,8 @@ const NoticeAlertPage: React.FC = () => {
     readFilter === "ALL"
       ? true
       : readFilter === "READ"
-      ? it.isRead
-      : !it.isRead;
+        ? it.isRead
+        : !it.isRead;
 
   const passDday = (it: NoticeItem) => {
     const d = parseDday(it.dday);
@@ -194,14 +236,14 @@ const NoticeAlertPage: React.FC = () => {
     return d >= 8;
   };
 
-  const passScore = (it: NoticeItem) => {
-    const s = it.score;
-    if (scoreFilter === "ALL") return true;
-    if (scoreFilter === "S80") return s >= 80;
-    if (scoreFilter === "S70") return s >= 70 && s < 80;
-    if (scoreFilter === "S60") return s >= 60 && s < 70;
-    return s < 60;
-  };
+  // const passScore = (it: NoticeItem) => {
+  //   const s = it.score;
+  //   if (scoreFilter === "ALL") return true;
+  //   if (scoreFilter === "S80") return s >= 80;
+  //   if (scoreFilter === "S70") return s >= 70 && s < 80;
+  //   if (scoreFilter === "S60") return s >= 60 && s < 70;
+  //   return s < 60;
+  // };
 
   /* =========================
      상세 열기
@@ -224,6 +266,8 @@ const NoticeAlertPage: React.FC = () => {
         filePath: file.filePath,
       }));
 
+      markAsRead(notice.id);
+
       setSelected({
         ...notice,
         isRead: true,
@@ -245,15 +289,47 @@ const NoticeAlertPage: React.FC = () => {
     }
   };
 
-  const toggleFav = (id: number) => {
-    setFavIds((prev) => {
-      const next = prev.includes(id)
-        ? prev.filter((x) => x !== id)
-        : [...prev, id];
-      saveFavIds(next);
+  const markAsRead = (id: number) => {
+    setMetaMap((prev) => {
+      const next = {
+        ...prev,
+        [id]: {
+          fav: prev[id]?.fav ?? false,
+          read: true,
+        },
+      };
+
+      saveMetaMap(next);
       return next;
     });
   };
+
+
+  // const toggleFav = (id: number) => {
+  //   setFavIds((prev) => {
+  //     const next = prev.includes(id)
+  //       ? prev.filter((x) => x !== id)
+  //       : [...prev, id];
+  //     saveFavIds(next);
+  //     return next;
+  //   });
+  // };
+
+  const toggleFav = (id: number) => {
+    setMetaMap((prev) => {
+      const next = {
+        ...prev,
+        [id]: {
+          fav: !prev[id]?.fav,
+          read: prev[id]?.read ?? false,
+        },
+      };
+
+      saveMetaMap(next);
+      return next;
+    });
+  };
+
 
   const handleApply = (id: number) => {
     navigate("/process", { state: { noticeId: id } });
@@ -283,9 +359,10 @@ const NoticeAlertPage: React.FC = () => {
   ========================= */
   const baseByTab = useMemo(() => {
     if (tab === "ALL") return items;
-    if (tab === "FAV") return items.filter((it) => favIds.includes(it.id));
+    // if (tab === "FAV") return items.filter((it) => favIds.includes(it.id));
+    if (tab === "FAV") return items.filter((it) => metaMap[it.id]?.fav);
     return [];
-  }, [items, favIds, tab]);
+  }, [items, metaMap, tab]);
 
   const filtered = useMemo(() => {
     const t = filterText.trim().toLowerCase();
@@ -293,7 +370,7 @@ const NoticeAlertPage: React.FC = () => {
       .filter((it) => (t ? it.title.toLowerCase().includes(t) : true))
       .filter(passRead)
       .filter(passDday)
-      .filter(passScore);
+    // .filter(passScore);
   }, [baseByTab, filterText, readFilter, ddayFilter, scoreFilter]);
 
   const pagedItems = useMemo(() => {
@@ -386,7 +463,7 @@ const NoticeAlertPage: React.FC = () => {
               <HeaderRow>
                 <div>공고 제목</div>
                 <Center>기한</Center>
-                <Center>추천점수</Center>
+                {/* <Center>추천점수</Center> */}
                 <ActionHeader>
                   <ActionHeaderItem>찜</ActionHeaderItem>
                 </ActionHeader>
@@ -394,14 +471,17 @@ const NoticeAlertPage: React.FC = () => {
 
               {pagedItems.length > 0 ? (
                 pagedItems.map((it) => {
-                  const isFav = favIds.includes(it.id);
+                  // const isFav = favIds.includes(it.id);
+                  const isFav = metaMap[it.id]?.fav;
+                  const isRead = metaMap[it.id]?.read;
+
                   return (
                     <Row key={it.id}>
                       <TitleButton onClick={() => openNotice(it)}>
                         {it.title}
                       </TitleButton>
                       <Center>{it.dday}</Center>
-                      <Center>{it.score}</Center>
+                      {/* <Center>{it.score}</Center> */}
                       <Actions>
                         {!it.isRead && <UnreadBadge>미확인</UnreadBadge>}
                         <FavBtn
@@ -688,7 +768,7 @@ const ClearBtn = styled.button`
 
 const HeaderRow = styled.div`
   display: grid;
-  grid-template-columns: 1fr 120px 120px 260px;
+  grid-template-columns: 1fr 120px 300px;
   align-items: center;
   padding: 12px 0;
   font-size: 14px;
@@ -699,7 +779,7 @@ const HeaderRow = styled.div`
 
 const Row = styled.div`
   display: grid;
-  grid-template-columns: 1fr 120px 120px 260px;
+  grid-template-columns: 1fr 120px 300px;
   align-items: center;
   padding: 16px 0;
   border-bottom: 1px solid rgba(0,0,0,0.06);
