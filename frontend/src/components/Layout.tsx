@@ -52,7 +52,7 @@ const tab = searchParams.get("tab");
 
               {me && (
                 <NavLink
-                  to="/manager/tokentab"
+                  to="/manager/companyinfo"
                   className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}
                 >
                   관리자

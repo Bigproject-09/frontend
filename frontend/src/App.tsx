@@ -9,7 +9,7 @@ import WithdrawPage from "./pages/WithdrawalPage";
 import RegistrationPage from "./pages/RegistrationPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 
-import TokenTab from "./pages/ManagerPage/TokenTab";
+// import TokenTab from "./pages/ManagerPage/TokenTab";
 import PaymentPage from "./pages/ManagerPage/PaymentPage";
 import RoleManageTab from "./pages/ManagerPage/RoleManageTab";
 import NewRoleRegistPage from "./pages/ManagerPage/NewRoleRegistPage";
@@ -60,7 +60,7 @@ function App() {
               <Route path="/notice" element={<NoticeAlertPage />} />
 
               {/* 매니저 */}
-              <Route path="/manager/tokentab" element={<TokenTab />} />
+              {/* <Route path="/manager/tokentab" element={<TokenTab />} /> */}
               <Route path="/manager/payment" element={<PaymentPage />} />
               <Route path="/manager/rolemanagetab" element={<RoleManageTab />} />
               <Route path="/manager/roleregist" element={<NewRoleRegistPage />} />
