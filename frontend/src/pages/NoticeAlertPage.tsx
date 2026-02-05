@@ -28,8 +28,8 @@ type NoticeItem = {
 };
 
 type NoticeMeta = {
-  fav : boolean;
-  read : boolean;
+  fav: boolean;
+  read: boolean;
 }
 
 type NoticeMetaMap = Record<number, NoticeMeta>;
@@ -75,7 +75,7 @@ const loadMetaMap = (): NoticeMetaMap => {
 const saveMetaMap = (map: NoticeMetaMap) => {
   try {
     localStorage.setItem(META_KEY, JSON.stringify(map));
-  } catch {}
+  } catch { }
 };
 
 
@@ -194,18 +194,18 @@ const NoticeAlertPage: React.FC = () => {
         // }));
 
         const normalized: NoticeItem[] = list.map((n: any) => {
-        const meta = metaMap[n.noticeId];
+          const meta = metaMap[n.noticeId];
 
-        return {
-          id: n.noticeId,
-          title: n.title,
-          isRead: meta?.read ?? false,
-          dday: calcDday(n.reqstDt),
-          hashtags: n.hashtags ?? [],
-          org: n.excInsttNm ?? "-",
-          period: n.reqstDt ?? "-",
-        };
-      });
+          return {
+            id: n.noticeId,
+            title: n.title,
+            isRead: meta?.read ?? false,
+            dday: calcDday(n.reqstDt),
+            hashtags: n.hashtags ?? [],
+            org: n.excInsttNm ?? "-",
+            period: n.reqstDt ?? "-",
+          };
+        });
 
         setItems(normalized);
       })
@@ -477,13 +477,15 @@ const NoticeAlertPage: React.FC = () => {
 
                   return (
                     <Row key={it.id}>
-                      <TitleButton onClick={() => openNotice(it)}>
-                        {it.title}
-                      </TitleButton>
+                      <TitleWrapper>
+                        <TitleButton onClick={() => openNotice(it)}>
+                          {it.title}
+                        </TitleButton>
+                        {!it.isRead && <UnreadBadge>미확인</UnreadBadge>}
+                      </TitleWrapper>
                       <Center>{it.dday}</Center>
                       {/* <Center>{it.score}</Center> */}
                       <Actions>
-                        {!it.isRead && <UnreadBadge>미확인</UnreadBadge>}
                         <FavBtn
                           data-active={isFav}
                           onClick={() => toggleFav(it.id)}
@@ -793,7 +795,6 @@ const ActionHeader = styled.div`
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding-right: 2px;
 `;
 
 const ActionHeaderItem = styled.div`
@@ -801,6 +802,8 @@ const ActionHeaderItem = styled.div`
   color: #333;
   text-align: center;
   font-weight: 600;
+  width: 36px;
+  margin-right: 82px;
 `;
 
 const TitleButton = styled.button`
@@ -816,6 +819,12 @@ const TitleButton = styled.button`
     text-decoration: underline;
     color: var(--color-accent);
   }
+`;
+
+const TitleWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
 `;
 
 const UnreadBadge = styled.span`
