@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/Global.css";
-import jsPDF from "jspdf";
+import {jsPDF} from "jspdf";
 import { NotoSansKR } from "../../utils/NotoSansKR";
 
 // 타입 정의

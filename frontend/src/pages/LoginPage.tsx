@@ -1,77 +1,133 @@
-import React from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import "../styles/Global.css";
+import http from "../api/http";
+import { useAuth } from "../auth/AuthProvider";
 
 const LoginPage: React.FC = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
-    const handleLogin = () => {
-        console.log("로그인 시도");
-    };
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-    return (
-        <Wrapper>
-            <LoginBox>
-                <Title>
-                    로그인
-                </Title>
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-                <ContentArea>
+  const { refreshMe } = useAuth();
+  
+  const handleLogin = async () => {
+    setErrorMsg(null);
 
-                    {/* 입력 영역 */}
-                    <FormBox>
-                        <div className="inputGroup">
-                        <div className="label">이메일</div>
-                        <input
-                            type="email"
-                            className="input"
-                            placeholder="이메일"
-                        />
-                        </div>
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg("이메일/비밀번호를 입력하세요.");
+      return;
+    }
 
-                        <div className="inputGroup">
-                        <div className="label">비밀번호</div>
-                        <input
-                            type="password"
-                            className="input"
-                            placeholder="비밀번호"
-                        />
-                        </div>
+    try {
+      setLoading(true);
 
-                        {/* 버튼 영역 */}
-                        <ButtonRow>
-                        <button
-                            type="button"
-                            className="button_center"
-                            onClick={() => navigate("/term")}
-                        >
-                            회원가입
-                        </button>
+      // ✅ 백엔드: POST /api/login
+      const res = await http.post("/api/login", {
+        email,
+        password,
+      });
 
-                        <button
-                            type="button"
-                            className="button_center"
-                            onClick={handleLogin}
-                        >
-                            로그인
-                        </button>
-                        </ButtonRow>
+      // ✅ 백 응답: { accessToken: "..." }
+      const accessToken: string | undefined = res.data?.accessToken;
 
-                        {/* 텍스트 버튼 */}
-                        <TextBtn
-                        onClick={() => navigate("/resetPassword")}
-                        >
-                        비밀번호 재설정
-                        </TextBtn>
+      if (!accessToken) {
+        setErrorMsg("로그인 응답에 accessToken이 없습니다.");
+        return;
+      }
 
-                    </FormBox>
+      localStorage.setItem("accessToken", accessToken);
+      await refreshMe();
+      // 로그인 성공 후 이동(원하는 경로로 바꿔도 됨)
+      navigate("/");
+    } catch (err: any) {
+      // GlobalExceptionHandler가 {message:"..."} 형태면 여기서 잡힘
+      const msg =
+        err?.response?.data?.message ||
+        (typeof err?.response?.data === "string" ? err.response.data : null) ||
+        "로그인에 실패했습니다.";
+      setErrorMsg(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                </ContentArea>
-            </LoginBox>
-        </Wrapper>
-    );
+  return (
+    <Wrapper>
+      <LoginBox>
+        <Title>로그인</Title>
+
+        <ContentArea>
+          <FormBox>
+            <div className="inputGroup">
+              <div className="label">이메일</div>
+              <input
+                type="email"
+                className="input"
+                placeholder="이메일"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+              />
+            </div>
+
+            <div className="inputGroup">
+              <div className="label">비밀번호</div>
+              <input
+                type="password"
+                className="input"
+                placeholder="비밀번호"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleLogin();
+                }}
+              />
+            </div>
+
+            {errorMsg && <ErrorText role="alert">{errorMsg}</ErrorText>}
+
+            <ButtonRow>
+              <button
+                type="button"
+                className="button_center"
+                onClick={() => navigate("/term")}
+                disabled={loading}
+              >
+                회원가입
+              </button>
+
+              <button
+                type="button"
+                className="button_center"
+                onClick={handleLogin}
+                disabled={loading}
+              >
+                {loading ? "로그인 중..." : "로그인"}
+              </button>
+            </ButtonRow>
+
+            <TextBtn onClick={() => navigate("/resetPassword")} disabled={loading}>
+              비밀번호 재설정
+            </TextBtn>
+          </FormBox>
+        </ContentArea>
+      </LoginBox>
+    </Wrapper>
+  );
 };
+
+const ErrorText = styled.div`
+  color: #dc2626;
+  font-size: 13px;
+  margin-top: 4px;
+`;
 
 const Title = styled.div`
   position: absolute;
@@ -86,11 +142,7 @@ const Title = styled.div`
 const Wrapper = styled.div`
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(
-    135deg,
-    #1f3a5f 0%,
-    #162c48 100%
-  );
+  background: linear-gradient(135deg, #1f3a5f 0%, #162c48 100%);
 
   display: flex;
   justify-content: center;
@@ -121,23 +173,20 @@ const ContentArea = styled.div`
   gap: 40px;
 `;
 
-// 입력 + 버튼 전체 묶는 박스
 const FormBox = styled.div`
-  width: 360px;          /* 🔥 이 너비가 기준선 */
+  width: 360px;
   display: flex;
   flex-direction: column;
   gap: 14px;
 `;
 
-// 버튼 2개 줄
 const ButtonRow = styled.div`
   display: flex;
-  justify-content: flex-end;   /* 👉 오른쪽 정렬 */
+  justify-content: flex-end;
   gap: 10px;
-  margin-top: 6px;             /* 비번 입력과 간격 */
+  margin-top: 6px;
 `;
 
-// 비밀번호 분실 텍스트 버튼
 const TextBtn = styled.button`
   background: none;
   border: none;
@@ -154,6 +203,5 @@ const TextBtn = styled.button`
     text-decoration: underline;
   }
 `;
-
 
 export default LoginPage;
