@@ -1,512 +1,547 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "../../styles/Global.css";
-import {jsPDF} from "jspdf";
+import http from "../../api/http";
+
+import { jsPDF } from "jspdf";
 import { NotoSansKR } from "../../utils/NotoSansKR";
 
-// 타입 정의
+// ====== HEAD 쪽 DB/API 결과 타입(요약 리스트) ======
+type ChecklistRow = {
+  checklistId: number;
+  type: string;
+  content: string;
+};
+
+type RefRow = {
+  referenceId: number;
+  type: string;
+  title: string;
+  url: string;
+};
+
+type StoredRaw = {
+  checklist?: any; // FastAPI checklist_json
+  analysis?: any; // FastAPI analysis_json
+  overall_eligibility?: any;
+};
+
+// ====== frontend UI가 쓰는 타입 ======
 interface Judgment {
-    id: number;
-    category: string;
-    requirement_text: string;
-    judgment: "가능" | "불가능" | "확인 필요";
-    reason: string;
-    quote_from_announcement: string[]; // 토글
-    additional_action: string;
+  id: number;
+  category: string;
+  requirement_text: string;
+  judgment: "가능" | "불가능" | "확인 필요";
+  reason: string;
+  // 최종적으로 UI/PDF에서 항상 배열로 다룰 거라 string[]로 고정
+  quote_from_announcement: string[];
+  additional_action: string;
 }
 
 interface AnalysisData {
-    judgments: Judgment[];
-    purpose?: string;
-    evaluationItems?: string;
+  judgments: Judgment[];
+  purpose?: string;
+  evaluationItems?: string;
 }
 
-// 더미 데이터
-const DUMMY_DATA: AnalysisData = {
-    judgments: [
-        {
-            id: 1,
-            category: "신청주체 유형 (국가연구개발혁신법)",
-            requirement_text: "국가연구개발혁신법(이하 혁신법) 제2조제3호 및 같은 법 시행령 제2조제1항과 해양수산과학기술 육성법(이하 육성법) 제8조제1항 및 같은 법 시행령 제6조에 해당하는 연구개발기관",
-            judgment: "가능",
-            reason: "주식회사 내츄럴엔도텍은 「상법」 제169조에 따른 회사이며, 사업보고서에 '중소기업 해당 여부: 해당'으로 명시되어 있어 「중소기업기본법」 제2조에 따른 중소기업에 해당합니다. 따라서 국가연구개발혁신법 제2조제3호 사목 및 같은 법 시행령 제2조제1항제1호의 자격요건을 충족합니다.",
-            quote_from_announcement: [
-                "<국가연구개발혁신법 제2조제3호> 3. “연구개발기관”이란 다음 각 목의 기관ㆍ단체 중 국가연구개발사업을 수행하는 기관ㆍ단체를 말한다. 사. 「상법」 제169조에 따른 회사",
-                "<국가연구개발혁신법 시행령 제2조제1항> 제2조(연구개발기관) ①「국가연구개발혁신법」(이하 “법”이라 한다) 제2조제3호아목에서 “대통령령으로 정하는 기관ㆍ단체”란 다음 각 호의 기관ㆍ단체를 말한다. 1. 「중소기업기본법」제2조에 따른 중소기업",
-            ],
-            additional_action: ""
-        },
-        {
-            id: 2,
-            category: "신청주체 유형 (해양수산과학기술 육성법)",
-            requirement_text: "해양수산과학기술 육성법(이하 육성법) 제8조제1항 및 같은 법 시행령 제6조에 해당하는 연구개발기관",
-            judgment: "불가능",
-            reason: "공고문은 '해양수산과학기술 분야의 연구기관 또는 단체로서 해양수산과학기술 관련 업무를 수행하는 연구기관 또는 단체'를 요구합니다. 주식회사 내츄럴엔도텍의 사업보고서에 명시된 주요 사업은 'Health&Beauty' 분야의 건강기능식품 및 화장품 연구개발 및 제조, 판매입니다. 이는 '해양·극지의 환경 및 생태계에 관한 기후예측시스템 개발' 사업과는 직접적인 관련성이 없어 보이며, 해양수산과학기술 분야의 연구기관으로 보기 어렵습니다. 사업보고서 어디에도 해양수산과학기술 관련 업무를 수행한다는 내용은 없습니다.",
-            quote_from_announcement: [
-                "<해양수산과학기술 육성법 시행령 제6조> 제6조(연구개발사업등의 협약체결 대상 연구기관 또는 단체) 법 제8조제1항제8호에서 “대통령령으로 정하는 해양수산과학기술 분야의 연구기관 또는 단체”란 다음 각 호의 연구기관 또는 단체로서 해양수산과학기술 관련 업무를 수행하는 연구기관 또는 단체를 말한다.",
-            ],
-            additional_action: "회사가 해양수산과학기술 분야와 관련된 연구 실적이나 사업 계획이 있는지 추가 확인이 필요합니다. 현재 정보로는 해당 분야의 전문성을 입증하기 어렵습니다."
-        },
-    ]
-};
+// ====== FastAPI / DB raw JSON -> UI 타입으로 변환 ======
+function normalizeAnalysisData(rawChecklist: any, rawAnalysis: any): AnalysisData | null {
+  if (!rawChecklist && !rawAnalysis) return null;
 
+  const list =
+    rawChecklist?.judgments ??
+    rawChecklist?.requirements ??
+    rawChecklist?.items ??
+    rawAnalysis?.judgments ??
+    rawAnalysis?.requirements ??
+    rawAnalysis?.items ??
+    [];
+
+  const judgments: Judgment[] = Array.isArray(list)
+    ? list.map((it: any, idx: number) => {
+        // quote_from_announcement: string | string[] 케이스 모두 처리
+        const quotes = (() => {
+          const q = it?.quote_from_announcement ?? it?.quotes ?? [];
+          if (Array.isArray(q)) return q.map((x: any) => String(x));
+          if (q === null || q === undefined) return [];
+          return [String(q)];
+        })();
+
+        return {
+          id: Number(it?.id ?? idx + 1),
+          category: String(it?.category ?? it?.title ?? it?.requirement_category ?? `항목 ${idx + 1}`),
+          requirement_text: String(it?.requirement_text ?? it?.requirement ?? it?.text ?? it?.requirementText ?? ""),
+          judgment: ((): Judgment["judgment"] => {
+            const v = String(it?.judgment ?? it?.result ?? it?.status ?? "").trim();
+            if (v === "가능" || v === "불가능" || v === "확인 필요") return v as any;
+            if (v.toLowerCase() === "ok" || v.toLowerCase() === "pass" || v === "충족") return "가능";
+            if (v.toLowerCase() === "no" || v.toLowerCase() === "fail" || v === "미충족") return "불가능";
+            return "확인 필요";
+          })(),
+          reason: String(it?.reason ?? it?.why ?? it?.rationale ?? ""),
+          quote_from_announcement: quotes,
+          additional_action: String(it?.additional_action ?? it?.action ?? it?.next_step ?? ""),
+        };
+      })
+    : [];
+
+  // ===== 목적/평가항목: 네가 준 실제 analysis_json 구조에 맞춤 =====
+  // 목적 요약: background.summary
+  const purpose = rawAnalysis?.background?.summary ?? "";
+
+  // 평가항목 요약: evaluation_criteria[] (title + points)
+  const evaluationItems = Array.isArray(rawAnalysis?.evaluation_criteria)
+    ? rawAnalysis.evaluation_criteria
+        .map((c: any) => {
+          const t = c?.title ? `- ${String(c.title)}` : "";
+          const p = c?.points !== undefined ? ` (${String(c.points)}점)` : "";
+          return (t + p).trim();
+        })
+        .filter(Boolean)
+        .join("\n")
+    : "";
+
+  return {
+    judgments,
+    purpose: purpose ? String(purpose) : undefined,
+    evaluationItems: evaluationItems ? String(evaluationItems) : undefined,
+  };
+}
 
 const NoticeNewPageResult: React.FC = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    const location = useLocation();
-    const noticeId = location.state?.noticeId as number | undefined;
+  const noticeId = location.state?.noticeId as number | undefined;
+  const step1Result = location.state?.result as any | undefined;
 
-    const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
-    const [loading, setLoading] = useState(true);
+  // HEAD 로직 유지(조회 + 에러/로딩)
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    // 체크박스 상태 추가
-    const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set());
-    // 드롭다운 상태 추가
-    const [openQuoteId, setOpenQuoteId] = useState<number | null>(null);
-    // 체크리스트 아이템 확장 상태 관리
-    const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+  const [checklists, setChecklists] = useState<ChecklistRow[]>([]);
+  const [references, setReferences] = useState<RefRow[]>([]);
+  const [storedRaw, setStoredRaw] = useState<StoredRaw>({});
 
-    const toggleExpand = (id: number) => {
-        setExpandedItems(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(id)) {
-                newSet.delete(id);
-            } else {
-                newSet.add(id);
-            }
-            return newSet;
-        });
-    };
+  // frontend UI용 state
+  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
 
-    const toggleQuote = (id: number) => {
-        setOpenQuoteId(prev => (prev === id ? null : id));
-    };
+  const rawChecklist = useMemo(() => {
+    return step1Result?.fastapi?.data?.checklist ?? storedRaw.checklist ?? null;
+  }, [step1Result, storedRaw]);
 
-    useEffect(() => {
-        // 더미 데이터만 사용
-        setTimeout(() => {
-            setAnalysisData(DUMMY_DATA);
-            setLoading(false);
-        }, 500);
-    }, []);
+  const rawAnalysis = useMemo(() => {
+    return step1Result?.fastapi?.data?.analysis ?? storedRaw.analysis ?? null;
+  }, [step1Result, storedRaw]);
 
-    const handleBack = (id: number) => {
-        navigate("/process/analysis", {
-            state: { noticeId: id },
-        });
-    };
+  useEffect(() => {
+    if (!noticeId) {
+      setError("noticeId가 없습니다. /process에서 다시 들어오세요.");
+      return;
+    }
 
-    // 체크박스 핸들러
-    const handleCheckboxChange = (id: number) => {
-        setCheckedItems(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(id)) {
-                newSet.delete(id);
-            } else {
-                newSet.add(id);
-            }
-            return newSet;
-        });
-    };
+    setLoading(true);
+    setError(null);
 
-    // PDF 다운로드 함수
-    const handleDownloadPDF = () => {
-        if (!analysisData?.judgments || analysisData.judgments.length === 0) {
-            alert("다운로드할 데이터가 없습니다.");
-            return;
+    http
+      .get(`/api/notices/${noticeId}/analysis-results`)
+      .then(({ data }) => {
+        setChecklists((data.checklists ?? []) as ChecklistRow[]);
+        setReferences((data.references ?? []) as RefRow[]);
+        setStoredRaw((data.raw ?? {}) as StoredRaw);
+      })
+      .catch((e) => {
+        console.error(e);
+        setError("저장된 결과 조회 실패");
+      })
+      .finally(() => setLoading(false));
+  }, [noticeId]);
+
+  // raw -> UI 변환
+  useEffect(() => {
+    const normalized = normalizeAnalysisData(rawChecklist, rawAnalysis);
+    setAnalysisData(normalized);
+  }, [rawChecklist, rawAnalysis]);
+
+  const handleBack = (id: number) => {
+    navigate("/process/analysis", { state: { noticeId: id } });
+  };
+
+  const handleDownloadPDF = () => {
+    if (!analysisData?.judgments || analysisData.judgments.length === 0) {
+      alert("다운로드할 데이터가 없습니다.");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+    doc.addFileToVFS("NotoSansKR-Regular.ttf", NotoSansKR);
+    doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "normal");
+    doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "bold");
+
+    let y = 20;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+
+    doc.setFont("NotoSansKR", "bold");
+    doc.setFontSize(18);
+    doc.text("자격 요건 체크리스트", margin, y);
+    y += 15;
+
+    doc.setFont("NotoSansKR", "normal");
+    doc.setFontSize(10);
+    const today = new Date().toLocaleDateString("ko-KR");
+    doc.text(`작성일: ${today}`, margin, y);
+    y += 10;
+
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 10;
+
+    analysisData.judgments.forEach((req, idx) => {
+      if (y > 250) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.setFont("NotoSansKR", "bold");
+      doc.setFontSize(12);
+      doc.text(`${idx + 1}. ${req.category}`, margin, y);
+      y += 8;
+
+      doc.setFont("NotoSansKR", "normal");
+      doc.setFontSize(10);
+
+      doc.text("요구사항:", margin + 5, y);
+      y += 6;
+      doc.splitTextToSize(req.requirement_text, contentWidth - 10).forEach((line: string) => {
+        if (y > 280) {
+          doc.addPage();
+          y = 20;
         }
+        doc.text(line, margin + 10, y);
+        y += 5;
+      });
+      y += 3;
 
-        const doc = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: 'a4'
+      doc.text("가능 여부:", margin + 5, y);
+      y += 6;
+      doc.splitTextToSize(req.judgment, contentWidth - 10).forEach((line: string) => {
+        if (y > 280) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.text(line, margin + 10, y);
+        y += 5;
+      });
+      y += 8;
+
+      if (req.reason) {
+        doc.text("근거:", margin + 5, y);
+        y += 6;
+        doc.splitTextToSize(req.reason, contentWidth - 10).forEach((line: string) => {
+          if (y > 280) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(line, margin + 10, y);
+          y += 5;
         });
+        y += 6;
+      }
 
-        // 한글 폰트 설정을 위한 기본 설정
-        //doc.setFont("helvetica");
-        doc.addFileToVFS("NotoSansKR-Regular.ttf", NotoSansKR);
-        doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "normal");
-        doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "bold");
+      if (req.quote_from_announcement.length > 0) {
+        doc.text("관련 법령:", margin + 5, y);
+        y += 6;
 
-        let yPosition = 20;
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const margin = 20;
-        const contentWidth = pageWidth - (margin * 2);
-
-        // 제목
-        doc.setFont("NotoSansKR", "bold");
-        doc.setFontSize(18);
-        doc.text("자격 요건 체크리스트", margin, yPosition);
-        yPosition += 15;
-
-        // 날짜
-        doc.setFont("NotoSansKR", "normal");
-        doc.setFontSize(10);
-        const today = new Date().toLocaleDateString('ko-KR');
-        doc.text(`작성일: ${today}`, margin, yPosition);
-        yPosition += 10;
-
-        // 구분선
-        doc.setLineWidth(0.5);
-        doc.line(margin, yPosition, pageWidth - margin, yPosition);
-        yPosition += 10;
-
-        // 각 요건 항목
-        analysisData.judgments.forEach((req, index) => {
-            // 페이지 넘김 체크
-            if (yPosition > 250) {
-                doc.addPage();
-                yPosition = 20;
+        req.quote_from_announcement.forEach((quote: string) => {
+          doc.splitTextToSize(quote, contentWidth - 10).forEach((line: string) => {
+            if (y > 280) {
+              doc.addPage();
+              y = 20;
             }
-
-            // 체크박스 상태 표시
-            // const checkStatus = checkedItems.has(req.id) ? "[✓]" : "[ ]";
-
-            // 제목
-            doc.setFont("NotoSansKR", "bold");
-            doc.setFontSize(12);
-            doc.text(`${index + 1}. ${req.category}`, margin, yPosition);
-            yPosition += 8;
-
-            // 요구사항
-            doc.setFont("NotoSansKR", "normal");
-            doc.setFontSize(10);
-            doc.text("요구사항:", margin + 5, yPosition);
-            yPosition += 6;
-
-            const reqLines = doc.splitTextToSize(req.requirement_text, contentWidth - 10);
-            reqLines.forEach((line: string) => {
-                if (yPosition > 280) {
-                    doc.addPage();
-                    yPosition = 20;
-                }
-                doc.text(line, margin + 10, yPosition);
-                yPosition += 5;
-            });
-            yPosition += 3;
-
-            // 확인 필요
-            doc.text("가능 여부:", margin + 5, yPosition);
-            yPosition += 6;
-
-            const confirmLines = doc.splitTextToSize(req.judgment, contentWidth - 10);
-            confirmLines.forEach((line: string) => {
-                if (yPosition > 280) {
-                    doc.addPage();
-                    yPosition = 20;
-                }
-                doc.text(line, margin + 10, yPosition);
-                yPosition += 5;
-            });
-            yPosition += 8;
-
-            // 근거
-            doc.setFont("NotoSansKR", "normal");
-            doc.setFontSize(10);
-            doc.text("근거:", margin + 5, yPosition);
-            yPosition += 6;
-
-            const reasonLines = doc.splitTextToSize(req.reason, contentWidth - 10);
-            reasonLines.forEach((line: string) => {
-                if (yPosition > 280) {
-                    doc.addPage();
-                    yPosition = 20;
-                }
-                doc.text(line, margin + 10, yPosition);
-                yPosition += 5;
-            });
-            yPosition += 3;
-
-            // 관련 법령
-            doc.setFont("NotoSansKR", "normal");
-            doc.setFontSize(10);
-            doc.text("관련 법령:", margin + 5, yPosition);
-            yPosition += 6;
-
-            req.quote_from_announcement.forEach((quote: string) => {
-                const announcementLines = doc.splitTextToSize(
-                    quote,
-                    contentWidth - 10
-                );
-
-                announcementLines.forEach((line: string) => {
-                    if (yPosition > 280) {
-                    doc.addPage();
-                    yPosition = 20;
-                    }
-                    doc.text(line, margin + 10, yPosition);
-                    yPosition += 5;
-                });
-
-                // 문단 간 여백
-                yPosition += 4;
-            });
-            
-            if(req.additional_action.length > 0){
-                // 추가 조치
-                doc.setFont("NotoSansKR", "normal");
-                doc.setFontSize(10);
-                doc.text("추가 조치:", margin + 5, yPosition);
-                yPosition += 6;
-
-                const actionLines = doc.splitTextToSize(req.additional_action, contentWidth - 10);
-                actionLines.forEach((line: string) => {
-                    if (yPosition > 280) {
-                        doc.addPage();
-                        yPosition = 20;
-                    }
-                    doc.text(line, margin + 10, yPosition);
-                    yPosition += 5;
-                });
-                yPosition += 3;
-            }
-            
-
-            // 구분선
-            if (index < analysisData.judgments.length - 1) {
-                doc.setDrawColor(200, 200, 200);
-                doc.line(margin, yPosition, pageWidth - margin, yPosition);
-                yPosition += 8;
-            }
+            doc.text(line, margin + 10, y);
+            y += 5;
+          });
+          y += 4;
         });
+        y += 4;
+      }
 
-        // PDF 저장
-        doc.save(`자격요건_체크리스트_${today}.pdf`);
-    };
+      if (req.additional_action) {
+        doc.text("추가 조치:", margin + 5, y);
+        y += 6;
+        doc.splitTextToSize(req.additional_action, contentWidth - 10).forEach((line: string) => {
+          if (y > 280) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(line, margin + 10, y);
+          y += 5;
+        });
+        y += 6;
+      }
 
+      if (idx < analysisData.judgments.length - 1) {
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 8;
+      }
+    });
+
+    doc.save(`자격요건_체크리스트_${today}.pdf`);
+  };
+
+  // ====== 에러/로딩 ======
+  if (error) {
     return (
-        <Container>
-            <Card>
-                <div className="title" style={{ marginLeft: 0, marginBottom: 50 }}>
-                    공고문 분석
-                </div>
-
-                {/* <Row> */}
-
-                <ChecklistHeader>
-                    <div className="title" style={{ fontSize: 15 }}>
-                        자격 요건 체크리스트
-                    </div>
-                    <PDFDownloadButton onClick={handleDownloadPDF}>
-                        {/* <DownloadIcon>📄</DownloadIcon>
-                        PDF 다운로드 */}
-                        PDF로 다운로드
-                    </PDFDownloadButton>
-                </ChecklistHeader>
-
-                <Section>
-                    {analysisData?.judgments && analysisData.judgments.length > 0 ? (
-                        <RequirementList>
-                            {analysisData.judgments.map((req) => (
-                                <RequirementItem key={req.id}>
-                                    <RequirementHeader>
-                                        <HeaderLeft>
-                                            <RequirementTitle>{req.category}</RequirementTitle>
-                                        </HeaderLeft>
-                                        <StatusBadge status={req.judgment}>
-                                            {req.judgment}
-                                        </StatusBadge>
-                                    </RequirementHeader>
-
-                                    {/* <Label>요구사항:</Label> */}
-                                    <ExpandableText text={req.requirement_text} />
-
-                                    {req.reason.length > 0 && req.quote_from_announcement.length <= 0 && req.additional_action.length <= 0 && (
-                                        <ArrowWrapper onClick={() => toggleExpand(req.id)}>
-                                            {expandedItems.has(req.id) ? "▼ 근거" : "▶ 근거"}
-                                        </ArrowWrapper>
-                                    )}
-                                    {req.reason.length > 0 && req.quote_from_announcement.length > 0 && req.additional_action.length <= 0 && (
-                                        <ArrowWrapper onClick={() => toggleExpand(req.id)}>
-                                            {expandedItems.has(req.id) ? "▼ 근거, 관련 법령" : "▶ 근거, 관련 법령"}
-                                        </ArrowWrapper>
-                                    )}
-                                    {req.reason.length > 0 && req.quote_from_announcement.length > 0 && req.additional_action.length > 0 && (
-                                        <ArrowWrapper onClick={() => toggleExpand(req.id)}>
-                                            {expandedItems.has(req.id) ? "▼ 근거, 관련 법령, 추가 조치" : "▶ 근거, 관련 법령, 추가 조치"}
-                                        </ArrowWrapper>
-                                    )}
-
-                                    {expandedItems.has(req.id) && (
-                                        <>
-                                            {/* <Label style={{ marginTop: 12 }}>이유:</Label> */}
-                                            <ExpandableText text={req.reason} />
-
-                                            {req.quote_from_announcement.length > 0 && (
-                                                <Label
-                                                    // type="button"
-                                                    // onClick={() => toggleQuote(req.id)}
-                                                    style={{
-                                                        marginTop: 12,
-                                                        background: "none",
-                                                        border: "none",
-                                                        color: "#0984e3",
-                                                        cursor: "pointer",
-                                                        fontSize: 13,
-                                                        padding: 0,
-                                                    }}
-                                                >
-                                                    {/* {openQuoteId === req.id
-                                                        ? "관련 법령 ▲"
-                                                        : "관련 법령 ▼"} */}
-                                                        관련 법령
-                                                </Label>
-                                            )}
-
-                                            {/* {openQuoteId === req.id && ( */}
-                                                <div
-                                                    style={{
-                                                        marginTop: 10,
-                                                        padding: 14,
-                                                        background: "#f1f3f5",
-                                                        borderRadius: 8,
-                                                        fontSize: 13,
-                                                        lineHeight: 1.6,
-                                                    }}
-                                                >
-                                                    {req.quote_from_announcement.map((quote, idx) => (
-                                                        <div key={idx} style={{ marginBottom: 8 }}>
-                                                            {quote}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            
-
-                                            {req.additional_action !== "" && (
-                                                <ConfirmationBox>
-                                                    <Label>추가 조치</Label>
-                                                    <Text>{req.additional_action}</Text>
-                                                </ConfirmationBox>
-                                            )}
-                                        </>
-                                    )}
-                                </RequirementItem>
-                            ))}
-                        </RequirementList>
-                    ) : (
-                        <EmptyMessage>자격 요건 데이터가 없습니다.</EmptyMessage>
-                    )}
-                </Section>
-                <br />
-
-                <div className="title" style={{ fontSize: 15 }}>
-                    사업 목적 요약
-                </div>
-                <Section>
-                    사업 목적
-                </Section>
-                <br />
-
-                <div className="title" style={{ fontSize: 15 }}>
-                    평가항목 요약
-                </div>
-                <Section>
-                    평가항목
-                </Section>
-
-                <RightActionRow>
-                    <button
-                        type="button"
-                        className="button_center"
-                        style={{ width: 120 }}
-                        onClick={() => {
-                            if (!noticeId)
-                                return;
-                            handleBack(noticeId);
-                        }}>
-                        재추출
-                    </button>
-                </RightActionRow>
-
-
-                <DownloadWrapper>
-                    <DownloadButton>
-                        PPT 초안 다운로드
-                    </DownloadButton>
-                </DownloadWrapper>
-            </Card>
-        </Container>
+      <Container>
+        <Card>
+          <div className="title" style={{ marginLeft: 0, marginBottom: 20 }}>
+            공고문 분석
+          </div>
+          <ErrorText>{error}</ErrorText>
+          <RightActionRow>
+            <button type="button" className="button_center" style={{ width: 120 }} onClick={() => navigate("/process")}>
+              돌아가기
+            </button>
+          </RightActionRow>
+        </Card>
+      </Container>
     );
+  }
+
+  if (loading) {
+    return (
+      <Container>
+        <Card>
+          <div className="title" style={{ marginLeft: 0, marginBottom: 20 }}>
+            공고문 분석
+          </div>
+          <div style={{ padding: 20 }}>로딩 중...</div>
+        </Card>
+      </Container>
+    );
+  }
+
+  // ====== UI는 frontend 스타일 ======
+  return (
+    <Container>
+      <Card>
+        <div className="title" style={{ marginLeft: 0, marginBottom: 50 }}>
+          공고문 분석
+        </div>
+
+        <ChecklistHeader>
+          <div className="title" style={{ fontSize: 15 }}>
+            자격 요건 체크리스트
+          </div>
+          <PDFDownloadButton onClick={handleDownloadPDF}>PDF로 다운로드</PDFDownloadButton>
+        </ChecklistHeader>
+
+        <Section>
+          {analysisData?.judgments && analysisData.judgments.length > 0 ? (
+            <RequirementList>
+              {analysisData.judgments.map((req) => (
+                <RequirementItem key={req.id}>
+                  <RequirementHeader>
+                    <HeaderLeft>
+                      <RequirementTitle>{req.category}</RequirementTitle>
+                    </HeaderLeft>
+                    <StatusBadge status={req.judgment}>{req.judgment}</StatusBadge>
+                  </RequirementHeader>
+
+                  <ExpandableText text={req.requirement_text} />
+
+                  {(req.reason || req.quote_from_announcement.length > 0 || req.additional_action) && (
+                    <ArrowWrapper>{/* 여기서 토글 넣고 싶으면 넣어 */}</ArrowWrapper>
+                  )}
+
+                  {(req.reason || req.quote_from_announcement.length > 0 || req.additional_action) && (
+                    <>
+                      {req.reason && <ExpandableText text={req.reason} />}
+
+                      {req.quote_from_announcement.length > 0 && (
+                        <>
+                          <Label style={{ marginTop: 12, color: "#0984e3" }}>관련 법령</Label>
+                          <div
+                            style={{
+                              marginTop: 10,
+                              padding: 14,
+                              background: "#f1f3f5",
+                              borderRadius: 8,
+                              fontSize: 13,
+                              lineHeight: 1.6,
+                            }}
+                          >
+                            {req.quote_from_announcement.map((q, idx) => (
+                              <div key={idx} style={{ marginBottom: 8 }}>
+                                {q}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {req.additional_action && (
+                        <ConfirmationBox>
+                          <Label>추가 조치</Label>
+                          <Text>{req.additional_action}</Text>
+                        </ConfirmationBox>
+                      )}
+                    </>
+                  )}
+                </RequirementItem>
+              ))}
+            </RequirementList>
+          ) : (
+            <EmptyMessage>자격 요건 데이터가 없습니다.</EmptyMessage>
+          )}
+        </Section>
+
+        <br />
+
+        <div className="title" style={{ fontSize: 15 }}>
+          사업 목적 요약
+        </div>
+        <Section>
+          <Text>{analysisData?.purpose ?? "데이터 없음"}</Text>
+        </Section>
+
+        <br />
+
+        <div className="title" style={{ fontSize: 15 }}>
+          평가항목 요약
+        </div>
+        <Section>
+          <Text style={{ whiteSpace: "pre-wrap" }}>{analysisData?.evaluationItems ?? "데이터 없음"}</Text>
+        </Section>
+
+        <RightActionRow>
+          <button
+            type="button"
+            className="button_center"
+            style={{ width: 120 }}
+            onClick={() => noticeId && handleBack(noticeId)}
+          >
+            재추출
+          </button>
+        </RightActionRow>
+
+        {/* (옵션) HEAD 기능: DB에 저장된 요약 체크리스트/참고자료도 같이 보여주기 */}
+        <br />
+        <div className="title" style={{ fontSize: 15 }}>
+          저장된 체크리스트(요약)
+        </div>
+        <Section>
+          {checklists.length === 0 ? (
+            <EmptyMessage>저장된 체크리스트가 없습니다.</EmptyMessage>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {checklists.map((c) => (
+                <li key={c.checklistId} style={{ margin: "8px 0", lineHeight: 1.5 }}>
+                  <Tag>{c.type}</Tag> {c.content}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+
+        <div className="title" style={{ fontSize: 15 }}>
+          참고자료
+        </div>
+        <Section>
+          {references.length === 0 ? (
+            <EmptyMessage>저장된 참고자료가 없습니다.</EmptyMessage>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {references.map((r) => (
+                <li key={r.referenceId} style={{ margin: "8px 0", lineHeight: 1.5 }}>
+                  <Tag>{r.type}</Tag>{" "}
+                  {r.url?.startsWith("http") ? (
+                    <a href={r.url} target="_blank" rel="noreferrer">
+                      {r.title}
+                    </a>
+                  ) : (
+                    <>
+                      {r.title} — <Code>{r.url}</Code>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      </Card>
+    </Container>
+  );
 };
 
-// Text Expandable Component
+// ====== ExpandableText (frontend UI 컴포) ======
 const ExpandableText: React.FC<{ text: string }> = ({ text }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [isOverflowing, setIsOverflowing] = useState(false);
-    const textRef = React.useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const textRef = React.useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        if (textRef.current) {
-            // Check if scrollWidth is greater than clientWidth
-            const element = textRef.current;
-            if (element.scrollWidth > element.clientWidth) {
-                setIsOverflowing(true);
-            }
+  useEffect(() => {
+    if (textRef.current) {
+      const el = textRef.current;
+      setIsOverflowing(el.scrollWidth > el.clientWidth);
+    }
+  }, [text]);
+
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+      <Text
+        ref={textRef as any}
+        style={
+          isExpanded
+            ? {}
+            : {
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                flex: 1,
+                minWidth: 0,
+              }
         }
-    }, [text]);
-
-    return (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <Text
-                ref={textRef}
-                style={
-                    isExpanded
-                        ? {}
-                        : {
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            flex: 1, // Take available space
-                            minWidth: 0, // Enable truncation
-                        }
-                }
-            >
-                {text}
-            </Text>
-            {isOverflowing && !isExpanded && (
-                <MoreButton onClick={() => setIsExpanded(true)} style={{ flexShrink: 0 }}>
-                    [더보기]
-                </MoreButton>
-            )}
-        </div>
-    );
+      >
+        {text}
+      </Text>
+      {isOverflowing && !isExpanded && (
+        <MoreButton onClick={() => setIsExpanded(true)} style={{ flexShrink: 0 }}>
+          [더보기]
+        </MoreButton>
+      )}
+    </div>
+  );
 };
 
 export default NoticeNewPageResult;
 
+// ====== styled (frontend 스타일 우선 + 필요한 것만 추가) ======
 const Container = styled.div`
-  width: 100%;
-  min-height: 100vh;
-  background: #d9d9d9;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 30px 0;
-  box-sizing: border-box;
+  padding: 60px;
 `;
 
 const Card = styled.div`
-  width: 1100px;
   background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 28px;
-  box-sizing: border-box;
-
-`;
-
-const CardActions = styled.div`
-  margin-top: 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
 `;
 
 const RightActionRow = styled.div`
-    margin-top: 32px;
-    display: flex;
-    justify-content: flex-end;
+  margin-top: 32px;
+  display: flex;
+  justify-content: flex-end;
+`;
+
+const ErrorText = styled.div`
+  color: #b91c1c;
+  margin: 16px 0;
 `;
 
 const Label = styled.div`
@@ -523,33 +558,29 @@ const Text = styled.div`
 `;
 
 const Section = styled.div`
-    width: 100%;
-    height: 300px;  /* min-height 대신 height 사용 */
-    background: #f8f9fa;
-    border-radius: 12px;
-    padding: 28px;
-    box-sizing: border-box;
-    position: relative;
-    overflow-y: auto;  /* 세로 스크롤 활성화 */
+  width: 100%;
+  height: 300px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 28px;
+  box-sizing: border-box;
+  position: relative;
+  overflow-y: auto;
 
-    /* 스크롤바 스타일링 (선택사항) */
-    &::-webkit-scrollbar {
+  &::-webkit-scrollbar {
     width: 8px;
-    }
-
-    &::-webkit-scrollbar-track {
+  }
+  &::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 10px;
-    }
-
-    &::-webkit-scrollbar-thumb {
+  }
+  &::-webkit-scrollbar-thumb {
     background: #888;
     border-radius: 10px;
-    }
-
-    &::-webkit-scrollbar-thumb:hover {
+  }
+  &::-webkit-scrollbar-thumb:hover {
     background: #555;
-    }
+  }
 `;
 
 const EmptyMessage = styled.div`
@@ -585,10 +616,6 @@ const RequirementTitle = styled.h3`
   color: #2d3436;
 `;
 
-const RequirementContent = styled.div`
-  margin-bottom: 12px;
-`;
-
 const ConfirmationBox = styled.div`
   background: #fff3cd;
   border-left: 4px solid #ffc107;
@@ -597,120 +624,104 @@ const ConfirmationBox = styled.div`
   border-radius: 4px;
 `;
 
-const DownloadWrapper = styled.div`
-  margin-top: 40px;
-  display: flex;
-  justify-content: center;
-`;
-
-
-const DownloadButton = styled.button`
-  padding: 14px 28px;
-  background-color: #00b894;
-  color: white;
-  border-radius: 8px;
-  font-size: 16px;
-  text-decoration: none;
-  cursor: pointer;
-
-  &:hover {
-    background-color: #009c7a;
-  }
-`;
-
 const HeaderLeft = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
 `;
 
-const Checkbox = styled.input`
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  accent-color: #00b894;  /* 체크박스 색상 */
-`;
-
 const ChecklistHeader = styled.div`
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 `;
 
 const PDFDownloadButton = styled.button`
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
 
-    &:hover {
-        background-color: #45a049;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    }
-
-    &:active {
-        transform: translateY(0);
-    }
+  &:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  &:active {
+    transform: translateY(0);
+  }
 `;
 
 const MoreButton = styled.button`
-    background: none;
-    border: none;
-    color: #636e72;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 0; 
-    
-    &:hover {
-        color: #2d3436;
-        text-decoration: underline;
-    }
+  background: none;
+  border: none;
+  color: #636e72;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0;
+
+  &:hover {
+    color: #2d3436;
+    text-decoration: underline;
+  }
 `;
 
 const ArrowWrapper = styled.div`
-    display: flex;
-    justify-content: flex-start; /* 왼쪽 정렬 */
-    margin-top: 10px;
-    cursor: pointer;
-    font-size: 14px;
-    color: #636e72;
-    
-    &:hover {
-        color: #2d3436;
-    }
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 10px;
+  cursor: default;
+  font-size: 14px;
+  color: #636e72;
 `;
 
 const StatusBadge = styled.div<{ status: string }>`
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    color: white;
-    background-color: ${(props) => {
-        switch (props.status) {
-            case "가능":
-                return "#00b894"; // Green
-            case "불가능":
-                return "#d63031"; // Red
-            case "확인 필요":
-                return "#fdcb6e"; // Yellow
-            default:
-                return "#b2bec3"; // Gray
-        }
-    }};
-    /* 글자색 조정 (노란색 배경일 때 가독성 위해) */
-    ${(props) => props.status === "확인 필요" && `
-        color: #2d3436;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  background-color: ${(props) => {
+    switch (props.status) {
+      case "가능":
+        return "#00b894";
+      case "불가능":
+        return "#d63031";
+      case "확인 필요":
+        return "#fdcb6e";
+      default:
+        return "#b2bec3";
+    }
+  }};
+  ${(props) =>
+    props.status === "확인 필요" &&
+    `
+      color: #2d3436;
     `}
+`;
+
+const Tag = styled.span`
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  margin-right: 6px;
+`;
+
+const Code = styled.span`
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
 `;

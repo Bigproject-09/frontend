@@ -1,22 +1,8 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/Global.css";
-import { STORAGE_KEY } from "../../common/constants";
-
-type NoticeItem = {
-  id: number;
-  title: string;
-  dday: string;
-  score: number;
-  isRead: boolean;
-  url?: string;
-
-  org?: string;
-  budget?: string;
-  period?: string;
-  summary?: string;
-};
+import http from "../../api/http";
 
 type AnnounceStep =
   | "UPLOAD_CHECK"
@@ -34,14 +20,15 @@ const STEP_TEXT: Record<AnnounceStep, string> = {
 const AnnounceCreatePage: React.FC = () => {
   const navigate = useNavigate();
 
-  const [title, setTitle] = useState("");
-  const [org, setOrg] = useState("");
-  const [budget, setBudget] = useState("");
-  const [period, setPeriod] = useState("");
-  const [url, setUrl] = useState("");
-  const [summary, setSummary] = useState("");
-  // 로딩 상태 추가
+  const [title, setTitle] = useState("-");
+  const [org, setOrg] = useState("-");
+  const [budget, setBudget] = useState("-");
+  const [period, setPeriod] = useState("-");
+  const [url, setUrl] = useState("-");
+  const [summary, setSummary] = useState("-");
+
   const [isLoading, setIsLoading] = useState(false);
+  const [pptResult, setPptResult] = useState<any | null>(null);
   const [step, setStep] = useState<AnnounceStep>("UPLOAD_CHECK");
   const [progress, setProgress] = useState(0);
 
@@ -56,87 +43,38 @@ const AnnounceCreatePage: React.FC = () => {
   const location = useLocation();
   const noticeId = location.state?.noticeId as number | undefined;
 
+  // ✅ 공고 상세 API 호출 (ProcessPage와 동일)
   useEffect(() => {
-  if (!noticeId) return;
+    if (!noticeId) return;
 
-  const items = loadItems();
-  const target = items.find((it) => it.id === noticeId);
+    (async () => {
+      try {
+        const { data } = await http.get(`/api/notices/${noticeId}`);
 
-  if (!target) return;
+        const stripHtml = (html: string) => {
+          if (!html) return "-";
+          const tmp = document.createElement("DIV");
+          tmp.innerHTML = html;
+          return tmp.textContent || tmp.innerText || "-";
+        };
 
-  setTitle(target.title ?? "");
-  setOrg(target.org ?? "");
-  setBudget(target.budget ?? "");
-  setPeriod(target.period ?? "");
-  setUrl(target.url ?? "");
-  setSummary(target.summary ?? "");
-}, [noticeId]);
-
-
-  const requiredFields = useMemo(
-    () => [
-      { label: "제목", value: title, ref: titleRef },
-      { label: "기관", value: org, ref: orgRef },
-      { label: "예산", value: budget, ref: budgetRef },
-      { label: "기간", value: period, ref: periodRef },
-      { label: "URL", value: url, ref: urlRef },
-      // { label: "요약", value: summary, ref: summaryRef },
-    ],
-    [title, org, budget, period, url, summary]
-  );
-
-  const loadItems = (): NoticeItem[] => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? (parsed as NoticeItem[]) : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const focusFirstEmpty = () => {
-    const firstEmpty = requiredFields.find((f) => !f.value.trim());
-    if (!firstEmpty) return false;
-
-    alert(`${firstEmpty.label} 항목을 입력해 주세요.`);
-
-    const el = firstEmpty.ref.current;
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      setTimeout(() => el.focus(), 150);
-    }
-    return true;
-  };
-
-  // 공고와 추가파일들을 업로드 후 분석하면 발생하는 이벤트
-  const handleSubmit = async(id: number) => {
-    if (focusFirstEmpty()) return;
-
-    setIsLoading(true);
-
-    try {
-      // 🔥 실제로는 여기서 API 호출
-      await runStep("UPLOAD_CHECK", 800);
-      await runStep("CHECKLIST_CREATE", 1400);
-      await runStep("PURPOSE_SUMMARY", 1200);
-      await runStep("CATEGORY_SUMMARY", 900);
-
-      navigate("/process/analysis/result", {
-        state: { noticeId: id },
-      });
-    } catch (e) {
-        alert("분석 중 오류가 발생했습니다.");
-        setIsLoading(false);
-    }
-  };
-
-  const handleBackToProcess = (id:number) => {
-      navigate("/process", {
-      state: {noticeId: id},
-    });
-  }
+        setTitle(data.title || "-");
+        setOrg(data.author || data.excInsttNm || "-");
+        setPeriod(data.reqstDt || "-");
+        setUrl(data.link || "-");
+        setSummary(stripHtml(data.description));
+        setBudget("-"); // 예산 필드 생기면 매핑
+      } catch (err) {
+        console.error("공고 조회 오류:", err);
+        setTitle("-");
+        setOrg("-");
+        setBudget("-");
+        setPeriod("-");
+        setUrl("-");
+        setSummary("-");
+      }
+    })();
+  }, [noticeId]);
 
   const runStep = (s: AnnounceStep, duration: number) => {
     return new Promise<void>((resolve) => {
@@ -146,10 +84,7 @@ const AnnounceCreatePage: React.FC = () => {
       const start = Date.now();
       const timer = setInterval(() => {
         const elapsed = Date.now() - start;
-        const percent = Math.min(
-          Math.floor((elapsed / duration) * 100),
-          100
-        );
+        const percent = Math.min(Math.floor((elapsed / duration) * 100), 100);
         setProgress(percent);
 
         if (percent >= 100) {
@@ -160,16 +95,42 @@ const AnnounceCreatePage: React.FC = () => {
     });
   };
 
+  const handleSubmit = async (id: number) => {
+    setIsLoading(true);
+    setPptResult(null);
+
+    try {
+      await runStep("UPLOAD_CHECK", 400);
+      await runStep("CHECKLIST_CREATE", 400);
+
+      const { data } = await http.post(`/api/notices/${id}/generate-ppt`, null, {
+        params: { companyId: 1 },
+      });
+      setPptResult(data);
+
+      await runStep("PURPOSE_SUMMARY", 300);
+      await runStep("CATEGORY_SUMMARY", 300);
+    } catch (e) {
+      console.error(e);
+      alert("실행 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBackToProcess = (id: number) => {
+    navigate("/process", { state: { noticeId: id } });
+  };
 
   return (
     <Page>
-      {/* 로딩 상태일 때 채워주는 페이지 */}
       {isLoading && (
         <LoadingOverlay>
           <LoadingBox>
             <Spinner />
-              {STEP_TEXT[step]}<br />
-              {progress}%
+            {STEP_TEXT[step]}
+            <br />
+            {progress}%
           </LoadingBox>
         </LoadingOverlay>
       )}
@@ -191,18 +152,24 @@ const AnnounceCreatePage: React.FC = () => {
             <div className="text">{period}</div>
 
             <div className="label">URL</div>
-            <div className="text">{url}</div>
+            <div className="text">
+              {url !== "-" ? (
+                <a href={url} target="_blank" rel="noreferrer">
+                  {url}
+                </a>
+              ) : (
+                url
+              )}
+            </div>
           </ModalGrid>
 
-            <ModalSummary>
+          <ModalSummary>
             <div className="label">요약</div>
             <div className="text">{summary}</div>
-            </ModalSummary>
+          </ModalSummary>
 
           <UploadArea>
-            <UploadLabel htmlFor="file">
-            추가파일 업로드
-            </UploadLabel>
+            <UploadLabel htmlFor="file">추가파일 업로드</UploadLabel>
             <HiddenInput
               id="file"
               type="file"
@@ -213,7 +180,7 @@ const AnnounceCreatePage: React.FC = () => {
                 setFiles(selectedFiles);
               }}
             />
-              {files.length > 0 && (
+            {files.length > 0 && (
               <FileList>
                 {files.map((file, idx) => (
                   <li key={idx}>{file.name}</li>
@@ -223,20 +190,36 @@ const AnnounceCreatePage: React.FC = () => {
           </UploadArea>
 
           <ModalActions>
-            <MiniBtn type="button" onClick={() => {
-              if (!noticeId) return;
-              handleSubmit(noticeId);
-            }}>
+            <MiniBtn
+              type="button"
+              onClick={() => {
+                if (!noticeId) return;
+                handleSubmit(noticeId);
+              }}
+            >
               제작
             </MiniBtn>
-            <MiniBtn type="button" onClick={() => 
-            {
-              if(!noticeId) return;
-              handleBackToProcess(noticeId);
-            }}>
+            <MiniBtn
+              type="button"
+              onClick={() => {
+                if (!noticeId) return;
+                handleBackToProcess(noticeId);
+              }}
+            >
               닫기
             </MiniBtn>
           </ModalActions>
+
+          {/* ✅ PPT 생성 결과 출력: return 안, Section 안 */}
+          {pptResult && (
+            <ResultBox>
+              <ResultTitle>PPT 생성 결과</ResultTitle>
+              <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>
+                {JSON.stringify(pptResult, null, 2)}
+              </pre>
+            </ResultBox>
+          )}
+
         </Section>
       </Card>
     </Page>
@@ -264,7 +247,7 @@ const Card = styled.div`
   border-radius: 12px;
   padding: 28px;
   box-sizing: border-box;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06)
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 `;
 
 const Section = styled.div`
@@ -289,21 +272,20 @@ const ModalGrid = styled.div`
     font-weight: 500;
   }
 
-  .input {
-    width: 100%;
-    height: 38px;
-    padding: 0 12px;
-    box-sizing: border-box;
-
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
+  .text {
     font-size: 14px;
+    color: #1f2937;
+    line-height: 1.5;
+    word-break: break-word;
   }
 
-  .input:focus {
-    outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px rgba(46, 111, 219, 0.15);
+  a {
+    color: #2563eb;
+    text-decoration: underline;
+
+    &:hover {
+      opacity: 0.85;
+    }
   }
 `;
 
@@ -312,11 +294,22 @@ const ModalSummary = styled.div`
   padding-top: 12px;
   border-top: 1px solid rgba(0, 0, 0, 0.12);
   font-size: 14px;
-  line-height:1.45;
+  line-height: 1.45;
+
+  .label {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+
+  .text {
+    font-size: 14px;
+    color: #1f2937;
+    white-space: pre-wrap;
   }
 `;
 
-/* 업로드 버튼 */
 const UploadLabel = styled.label`
   padding: 12px 26px;
   background-color: var(--color-accent);
@@ -349,7 +342,6 @@ const ModalActions = styled.div`
   gap: 10px;
 `;
 
-
 const MiniBtn = styled.button`
   width: 80px;
   height: 36px;
@@ -365,8 +357,6 @@ const MiniBtn = styled.button`
   }
 `;
 
-
-// 올린 파일 리스트
 const FileList = styled.ul`
   margin-top: 12px;
   padding: 12px 16px;
@@ -417,4 +407,19 @@ const Spinner = styled.div`
       transform: rotate(360deg);
     }
   }
+`;
+
+
+const ResultBox = styled.div`
+  margin-top: 20px;
+  padding: 16px 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+`;
+
+const ResultTitle = styled.div`
+  font-size: 14px;
+  font-weight: 800;
+  margin: 10px 0;
 `;

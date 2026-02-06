@@ -44,6 +44,8 @@ const RFPSearchPage: React.FC = () => {
   const urlRef = useRef<HTMLInputElement | null>(null);
 
   const [files, setFiles] = useState<File[]>([]);
+  const location = useLocation();
+  const noticeId = location.state?.noticeId as number | undefined;
 
   useEffect(() => {
     if (!noticeId) {
@@ -563,4 +565,18 @@ const Spinner = styled.div`
       transform: rotate(360deg);
     }
   }
+`;
+
+const ResultBox = styled.div`
+  margin-top: 20px;
+  padding: 16px 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+`;
+
+const ResultTitle = styled.div`
+  font-size: 14px;
+  font-weight: 800;
+  margin: 10px 0;
 `;
