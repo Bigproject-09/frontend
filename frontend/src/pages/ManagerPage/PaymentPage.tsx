@@ -26,11 +26,11 @@ const plans: Plan[] = [
 const PaymentPage: React.FC = () => {
     const navigate = useNavigate();
       const menus = [
-    {
-      name: "토큰 확인",
-      path: "/manager/tokentab",
-      onClick:() => navigate("/manager/tokentab")
-    },
+    // {
+    //   name: "토큰 확인",
+    //   path: "/manager/tokentab",
+    //   onClick:() => navigate("/manager/tokentab")
+    // },
     {
       name: "역할 관리",
       path: "/manager/rolemanagetab",

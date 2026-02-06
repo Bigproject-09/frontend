@@ -15,14 +15,14 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
         <div className="manager-logo">Biz & Busy</div>
 
         <nav className="manager-menu">
-            <div className="menu-group separated">
+            {/* <div className="menu-group separated">
               <button
                 className="menu-btn"
                 onClick={() => navigate("/manager/tokentab")}
               >
                 <div className="manager-menu-item">토큰 확인 탭</div>
               </button>
-            </div>
+            </div> */}
 
             <div className="menu-group separated">
                 <div className="menu-group">
