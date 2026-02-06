@@ -5,6 +5,16 @@ import styled from "styled-components";
 const MainPage: React.FC = () => {
   const navigate = useNavigate();
 
+  const handleStartClick = () => {
+    const token = localStorage.getItem('accessToken');
+
+    if (token) {
+      navigate('/notice');
+    } else {
+      navigate('/login');
+    }
+  };
+
   return (
     <div
       style={{
@@ -17,7 +27,7 @@ const MainPage: React.FC = () => {
         alignItems: "flex-start",
         backgroundColor: "#fff",
         boxSizing: "border-box",
-        paddingTop: "20px", // 헤더와 간격
+        paddingTop: "20px",
       }}
     >
       <div
@@ -38,7 +48,7 @@ const MainPage: React.FC = () => {
           </div>
           <button
             className="button"
-            onClick={() => navigate("/login")}
+            onClick={handleStartClick}
             style={{
               background: "#e0e0e0",
               padding: "1rem 2rem",
@@ -68,7 +78,6 @@ const MainPage: React.FC = () => {
         <div style={{ width: "100%", maxWidth: "1200px" }}>
           <CardGrid>
             <FeatureCard>
-              {/* <div className="step">STEP 1</div> */}
               <h3>공고문 분석</h3>
               <ul>
                 <li>자격요건 체크리스트 제공</li>
@@ -77,7 +86,6 @@ const MainPage: React.FC = () => {
               </ul>
             </FeatureCard>
             <FeatureCard>
-              {/* <div className="step">STEP 2</div> */}
               <h3>유관 RFP 검색</h3>
               <ul>
                 <li>동일 주관 기관 내 유사 RFP 추천</li>
@@ -85,7 +93,6 @@ const MainPage: React.FC = () => {
               </ul>
             </FeatureCard>
             <FeatureCard>
-              {/* <div className="step">STEP 3</div> */}
               <h3>발표자료 제작</h3>
               <ul>
                 <li>스토리라인 구성</li>
@@ -94,7 +101,6 @@ const MainPage: React.FC = () => {
               </ul>
             </FeatureCard>
             <FeatureCard>
-              {/* <div className="step">STEP 4</div> */}
               <h3>스크립트 생성</h3>
               <ul>
                 <li>스크립트 생성</li>
@@ -115,7 +121,7 @@ const CardGrid = styled.div`
   grid-template-columns: repeat(4, 1fr);
   gap: 24px;
   width: 100%;
-  
+
   @media (max-width: 1024px) {
      grid-template-columns: repeat(2, 1fr);
   }
@@ -133,8 +139,8 @@ const FeatureCard = styled.div`
   flex-direction: column;
   justify-content: flex-start;
   min-height: 180px;
-  position: relative; // For absolute positioning if needed, or just normal flow
-  
+  position: relative;
+
   .step {
     display: inline-block;
     background: #e0e7ff;
@@ -153,13 +159,13 @@ const FeatureCard = styled.div`
     margin: 0 0 12px 0;
     color: #111827;
   }
-  
+
   ul {
     margin: 0;
     padding-left: 20px;
     font-size: 0.9rem;
     color: #4b5563;
-    
+
     li {
       margin-bottom: 4px;
     }

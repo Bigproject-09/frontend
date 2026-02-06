@@ -2,21 +2,6 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/Global.css";
-import { STORAGE_KEY } from "../../common/constants";
-
-type NoticeItem = {
-  id: number;
-  title: string;
-  dday: string;
-  score: number;
-  isRead: boolean;
-  url?: string;
-
-  org?: string;
-  budget?: string;
-  period?: string;
-  summary?: string;
-};
 
 type ScriptStep =
   | "UPLOAD_CHECK"
@@ -26,13 +11,15 @@ type ScriptStep =
 
 const STEP_TEXT: Record<ScriptStep, string> = {
   UPLOAD_CHECK: "추가 파일 확인 중...",
-  CHECKLIST_CREATE: "체크리스트 생성 중...",
-  PURPOSE_SUMMARY: "사업 목적 요약 중...",
-  CATEGORY_SUMMARY: "평가항목 요약 중...",
+  CHECKLIST_CREATE: "스크립트 생성 중...",
+  PURPOSE_SUMMARY: "대본 작성 중...",
+  CATEGORY_SUMMARY: "Q&A 생성 중...",
 };
 
 const ScriptCreatePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const noticeId = location.state?.noticeId as number | undefined;
 
   const [title, setTitle] = useState("");
   const [org, setOrg] = useState("");
@@ -40,7 +27,10 @@ const ScriptCreatePage: React.FC = () => {
   const [period, setPeriod] = useState("");
   const [url, setUrl] = useState("");
   const [summary, setSummary] = useState("");
-  // 로딩 상태 추가
+
+  const [pageLoading, setPageLoading] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<ScriptStep>("UPLOAD_CHECK");
   const [progress, setProgress] = useState(0);
@@ -50,28 +40,46 @@ const ScriptCreatePage: React.FC = () => {
   const budgetRef = useRef<HTMLInputElement | null>(null);
   const periodRef = useRef<HTMLInputElement | null>(null);
   const urlRef = useRef<HTMLInputElement | null>(null);
-  const summaryRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [files, setFiles] = useState<File[]>([]);
-  const location = useLocation();
-  const noticeId = location.state?.noticeId as number | undefined;
 
   useEffect(() => {
-  if (!noticeId) return;
+    if (!noticeId) {
+      setPageError("공고 ID가 전달되지 않았습니다.");
+      return;
+    }
 
-  const items = loadItems();
-  const target = items.find((it) => it.id === noticeId);
+    setPageLoading(true);
+    setPageError(null);
 
-  if (!target) return;
+    fetch(`/api/notices/${noticeId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`API 오류: ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        const stripHtml = (html: string) => {
+          if (!html) return "";
+          const tmp = document.createElement("DIV");
+          tmp.innerHTML = html;
+          return tmp.textContent || tmp.innerText || "";
+        };
 
-  setTitle(target.title ?? "");
-  setOrg(target.org ?? "");
-  setBudget(target.budget ?? "");
-  setPeriod(target.period ?? "");
-  setUrl(target.url ?? "");
-  setSummary(target.summary ?? "");
-}, [noticeId]);
+        setTitle(data.title || "");
+        setOrg(data.author || data.excInsttNm || "");
+        setPeriod(data.reqstDt || "");
+        setUrl(data.link || "");
+        setSummary(stripHtml(data.description));
+        setBudget("-");
 
+        setPageLoading(false);
+      })
+      .catch((err) => {
+        console.error("공고 조회 오류:", err);
+        setPageError("공고 정보를 불러오는데 실패했습니다.");
+        setPageLoading(false);
+      });
+  }, [noticeId]);
 
   const requiredFields = useMemo(
     () => [
@@ -80,21 +88,9 @@ const ScriptCreatePage: React.FC = () => {
       { label: "예산", value: budget, ref: budgetRef },
       { label: "기간", value: period, ref: periodRef },
       { label: "URL", value: url, ref: urlRef },
-      // { label: "요약", value: summary, ref: summaryRef },
     ],
-    [title, org, budget, period, url, summary]
+    [title, org, budget, period, url]
   );
-
-  const loadItems = (): NoticeItem[] => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? (parsed as NoticeItem[]) : [];
-    } catch {
-      return [];
-    }
-  };
 
   const focusFirstEmpty = () => {
     const firstEmpty = requiredFields.find((f) => !f.value.trim());
@@ -110,66 +106,114 @@ const ScriptCreatePage: React.FC = () => {
     return true;
   };
 
-  // 공고와 추가파일들을 업로드 후 분석하면 발생하는 이벤트
-  const handleSubmit = async(id: number) => {
+  const handleSubmit = async (id: number) => {
     if (focusFirstEmpty()) return;
+
+    if (files.length === 0) {
+      alert("PPT 파일을 업로드해주세요.");
+      return;
+    }
 
     setIsLoading(true);
 
     try {
-      // 🔥 실제로는 여기서 API 호출
-      await runStep("UPLOAD_CHECK", 800);
-      await runStep("CHECKLIST_CREATE", 1400);
-      await runStep("PURPOSE_SUMMARY", 1200);
-      await runStep("CATEGORY_SUMMARY", 900);
+      setStep("UPLOAD_CHECK");
+      setProgress(0);
 
-      navigate("/process/analysis/result", {
-        state: { noticeId: id },
+      const formData = new FormData();
+      formData.append("file", files[0]);
+      formData.append("notice_id", id.toString());  // ✅ notice_id 추가
+
+      // ✅ JWT 토큰 가져오기
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        formData.append("token", token);  // ✅ token 추가
+      }
+
+      setStep("CHECKLIST_CREATE");
+      setProgress(30);
+
+      const response = await fetch("http://localhost:8000/api/analyze/step4", {
+        method: "POST",
+        body: formData,
       });
+
+      setProgress(60);
+
+      if (!response.ok) {
+        throw new Error("스크립트 생성 실패");
+      }
+
+      const result = await response.json();
+
+      setStep("PURPOSE_SUMMARY");
+      setProgress(80);
+
+      if (result.status === "success") {
+        setStep("CATEGORY_SUMMARY");
+        setProgress(100);
+
+        setTimeout(() => {
+          navigate("/process/script/result", {
+            state: {
+              noticeId: id,
+              scriptData: result.data,
+            },
+          });
+        }, 500);
+      } else {
+        throw new Error(result.message || "스크립트 생성 실패");
+      }
     } catch (e) {
-        alert("분석 중 오류가 발생했습니다.");
-        setIsLoading(false);
+      console.error("스크립트 생성 오류:", e);
+      alert("스크립트 생성 중 오류가 발생했습니다.");
+      setIsLoading(false);
+      setProgress(0);
     }
   };
 
-  const handleBackToProcess = (id:number) => {
-      navigate("/process", {
-      state: {noticeId: id},
-    });
-  }
-
-  const runStep = (s: ScriptStep, duration: number) => {
-    return new Promise<void>((resolve) => {
-      setStep(s);
-      setProgress(0);
-
-      const start = Date.now();
-      const timer = setInterval(() => {
-        const elapsed = Date.now() - start;
-        const percent = Math.min(
-          Math.floor((elapsed / duration) * 100),
-          100
-        );
-        setProgress(percent);
-
-        if (percent >= 100) {
-          clearInterval(timer);
-          resolve();
-        }
-      }, 60);
+  const handleBackToProcess = (id: number) => {
+    navigate("/process", {
+      state: { noticeId: id },
     });
   };
 
+  if (pageLoading) {
+    return (
+      <Page>
+        <Card>
+          <div style={{ textAlign: "center", padding: 40 }}>로딩 중...</div>
+        </Card>
+      </Page>
+    );
+  }
+
+  if (pageError) {
+    return (
+      <Page>
+        <Card>
+          <div style={{ textAlign: "center", padding: 40, color: "red" }}>
+            {pageError}
+          </div>
+          <div style={{ textAlign: "center", paddingBottom: 20 }}>
+            <MiniBtn type="button" onClick={() => navigate("/process")}>
+              돌아가기
+            </MiniBtn>
+          </div>
+        </Card>
+      </Page>
+    );
+  }
 
   return (
     <Page>
-      {/* 로딩 상태일 때 채워주는 페이지 */}
       {isLoading && (
         <LoadingOverlay>
           <LoadingBox>
             <Spinner />
-              {STEP_TEXT[step]}<br />
-              {progress}%
+            {STEP_TEXT[step]}
+            <br />
+            {progress}%
           </LoadingBox>
         </LoadingOverlay>
       )}
@@ -191,29 +235,34 @@ const ScriptCreatePage: React.FC = () => {
             <div className="text">{period}</div>
 
             <div className="label">URL</div>
-            <div className="text">{url}</div>
+            <div className="text">
+              {url ? (
+                <a href={url} target="_blank" rel="noreferrer">
+                  {url}
+                </a>
+              ) : (
+                "-"
+              )}
+            </div>
           </ModalGrid>
 
-            <ModalSummary>
+          <ModalSummary>
             <div className="label">요약</div>
             <div className="text">{summary}</div>
-            </ModalSummary>
+          </ModalSummary>
 
           <UploadArea>
-            <UploadLabel htmlFor="file">
-            추가파일 업로드
-            </UploadLabel>
+            <UploadLabel htmlFor="file">pptx 파일 업로드</UploadLabel>
             <HiddenInput
               id="file"
               type="file"
-              accept=".docx"
-              multiple
+              accept=".pptx"
               onChange={(e) => {
                 const selectedFiles = Array.from(e.target.files ?? []);
                 setFiles(selectedFiles);
               }}
             />
-              {files.length > 0 && (
+            {files.length > 0 && (
               <FileList>
                 {files.map((file, idx) => (
                   <li key={idx}>{file.name}</li>
@@ -223,17 +272,22 @@ const ScriptCreatePage: React.FC = () => {
           </UploadArea>
 
           <ModalActions>
-            <MiniBtn type="button" onClick={() => {
-              if (!noticeId) return;
-              handleSubmit(noticeId);
-            }}>
+            <MiniBtn
+              type="button"
+              onClick={() => {
+                if (!noticeId) return;
+                handleSubmit(noticeId);
+              }}
+            >
               생성
             </MiniBtn>
-            <MiniBtn type="button" onClick={() => 
-            {
-              if(!noticeId) return;
-              handleBackToProcess(noticeId);
-            }}>
+            <MiniBtn
+              type="button"
+              onClick={() => {
+                if (!noticeId) return;
+                handleBackToProcess(noticeId);
+              }}
+            >
               닫기
             </MiniBtn>
           </ModalActions>
@@ -264,7 +318,7 @@ const Card = styled.div`
   border-radius: 12px;
   padding: 28px;
   box-sizing: border-box;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06)
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 `;
 
 const Section = styled.div`
@@ -289,12 +343,25 @@ const ModalGrid = styled.div`
     font-weight: 500;
   }
 
+  .text {
+    font-size: 14px;
+    color: #2d3436;
+  }
+
+  a {
+    color: #2563eb;
+    text-decoration: underline;
+
+    &:hover {
+      opacity: 0.85;
+    }
+  }
+
   .input {
     width: 100%;
     height: 38px;
     padding: 0 12px;
     box-sizing: border-box;
-
     border: 1px solid #d1d5db;
     border-radius: 6px;
     font-size: 14px;
@@ -311,12 +378,21 @@ const ModalSummary = styled.div`
   margin-top: 16px;
   padding-top: 12px;
   border-top: 1px solid rgba(0, 0, 0, 0.12);
-  font-size: 14px;
-  line-height:1.45;
+
+  .label {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+
+  .text {
+    font-size: 14px;
+    color: #2d3436;
+    line-height: 1.45;
   }
 `;
 
-/* 업로드 버튼 */
 const UploadLabel = styled.label`
   padding: 12px 26px;
   background-color: var(--color-accent);
@@ -349,7 +425,6 @@ const ModalActions = styled.div`
   gap: 10px;
 `;
 
-
 const MiniBtn = styled.button`
   width: 80px;
   height: 36px;
@@ -365,14 +440,11 @@ const MiniBtn = styled.button`
   }
 `;
 
-
-// 올린 파일 리스트
 const FileList = styled.ul`
   margin-top: 12px;
   padding: 12px 16px;
   width: 100%;
   max-width: 420px;
-
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -389,7 +461,6 @@ const LoadingOverlay = styled.div`
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
   z-index: 9999;
-
   display: flex;
   align-items: center;
   justify-content: center;
