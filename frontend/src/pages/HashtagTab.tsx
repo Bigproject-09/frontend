@@ -5,7 +5,7 @@ type NoticeItem = {
   id: number;
   title: string;
   dday: string;
-  score: number;
+  // score: number;
   isRead: boolean;
   org?: string;
   period?: string;

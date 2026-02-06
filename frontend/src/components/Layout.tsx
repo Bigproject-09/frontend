@@ -1,8 +1,9 @@
 import React from "react";
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, NavLink, useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Layout.css";
 import logo from "../assets/logo.png";
 import { useAuth } from "../auth/AuthProvider";
+import Footer from "./Footer";
 
 const Layout: React.FC = () => {
   const navigate = useNavigate();
@@ -12,6 +13,10 @@ const Layout: React.FC = () => {
     await logout();
     navigate("/login");
   };
+
+const [searchParams] = useSearchParams();
+const tab = searchParams.get("tab");
+
 
   return (
     <div className="layout">
@@ -29,27 +34,30 @@ const Layout: React.FC = () => {
           </div>
           <div className="nav-group-right">
             <div className="nav-center">
-              {/* <Link to="/notice" className="nav-btn">공고</Link>
-              <Link to="/faq" className="nav-btn">FAQ</Link>
-              <Link to="/pricing" className="nav-btn">가격</Link> */}
-              {/* <Link to="/manager/tokentab" className="nav-btn">관리자</Link> */}
               <NavLink
-                to="/notice"
-                className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}>
+                to="/notice?view=notice"
+                className={`nav-btn ${tab === "notice" ? "active" : ""}`}>
                 공고
               </NavLink>
-              <NavLink to="/faq" className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}>
+
+              <NavLink
+                to="/process?view=service"
+                className={`nav-btn ${tab === "service" ? "active" : ""}`}>
+                서비스
+              </NavLink>
+
+              {/* <NavLink to="/faq" className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}>
                 FAQ
-              </NavLink>
+              </NavLink> */}
 
-              <NavLink to="/pricing" className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}>
-                가격
-              </NavLink>
-
-              <NavLink to="/manager/tokentab" className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}>
-                관리자
-              </NavLink>
-
+              {me && (
+                <NavLink
+                  to="/manager/tokentab"
+                  className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}
+                >
+                  관리자
+                </NavLink>
+              )}
           </div>
           </div>
           <div className="nav-right">
@@ -66,9 +74,11 @@ const Layout: React.FC = () => {
         </nav>
       </header>
 
-      <main className="content">
+      <main style={{minHeight: "calc(100vh - 120px) "}}>
         <Outlet />
       </main>
+
+      <Footer />
     </div>
   );
 };

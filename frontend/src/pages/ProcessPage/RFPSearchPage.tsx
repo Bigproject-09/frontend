@@ -19,6 +19,8 @@ const STEP_TEXT: Record<RFPStep, string> = {
 
 const RFPSearchPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const noticeId = location.state?.noticeId as number | undefined;
 
   const [title, setTitle] = useState("-");
   const [org, setOrg] = useState("-");
@@ -29,28 +31,23 @@ const RFPSearchPage: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [rfpResult, setRfpResult] = useState<any | null>(null);
-  const [savedLinks, setSavedLinks] = useState<{title:string; url:string}[]>([]);
+  const [savedLinks, setSavedLinks] = useState<{ title: string; url: string }[]>([]);
   const [step, setStep] = useState<RFPStep>("UPLOAD_CHECK");
   const [progress, setProgress] = useState(0);
 
-  const titleRef = useRef<HTMLInputElement | null>(null);
-  const orgRef = useRef<HTMLInputElement | null>(null);
-  const budgetRef = useRef<HTMLInputElement | null>(null);
-  const periodRef = useRef<HTMLInputElement | null>(null);
-  const urlRef = useRef<HTMLInputElement | null>(null);
-  const summaryRef = useRef<HTMLTextAreaElement | null>(null);
-
   const [files, setFiles] = useState<File[]>([]);
-  const location = useLocation();
-  const noticeId = location.state?.noticeId as number | undefined;
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // ✅ 공고 상세 API 호출 (ProcessPage와 동일)
   useEffect(() => {
     if (!noticeId) return;
 
+    let alive = true;
+
     (async () => {
       try {
         const { data } = await http.get(`/api/notices/${noticeId}`);
+        if (!alive) return;
 
         const stripHtml = (html: string) => {
           if (!html) return "-";
@@ -67,6 +64,7 @@ const RFPSearchPage: React.FC = () => {
         setBudget("-"); // 예산 필드 생기면 매핑
       } catch (err) {
         console.error("공고 조회 오류:", err);
+        if (!alive) return;
         setTitle("-");
         setOrg("-");
         setBudget("-");
@@ -75,6 +73,10 @@ const RFPSearchPage: React.FC = () => {
         setSummary("-");
       }
     })();
+
+    return () => {
+      alive = false;
+    };
   }, [noticeId]);
 
   const runStep = (s: RFPStep, duration: number) => {
@@ -105,10 +107,12 @@ const RFPSearchPage: React.FC = () => {
     try {
       await runStep("UPLOAD_CHECK", 400);
 
-      // 실제 호출
+      // (현재는 UI만 있고 실제 업로드는 안 함)
+      // 필요하면 여기서 files를 FormData로 보내는 버전으로 바꾸면 됨.
       await runStep("CHECKLIST_CREATE", 400);
+
       const { data } = await http.post(`/api/notices/${id}/search-rfp`, null, {
-        params: { companyId: 1 },
+        params: { companyId: 1 }, // TODO: 실제 companyId로 교체
       });
       setRfpResult(data);
 
@@ -122,6 +126,9 @@ const RFPSearchPage: React.FC = () => {
 
       await runStep("PURPOSE_SUMMARY", 300);
       await runStep("CATEGORY_SUMMARY", 300);
+
+      // 결과 페이지가 있으면 결과 페이지로 넘기기 (원하면 켜)
+      // navigate("/process/rfp/result", { state: { noticeId: id, rfpResult: data, savedLinks: links } });
     } catch (e) {
       console.error(e);
       alert("검색 중 오류가 발생했습니다.");
@@ -183,6 +190,7 @@ const RFPSearchPage: React.FC = () => {
           <UploadArea>
             <UploadLabel htmlFor="file">추가파일 업로드</UploadLabel>
             <HiddenInput
+              ref={fileInputRef}
               id="file"
               type="file"
               accept=".docx"
@@ -211,6 +219,7 @@ const RFPSearchPage: React.FC = () => {
             >
               검색
             </MiniBtn>
+
             <MiniBtn
               type="button"
               onClick={() => {
@@ -221,6 +230,37 @@ const RFPSearchPage: React.FC = () => {
               닫기
             </MiniBtn>
           </ModalActions>
+
+          {/* (옵션) 결과 표시: rfpResult/savedLinks를 페이지에서 바로 보고 싶으면 아래 UI 켜 */}
+          {(rfpResult || savedLinks.length > 0) && (
+            <ResultBox>
+              <ResultTitle>검색 결과(임시 표시)</ResultTitle>
+
+              {savedLinks.length > 0 ? (
+                <>
+                  <div style={{ fontWeight: 700, marginBottom: 8 }}>저장된 링크</div>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {savedLinks.map((l, idx) => (
+                      <li key={idx} style={{ margin: "6px 0" }}>
+                        <a href={l.url} target="_blank" rel="noreferrer">
+                          {l.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                  <div style={{ height: 12 }} />
+                </>
+              ) : null}
+
+              {rfpResult ? (
+                <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>
+                  {JSON.stringify(rfpResult, null, 2)}
+                </pre>
+              ) : (
+                <div style={{ color: "#6b7280" }}>표시할 rfpResult가 없습니다.</div>
+              )}
+            </ResultBox>
+          )}
         </Section>
       </Card>
     </Page>
@@ -411,7 +451,6 @@ const Spinner = styled.div`
     }
   }
 `;
-
 
 const ResultBox = styled.div`
   margin-top: 20px;
