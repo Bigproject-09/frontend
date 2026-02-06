@@ -49,16 +49,6 @@ const Layout: React.FC = () => {
                   공고
                 </NavLink>
 
-                <NavLink
-                  to="/process?view=service"
-                  className={`nav-btn ${tab === "service" ? "active" : ""}`}>
-                  서비스
-                </NavLink>
-
-                {/* <NavLink to="/faq" className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}>
-                FAQ
-              </NavLink> */}
-
                 {me && (
                   <NavLink
                     to="/manager/tokentab"

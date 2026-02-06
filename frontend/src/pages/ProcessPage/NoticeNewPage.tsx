@@ -23,7 +23,7 @@ const NoticeNewPage: React.FC = () => {
 
   const [title, setTitle] = useState("-");
   const [org, setOrg] = useState("-");
-  const [budget, setBudget] = useState("-");
+  // const [budget, setBudget] = useState("-");
   const [period, setPeriod] = useState("-");
   const [url, setUrl] = useState("-");
   const [summary, setSummary] = useState("-");
@@ -71,7 +71,7 @@ const NoticeNewPage: React.FC = () => {
         setPeriod(data.reqstDt || "-");
         setUrl(data.link || "-");
         setSummary(stripHtml(data.description));
-        setBudget("-"); // 예산 필드 생기면 매핑
+        // setBudget("-"); // 예산 필드 생기면 매핑
 
         setPageLoading(false);
       })
@@ -86,11 +86,11 @@ const NoticeNewPage: React.FC = () => {
     () => [
       { label: "제목", value: title, ref: titleRef },
       { label: "기관", value: org, ref: orgRef },
-      { label: "예산", value: budget, ref: budgetRef },
+      // { label: "예산", value: budget, ref: budgetRef },
       { label: "기간", value: period, ref: periodRef },
       { label: "URL", value: url, ref: urlRef },
     ],
-    [title, org, budget, period, url]
+    [title, org, period, url]
   );
 
   const focusFirstEmpty = () => {

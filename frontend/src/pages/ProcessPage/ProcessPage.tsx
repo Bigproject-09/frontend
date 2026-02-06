@@ -1,349 +1,3 @@
-// import React, { useState, useEffect } from "react";
-// import styled from "styled-components";
-// import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
-// import http from "../../api/http";
-// import { STORAGE_KEY } from "../../common/constants";
-
-// type NoticeItem = {
-//   id: number;
-//   title: string;
-//   dday: string;
-//   score: number;
-//   isRead: boolean;
-//   url?: string;
-
-//   org?: string;
-//   budget?: string;
-//   period?: string;
-//   summary?: string;
-// };
-
-// const ProcessPage: React.FC = () => {
-//   const navigate = useNavigate();
-//   const location = useLocation();
-//   const noticeId = location.state?.noticeId as number | undefined;
-
-//   const [searchParams] = useSearchParams();
-//   const view = searchParams.get("view");
-
-//   const storage_key = localStorage.getItem(STORAGE_KEY);
-
-//   const [title, setTitle] = useState("");
-//   const [org, setOrg] = useState("");
-//   const [budget, setBudget] = useState("");
-//   const [period, setPeriod] = useState("");
-//   const [url, setUrl] = useState("");
-//   const [summary, setSummary] = useState("");
-//   const [loading, setLoading] = useState(false);
-//   const [error, setError] = useState<string | null>(null);
-
-//   const loadItems = (): NoticeItem[] => {
-//     try {
-//       if (!storage_key) return [];
-//       const parsed = JSON.parse(storage_key);
-//       return Array.isArray(parsed) ? (parsed as NoticeItem[]) : [];
-//     } catch {
-//       return [];
-//     }
-//   };
-
-//   // ============================================
-//   // 버튼 동작 (중복 제거: 한 번만 정의)
-//   // ============================================
-//   const handleAnalysis = (id: number) => {
-//     navigate("/process/analysis", { state: { noticeId: id } });
-//   };
-
-//   const handleRFPSearch = (id: number) => {
-//     navigate("/process/rfp", { state: { noticeId: id } });
-//   };
-
-//   const handleAnnounce = (id: number) => {
-//     navigate("/process/announce", { state: { noticeId: id } });
-//   };
-
-//   const handleScript = (id: number) => {
-//     navigate("/process/script", { state: { noticeId: id } });
-//   };
-
-//   // ============================================
-//   // 공고 상세 로드 (useEffect 1개만 유지)
-//   // ============================================
-//   useEffect(() => {
-//     if (!noticeId) {
-//       setError("공고 ID가 없습니다.");
-//       return;
-//     }
-
-//     const stripHtml = (html: string) => {
-//       if (!html) return "-";
-//       const tmp = document.createElement("DIV");
-//       tmp.innerHTML = html;
-//       return tmp.textContent || tmp.innerText || "-";
-//     };
-
-//     let alive = true;
-
-//     (async () => {
-//       setLoading(true);
-//       setError(null);
-
-//       try {
-//         const { data } = await http.get(`/api/notices/${noticeId}`);
-
-//         if (!alive) return;
-
-//         setTitle(data.title || "-");
-//         setOrg(data.author || data.excInsttNm || "-");
-//         setPeriod(data.reqstDt || "-");
-//         setUrl(data.link || "-");
-//         setSummary(stripHtml(data.description));
-//         setBudget("-"); // 백엔드 예산 필드 생기면 매핑
-//       } catch (err) {
-//         console.error("공고 조회 오류:", err);
-//         if (!alive) return;
-//         setError("공고 정보를 불러오는데 실패했습니다.");
-//       } finally {
-//         if (alive) setLoading(false);
-//       }
-//     })();
-
-//     return () => {
-//       alive = false;
-//     };
-//   }, [noticeId]);
-
-//   // 로딩 UI
-//   if (loading) {
-//     return (
-//       <Container>
-//         <Section>
-//           <div style={{ textAlign: "center", padding: "40px" }}>로딩 중...</div>
-//         </Section>
-//       </Container>
-//     );
-//   }
-
-//   // 에러 UI(원하면 빼도 됨)
-//   if (error) {
-//     return (
-//       <Container>
-//         <Section>
-//           <div style={{ color: "crimson" }}>{error}</div>
-//         </Section>
-//       </Container>
-//     );
-//   }
-
-//   return (
-//     <Container>
-//       {view !== "service" && (
-//         <Section>
-//           <ModalGrid>
-//             <label>제목</label>
-//             <div className="text">{title}</div>
-
-//             <label>기관</label>
-//             <div className="text">{org}</div>
-
-//             <label>기간</label>
-//             <div className="text">{period}</div>
-
-//             <label>URL</label>
-//             <div className="text">
-//               {url !== "-" ? (
-//                 <a href={url} target="_blank" rel="noreferrer">
-//                   {url}
-//                 </a>
-//               ) : (
-//                 url
-//               )}
-//             </div>
-
-//             <label>요약</label>
-//             <div className="text">{summary}</div>
-//           </ModalGrid>
-//         </Section>
-//       )}
-
-//       <ButtonGroup>
-//         {view === "notice" && (
-//           <ProcessBtn
-//             type="button"
-//             onClick={() => {
-//               if (!noticeId) return;
-//               handleAnalysis(noticeId);
-//             }}
-//           >
-//             <h3>공고문 분석</h3>
-//             <ul>
-//               <li>자격요건 체크리스트 제공</li>
-//               <li>사업 목적 요약</li>
-//               <li>평가항목 요약</li>
-//             </ul>
-//           </ProcessBtn>
-//         )}
-
-//         {view === "service" && (
-//           <ProcessBtn
-//             type="button"
-//             onClick={() => navigate("/notice?view=service")}
-//           >
-//             <h3>공고문 분석</h3>
-//             <ul>
-//               <li>자격요건 체크리스트 제공</li>
-//               <li>사업 목적 요약</li>
-//               <li>평가항목 요약</li>
-//             </ul>
-//           </ProcessBtn>
-//         )}
-
-//         {view === "notice" && (
-//           <ProcessBtn
-//             type="button"
-//             onClick={() => {
-//               if (!noticeId) return;
-//               handleRFPSearch(noticeId);
-//             }}
-//           >
-//             <h3>유관 RFP 검색</h3>
-//             <ul>
-//               <li>동일 주관 기관 내 유사 RFP 추천</li>
-//               <li>사내 유사 RFP 추천</li>
-//             </ul>
-//           </ProcessBtn>
-//         )}
-
-//         {view === "service" && (
-//           <ProcessBtn type="button" onClick={() => navigate("/notice")}>
-//             <h3>유관 RFP 검색</h3>
-//             <ul>
-//               <li>동일 주관 기관 내 유사 RFP 추천</li>
-//               <li>사내 유사 RFP 추천</li>
-//             </ul>
-//           </ProcessBtn>
-//         )}
-
-//         <ProcessBtn
-//           type="button"
-//           onClick={() => {
-//             if (!noticeId) return;
-//             handleAnnounce(noticeId);
-//           }}
-//         >
-//           <h3>발표자료 제작</h3>
-//           <ul>
-//             <li>스토리라인 구성</li>
-//             <li>키워드 추출</li>
-//             <li>구조도/그림 생성</li>
-//           </ul>
-//         </ProcessBtn>
-
-//         <ProcessBtn
-//           type="button"
-//           onClick={() => {
-//             if (!noticeId) return;
-//             handleScript(noticeId);
-//           }}
-//         >
-//           <h3>스크립트 생성</h3>
-//           <ul>
-//             <li>스크립트 생성</li>
-//             <li>예상질문 생성</li>
-//           </ul>
-//         </ProcessBtn>
-//       </ButtonGroup>
-//     </Container>
-//   );
-// };
-
-// export default ProcessPage;
-
-// // ===== styled-components (그대로) =====
-// const Container = styled.div`
-//   padding: 60px;
-// `;
-
-// const Section = styled.div`
-//   background: #f9fafb;
-//   border-radius: 10px;
-//   padding: 18px 20px;
-//   box-sizing: border-box;
-//   margin-bottom: 16px;
-//   border: 1px solid #e5e7eb;
-// `;
-
-// const ModalGrid = styled.div`
-//   display: grid;
-//   grid-template-columns: 120px 1fr;
-//   row-gap: 12px;
-//   column-gap: 16px;
-//   align-items: center;
-
-//   .label {
-//     font-size: 14px;
-//     color: #374151;
-//     font-weight: 500;
-//   }
-
-//   .text {
-//     font-size: 14px;
-//     color: #1f2937;
-//   }
-
-//   a {
-//     color: #2563eb;
-//     text-decoration: underline;
-
-//     &:hover {
-//       opacity: 0.8;
-//     }
-//   }
-// `;
-
-// const ButtonGroup = styled.div`
-//   display: grid;
-//   grid-template-columns: repeat(4, 1fr);
-//   gap: 24px;
-//   margin: 32px 0;
-// `;
-
-// const ProcessBtn = styled.button`
-//   padding: 24px;
-//   border-radius: 14px;
-//   border: 1px solid #e5e7eb;
-//   background: #f9fafb;
-//   text-align: left;
-//   cursor: pointer;
-//   height: 350px;
-//   display: flex;
-//   flex-direction: column;
-
-//   /* 🔧 미세 조정 포인트 */
-//   --title-offset: 4px;
-//   --list-offset: 170px;
-
-//   h3 {
-//     margin: 0;
-//     margin-top: var(--title-offset);
-//     font-size: 25px;
-//     font-weight: 600;
-//   }
-
-//   ul {
-//     margin-top: var(--list-offset);
-//     display: flex;
-//     flex-direction: column;
-//     gap: 6px;
-//     padding-left: 18px;
-//   }
-
-//   &:hover {
-//     background: #f3f4f6;
-//     border-color: #d1d5db;
-//   }
-// `;
-
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
@@ -358,7 +12,7 @@ type NoticeItem = {
   url?: string;
 
   org?: string;
-  budget?: string;
+  // budget?: string;
   period?: string;
   summary?: string;
 };
@@ -374,7 +28,7 @@ const ProcessPage: React.FC = () => {
 
   const [title, setTitle] = useState("");
   const [org, setOrg] = useState("");
-  const [budget, setBudget] = useState("");
+  // const [budget, setBudget] = useState("");
   const [period, setPeriod] = useState("");
   const [url, setUrl] = useState("");
   const [summary, setSummary] = useState("");
@@ -414,7 +68,7 @@ const ProcessPage: React.FC = () => {
         setPeriod(data.reqstDt || "-");
         setUrl(data.link || "-");
         setSummary(stripHtml(data.description));
-        setBudget("-"); // 백엔드 예산 필드 생기면 매핑
+        // setBudget("-"); // 백엔드 예산 필드 생기면 매핑
       } catch (err) {
         console.error("공고 조회 오류:", err);
         if (!alive) return;
@@ -563,87 +217,139 @@ const ProcessPage: React.FC = () => {
 
 export default ProcessPage;
 
-// ===== styled-components (그대로) =====
+// ===== styled-components =====
 const Container = styled.div`
-  padding: 60px;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--spacing-2xl) var(--spacing-xl);
+  box-sizing: border-box;
 `;
 
 const Section = styled.div`
-  background: #f9fafb;
-  border-radius: 10px;
-  padding: 18px 20px;
+  background: white;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
   box-sizing: border-box;
-  margin-bottom: 16px;
-  border: 1px solid #e5e7eb;
+  margin-bottom: var(--spacing-xl);
+  box-shadow: var(--shadow-sm);
 `;
 
 const ModalGrid = styled.div`
   display: grid;
   grid-template-columns: 120px 1fr;
-  row-gap: 12px;
-  column-gap: 16px;
-  align-items: center;
+  row-gap: var(--spacing-md);
+  column-gap: var(--spacing-lg);
+  align-items: start;
 
-  .label {
+  label {
     font-size: 14px;
-    color: #374151;
-    font-weight: 500;
+    color: var(--color-text-secondary);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: -0.01em;
   }
 
   .text {
-    font-size: 14px;
-    color: #1f2937;
+    font-size: 15px;
+    color: var(--color-text-primary);
+    line-height: 1.6;
   }
 
   a {
-    color: #2563eb;
-    text-decoration: underline;
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color var(--transition-fast);
 
     &:hover {
-      opacity: 0.8;
+      color: var(--color-primary-dark);
+      text-decoration: underline;
     }
   }
 `;
 
 const ButtonGroup = styled.div`
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
-  margin: 32px 0;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-xl);
+  margin: var(--spacing-2xl) 0;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const ProcessBtn = styled.button`
-  padding: 24px;
-  border-radius: 14px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  text-align: left;
+  position: relative;
+  background: white;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
-  height: 350px;
+  text-align: left;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
 
-  /* 🔧 미세 조정 포인트 */
-  --title-offset: 4px;
-  --list-offset: 170px;
-
-  h3 {
-    margin: 0;
-    margin-top: var(--title-offset);
-    font-size: 25px;
-    font-weight: 600;
-  }
-
-  ul {
-    margin-top: var(--list-offset);
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding-left: 18px;
+  /* 좌측 컬러 바 - MainPage와 동일 */
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+    transition: all var(--transition-base);
   }
 
   &:hover {
-    background: #f3f4f6;
-    border-color: #d1d5db;
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-xl);
+    transform: translateY(-4px);
+    
+    /* Hover 시 좌측 바 강조 */
+    &::before {
+      width: 6px;
+      background: var(--color-primary-dark);
+    }
+  }
+
+  h3 {
+    font-size: 24px;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    margin: 0 0 var(--spacing-md) 0;
+    letter-spacing: -0.01em;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+
+  li {
+    font-size: 15px;
+    color: var(--color-text-tertiary);
+    padding: var(--spacing-sm) 0;
+    line-height: 1.5;
+    
+    &:not(:last-child) {
+      border-bottom: 1px solid var(--color-border-light);
+    }
+    
+    &::before {
+      content: '✓';
+      margin-right: 8px;
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+    }
   }
 `;

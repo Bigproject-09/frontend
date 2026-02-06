@@ -45,7 +45,6 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/registration" element={<RegistrationPage />} />
-          <Route path="/resetPassword" element={<ResetPasswordPage />} />
           <Route path="/term" element={<TermPage />} />
           <Route path="/withdrawal" element={<WithdrawPage />} />
 

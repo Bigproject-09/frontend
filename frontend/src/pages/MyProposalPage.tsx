@@ -1,5 +1,5 @@
 //MyProposalPage.tsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import "../styles/Global.css";

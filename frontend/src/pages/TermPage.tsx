@@ -12,8 +12,8 @@ const TermPage: React.FC = () => {
     });
 
     const [open, setOpen] = useState({
-    service: false,
-    privacy: false,
+    service: true,
+    privacy: true,
     });
 
     const [scrolledEnd, setScrolledEnd] = useState({
@@ -147,28 +147,25 @@ const TermPage: React.FC = () => {
 const Wrapper = styled.div`
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(
-    135deg,
-    #1f3a5f 0%,
-    #162c48 100%
-  );
-
+  background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: var(--spacing-xl);
+  box-sizing: border-box;
 `;
 
 const LoginBox = styled.div`
-  width: 800px;
-  height: 700px;
-  background-color: #ffffff;
-  border-radius: 14px;
-
+  width: 100%;
+  max-width: 800px;
+  min-height: 700px;
+  background-color: white;
+  border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
   position: relative;
-
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-xl);
+  padding: var(--spacing-xl);
 `;
 
 const ContentArea = styled.div`
@@ -186,46 +183,69 @@ const TermHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: var(--spacing-md) 0;
 
   label {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 14px;
+    gap: var(--spacing-sm);
+    font-size: 15px;
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    
+    input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
   }
 
   label.disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    
+    input[type="checkbox"] {
+      cursor: not-allowed;
+    }
   }
 `;
 
 const TermBox = styled.div`
   flex: 1;
-  overflow-y: auto;          /* ⭐ 여기만 스크롤 */
-  padding: 0 24px;
+  overflow-y: auto;
+  padding: 0 var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
 `;
 
 const ToggleBtn = styled.button`
-  background: none;
-  border: none;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
   font-size: 13px;
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  color: #666;
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+  
+  &:hover {
+    background: var(--color-border-light);
+    color: var(--color-text-primary);
+  }
 `;
 
 const TermContent = styled.div`
-  margin-top: 10px;
-  padding: 10px;
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
   height: 120px;
-
   overflow-y: auto;
-  font-size: 13px;
-  line-height: 1.5;
-
-  background: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.6;
+  background: var(--color-bg-main);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
 `;
 
 export const TermsBlock = styled.div`
@@ -263,17 +283,31 @@ export const TermsScrollBox = styled.div`
 `;
 
 const LogoArea = styled.div`
-  height: 100px;            /* ⭐ 고정 */
+  height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
+  
+  .logo {
+    font-size: 48px;
+    font-weight: var(--font-weight-bold);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.03em;
+  }
 `;
 
 const ButtonArea = styled.div`
-  height: 100px;            /* ⭐ 고정 */
+  height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
+  
+  .button_center {
+    min-width: 120px;
+  }
 `;
 
 
