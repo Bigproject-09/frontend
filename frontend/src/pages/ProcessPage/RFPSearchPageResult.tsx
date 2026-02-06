@@ -3,17 +3,6 @@ import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/Global.css";
 
-/** ===== Step2 응답 타입 (FastAPI) =====
- * FastAPI /api/analyze/step2 응답:
- * {
- *   status: "success",
- *   data: <result>
- * }
- *
- * result는 현재 구현상 report(JSON)만 올 수도 있고,
- * 추후 { report, track_a, track_b } 형태로 확장될 수도 있어서 둘 다 대응.
- */
-
 type Similarity = "상" | "중" | "하" | string;
 
 interface TrackComparisonItem {
@@ -29,7 +18,6 @@ interface ReportData {
   track_a_comparison?: TrackComparisonItem[];
   track_b_comparison?: TrackComparisonItem[];
   strategies?: string[];
-  // 에러시 fallback
   error?: string;
 }
 
@@ -55,23 +43,70 @@ interface Step2Response {
 const RFPSearchPageResult: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const noticeId = location.state?.noticeId as number | undefined;
 
-  const [loading, setLoading] = useState(true);
+  const noticeId = location.state?.noticeId as number | undefined;
+  const rfpResult = location.state?.rfpResult as ReportData | Step2ResultExpanded | undefined;
+
+  const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // 실제로 화면에 뿌릴 데이터
   const [report, setReport] = useState<ReportData | null>(null);
   const [trackA, setTrackA] = useState<TrackHit[]>([]);
   const [trackB, setTrackB] = useState<TrackHit[]>([]);
 
-  useEffect(() => {
-    if (!noticeId) {
-      setErrorMsg("noticeId가 없습니다.");
-      setLoading(false);
+  // ✅ 다운로드 함수 추가
+  const handleDownload = () => {
+    if (!report) {
+      alert("다운로드할 데이터가 없습니다.");
       return;
     }
 
+    try {
+      const jsonStr = JSON.stringify(report, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `RFP분석결과_${new Date().toISOString().slice(0, 10)}.json`;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      alert("다운로드가 완료되었습니다!");
+    } catch (error) {
+      console.error("다운로드 오류:", error);
+      alert("다운로드 중 오류가 발생했습니다.");
+    }
+  };
+
+  useEffect(() => {
+    if (!noticeId) {
+      setErrorMsg("noticeId가 없습니다.");
+      return;
+    }
+
+    if (rfpResult) {
+      console.log("✅ 검색 페이지에서 전달받은 결과 사용");
+
+      const expanded = rfpResult as Step2ResultExpanded;
+
+      if (expanded && expanded.report) {
+        setReport(expanded.report ?? null);
+        setTrackA(expanded.track_a ?? []);
+        setTrackB(expanded.track_b ?? []);
+      } else {
+        setReport(rfpResult as ReportData);
+        setTrackA([]);
+        setTrackB([]);
+      }
+
+      return;
+    }
+
+    console.log("⚠️ 결과 없음 - API 직접 호출");
     setLoading(true);
     setErrorMsg(null);
 
@@ -89,9 +124,6 @@ const RFPSearchPageResult: React.FC = () => {
       })
       .then((json) => {
         const data = json?.data;
-
-        // (1) report만 오는 경우: data.summary_opinion 같은 키가 바로 있음
-        // (2) 확장형: data.report / data.track_a / data.track_b
         const expanded = data as Step2ResultExpanded;
 
         if (expanded && expanded.report) {
@@ -111,12 +143,49 @@ const RFPSearchPageResult: React.FC = () => {
         setErrorMsg("유관 RFP 검색 결과를 불러오지 못했습니다.");
         setLoading(false);
       });
-  }, [noticeId]);
+  }, [noticeId, rfpResult]);
 
   const handleBack = (id: number) => {
     navigate("/process/rfp", {
       state: { noticeId: id },
     });
+  };
+
+  const handleReExtract = (id: number) => {
+    setReport(null);
+    setTrackA([]);
+    setTrackB([]);
+    setLoading(true);
+    setErrorMsg(null);
+
+    fetch("http://localhost:8000/api/analyze/step2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notice_id: id }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`재추출 실패: ${res.status}`);
+        return res.json() as Promise<Step2Response>;
+      })
+      .then((json) => {
+        const data = json?.data;
+        const expanded = data as Step2ResultExpanded;
+
+        if (expanded && expanded.report) {
+          setReport(expanded.report ?? null);
+          setTrackA(expanded.track_a ?? []);
+          setTrackB(expanded.track_b ?? []);
+        } else {
+          setReport(data as ReportData);
+        }
+
+        setLoading(false);
+      })
+      .catch((e) => {
+        console.error(e);
+        setErrorMsg("재추출 중 오류가 발생했습니다.");
+        setLoading(false);
+      });
   };
 
   if (loading) {
@@ -126,7 +195,12 @@ const RFPSearchPageResult: React.FC = () => {
           <div className="title" style={{ marginLeft: 0, marginBottom: 20 }}>
             유관 RFP 검색
           </div>
-          <Section>로딩 중...</Section>
+          <Section>
+            <LoadingSpinner />
+            <div style={{ textAlign: "center", marginTop: 20 }}>
+              유사 RFP 검색 중...
+            </div>
+          </Section>
         </Card>
       </Container>
     );
@@ -139,7 +213,9 @@ const RFPSearchPageResult: React.FC = () => {
           <div className="title" style={{ marginLeft: 0, marginBottom: 20 }}>
             유관 RFP 검색
           </div>
-          <Section style={{ color: "red" }}>{errorMsg}</Section>
+          <Section style={{ color: "red", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {errorMsg}
+          </Section>
           <RightActionRow>
             <button
               type="button"
@@ -162,23 +238,20 @@ const RFPSearchPageResult: React.FC = () => {
     <Container>
       <Card>
         <div className="title" style={{ marginLeft: 0, marginBottom: 20 }}>
-          유관 RFP 검색
+          유관 RFP 검색 결과
         </div>
 
-        {/* 요약/의견 */}
-        <div className="title" style={{ fontSize: 15, marginBottom: 10 }}>
-          분석 요약
-        </div>
+        <SectionTitle>분석 요약</SectionTitle>
         <Section>
           {report?.summary_opinion ? report.summary_opinion : "요약 결과가 없습니다."}
         </Section>
 
-        <br />
+        <Divider />
 
-        {/* Track A: 동일 부처/동일 주관 */}
-        <div className="title" style={{ fontSize: 15, marginBottom: 10 }}>
-          동일 주관 기관 (Track A)
-        </div>
+        <SectionTitle>
+          Track A: 동일 주관 기관 유사 전략
+          <Badge color="#3b82f6">중복성 집중 검토</Badge>
+        </SectionTitle>
         <Section>
           {report?.track_a_comparison && report.track_a_comparison.length > 0 ? (
             <List>
@@ -187,40 +260,27 @@ const RFPSearchPageResult: React.FC = () => {
                   <ItemTitle>
                     {item.title ?? "제목 없음"}{" "}
                     <MetaText>
-                      ({item.year ?? "연도미상"}, {item.ministry ?? "부처미상"} / 유사도:{" "}
-                      {item.similarity ?? "-"})
+                      ({item.year ?? "연도미상"}, {item.ministry ?? "부처미상"})
                     </MetaText>
+                    <SimilarityBadge level={item.similarity ?? "하"}>
+                      유사도: {item.similarity ?? "-"}
+                    </SimilarityBadge>
                   </ItemTitle>
                   <ItemBody>{item.difference ?? "-"}</ItemBody>
                 </ListItem>
               ))}
             </List>
-          ) : trackA.length > 0 ? (
-            // 만약 report에 비교표가 없고, track_a 원본만 내려오는 경우 대비
-            <List>
-              {trackA.map((hit, idx) => (
-                <ListItem key={hit.id ?? idx}>
-                  <ItemTitle>
-                    {hit.metadata?.title ?? hit.metadata?.name ?? "제목 없음"}{" "}
-                    <MetaText>
-                      (score: {typeof hit.score === "number" ? hit.score : "-"})
-                    </MetaText>
-                  </ItemTitle>
-                  <ItemBody>{hit.document ? hit.document.slice(0, 400) : "-"}</ItemBody>
-                </ListItem>
-              ))}
-            </List>
           ) : (
-            "동일 주관 기관 유사 결과가 없습니다."
+            <EmptyMessage>동일 주관 기관 유사 결과가 없습니다.</EmptyMessage>
           )}
         </Section>
 
-        <br />
+        <Divider />
 
-        {/* Track B: 유사 RFP */}
-        <div className="title" style={{ fontSize: 15, marginBottom: 10 }}>
-          유사 RFP (Track B)
-        </div>
+        <SectionTitle>
+          Track B: 타 부처 유사 전략
+          <Badge color="#10b981">차별성 집중 검토</Badge>
+        </SectionTitle>
         <Section>
           {report?.track_b_comparison && report.track_b_comparison.length > 0 ? (
             <List>
@@ -229,69 +289,66 @@ const RFPSearchPageResult: React.FC = () => {
                   <ItemTitle>
                     {item.title ?? "제목 없음"}{" "}
                     <MetaText>
-                      ({item.year ?? "연도미상"}, {item.ministry ?? "부처미상"} / 유사도:{" "}
-                      {item.similarity ?? "-"})
+                      ({item.year ?? "연도미상"}, {item.ministry ?? "부처미상"})
                     </MetaText>
+                    <SimilarityBadge level={item.similarity ?? "하"}>
+                      유사도: {item.similarity ?? "-"}
+                    </SimilarityBadge>
                   </ItemTitle>
                   <ItemBody>{item.difference ?? "-"}</ItemBody>
                 </ListItem>
               ))}
             </List>
-          ) : trackB.length > 0 ? (
-            <List>
-              {trackB.map((hit, idx) => (
-                <ListItem key={hit.id ?? idx}>
-                  <ItemTitle>
-                    {hit.metadata?.title ?? hit.metadata?.name ?? "제목 없음"}{" "}
-                    <MetaText>
-                      (score: {typeof hit.score === "number" ? hit.score : "-"})
-                    </MetaText>
-                  </ItemTitle>
-                  <ItemBody>{hit.document ? hit.document.slice(0, 400) : "-"}</ItemBody>
-                </ListItem>
-              ))}
-            </List>
           ) : (
-            "유사 RFP 결과가 없습니다."
+            <EmptyMessage>타 부처 유사 전략이 없습니다.</EmptyMessage>
           )}
         </Section>
 
-        <br />
+        <Divider />
 
-        {/* 전략 */}
-        <div className="title" style={{ fontSize: 15, marginBottom: 10 }}>
-          제안 전략
-        </div>
+        <SectionTitle>권장 차별화 전략</SectionTitle>
         <Section>
           {report?.strategies && report.strategies.length > 0 ? (
-            <ol style={{ margin: 0, paddingLeft: 18 }}>
+            <StrategyList>
               {report.strategies.map((s, idx) => (
-                <li key={idx} style={{ lineHeight: 1.7 }}>
-                  {s}
-                </li>
+                <StrategyItem key={idx}>
+                  <StrategyNumber>{idx + 1}</StrategyNumber>
+                  <StrategyText>{s}</StrategyText>
+                </StrategyItem>
               ))}
-            </ol>
+            </StrategyList>
           ) : (
-            "전략 결과가 없습니다."
+            <EmptyMessage>전략 결과가 없습니다.</EmptyMessage>
           )}
         </Section>
 
         <RightActionRow>
-          <button
+          <ActionButton
             type="button"
-            className="button_center"
-            style={{ width: 120 }}
+            variant="secondary"
+            onClick={() => {
+              if (!noticeId) return;
+              handleReExtract(noticeId);
+            }}
+          >
+            🔄 재추출
+          </ActionButton>
+          <ActionButton
+            type="button"
+            variant="secondary"
             onClick={() => {
               if (!noticeId) return;
               handleBack(noticeId);
             }}
           >
-            재추출
-          </button>
+            ← 뒤로가기
+          </ActionButton>
         </RightActionRow>
 
         <DownloadWrapper>
-          <DownloadButton type="button">PPT 초안 다운로드</DownloadButton>
+          <DownloadButton type="button" onClick={handleDownload}>
+            📥 분석 리포트 다운로드 (JSON)
+          </DownloadButton>
         </DownloadWrapper>
       </Card>
     </Container>
@@ -305,7 +362,7 @@ export default RFPSearchPageResult;
 const Container = styled.div`
   width: 100%;
   min-height: 100vh;
-  background: #d9d9d9;
+  background: var(--color-bg-main, #f3f4f6);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -317,40 +374,62 @@ const Card = styled.div`
   width: 1100px;
   background: #ffffff;
   border-radius: 12px;
-  padding: 28px;
+  padding: 32px;
   box-sizing: border-box;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 `;
 
-const RightActionRow = styled.div`
-  margin-top: 24px;
+const SectionTitle = styled.div`
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 12px;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+`;
+
+const Badge = styled.span<{ color: string }>`
+  display: inline-block;
+  padding: 4px 10px;
+  background: ${(props) => props.color};
+  color: white;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
 `;
 
 const Section = styled.div`
   width: 100%;
-  height: 300px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 18px 18px;
+  min-height: 200px;
+  max-height: 400px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 18px;
   box-sizing: border-box;
-  position: relative;
   overflow-y: auto;
 
   &::-webkit-scrollbar {
     width: 8px;
   }
   &::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: #f1f3f5;
     border-radius: 10px;
   }
   &::-webkit-scrollbar-thumb {
-    background: #888;
+    background: #adb5bd;
     border-radius: 10px;
   }
   &::-webkit-scrollbar-thumb:hover {
-    background: #555;
+    background: #868e96;
   }
+`;
+
+const Divider = styled.div`
+  height: 1px;
+  background: #e5e7eb;
+  margin: 24px 0;
 `;
 
 const List = styled.ul`
@@ -359,21 +438,30 @@ const List = styled.ul`
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 `;
 
 const ListItem = styled.li`
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 14px 14px;
+  border-radius: 8px;
+  padding: 16px;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
 `;
 
 const ItemTitle = styled.div`
   font-size: 14px;
   font-weight: 700;
-  color: #2d3436;
+  color: #1f2937;
   margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 `;
 
 const MetaText = styled.span`
@@ -382,30 +470,147 @@ const MetaText = styled.span`
   color: #6b7280;
 `;
 
+const SimilarityBadge = styled.span<{ level: string }>`
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: ${(props) =>
+    props.level === "상"
+      ? "#fef3c7"
+      : props.level === "중"
+      ? "#dbeafe"
+      : "#f3f4f6"};
+  color: ${(props) =>
+    props.level === "상"
+      ? "#92400e"
+      : props.level === "중"
+      ? "#1e40af"
+      : "#374151"};
+`;
+
 const ItemBody = styled.div`
   font-size: 13px;
-  color: #374151;
-  line-height: 1.6;
+  color: #4b5563;
+  line-height: 1.7;
   white-space: pre-wrap;
 `;
 
+const EmptyMessage = styled.div`
+  text-align: center;
+  color: #9ca3af;
+  padding: 40px 0;
+  font-size: 14px;
+`;
+
+const StrategyList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+`;
+
+const StrategyItem = styled.div`
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+`;
+
+const StrategyNumber = styled.div`
+  min-width: 28px;
+  height: 28px;
+  background: #3b82f6;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+`;
+
+const StrategyText = styled.div`
+  flex: 1;
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.7;
+`;
+
+const RightActionRow = styled.div`
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+`;
+
+const ActionButton = styled.button<{ variant?: "primary" | "secondary" }>`
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  ${(props) =>
+    props.variant === "secondary"
+      ? `
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    color: #374151;
+
+    &:hover {
+      background: #f9fafb;
+    }
+  `
+      : `
+    background: var(--color-accent, #3b82f6);
+    border: none;
+    color: white;
+
+    &:hover {
+      background: var(--color-accent-hover, #2563eb);
+    }
+  `}
+`;
+
 const DownloadWrapper = styled.div`
-  margin-top: 30px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
   display: flex;
   justify-content: center;
 `;
 
 const DownloadButton = styled.button`
-  padding: 14px 28px;
-  background-color: #00b894;
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border-radius: 8px;
-  font-size: 16px;
-  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   border: none;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s;
 
   &:hover {
-    background-color: #009c7a;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  }
+`;
+
+const LoadingSpinner = styled.div`
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 60px auto 0;
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 `;

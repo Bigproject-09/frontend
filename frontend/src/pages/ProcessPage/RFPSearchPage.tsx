@@ -5,15 +5,17 @@ import "../../styles/Global.css";
 
 type RFPStep =
   | "UPLOAD_CHECK"
+  | "FILE_PARSING"
   | "CHECKLIST_CREATE"
   | "PURPOSE_SUMMARY"
   | "CATEGORY_SUMMARY";
 
 const STEP_TEXT: Record<RFPStep, string> = {
-  UPLOAD_CHECK: "추가 파일 확인 중...",
-  CHECKLIST_CREATE: "체크리스트 생성 중...",
-  PURPOSE_SUMMARY: "사업 목적 요약 중...",
-  CATEGORY_SUMMARY: "평가항목 요약 중...",
+  UPLOAD_CHECK: "파일 확인 중...",
+  FILE_PARSING: "공고문 파싱 중...",
+  CHECKLIST_CREATE: "유사 RFP 검색 중...",
+  PURPOSE_SUMMARY: "전략계획서 분석 중...",
+  CATEGORY_SUMMARY: "차별화 전략 수립 중...",
 };
 
 const RFPSearchPage: React.FC = () => {
@@ -129,21 +131,55 @@ const RFPSearchPage: React.FC = () => {
   };
 
   const handleSubmit = async (id: number) => {
+    // ✅ 파일 체크
+    if (files.length === 0) {
+      alert("공고문 파일을 업로드해주세요.");
+      return;
+    }
+
     if (focusFirstEmpty()) return;
 
     setIsLoading(true);
 
     try {
-      await runStep("UPLOAD_CHECK", 800);
-      await runStep("CHECKLIST_CREATE", 1400);
-      await runStep("PURPOSE_SUMMARY", 1200);
-      await runStep("CATEGORY_SUMMARY", 900);
+      await runStep("UPLOAD_CHECK", 300);
+      await runStep("FILE_PARSING", 800);
 
+      // ✅ FormData로 파일 + notice_id 전송
+      const formData = new FormData();
+      formData.append("file", files[0]); // 첫 번째 파일만 전송
+      if (id) {
+        formData.append("notice_id", id.toString());
+      }
+
+      await runStep("CHECKLIST_CREATE", 1000);
+
+      // ✅ FastAPI 호출 - 유관 RFP 검색
+      const response = await fetch("http://localhost:8000/api/analyze/step2", {
+        method: "POST",
+        body: formData, // ← JSON이 아닌 FormData로 전송
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "RFP 검색 실패");
+      }
+
+      const result = await response.json();
+
+      await runStep("PURPOSE_SUMMARY", 800);
+      await runStep("CATEGORY_SUMMARY", 600);
+
+      // ✅ 결과 페이지로 이동 (검색 결과 전달)
       navigate("/process/rfp/result", {
-        state: { noticeId: id },
+        state: {
+          noticeId: id,
+          rfpResult: result.data // 검색 결과 전달
+        },
       });
     } catch (e) {
-      alert("분석 중 오류가 발생했습니다.");
+      console.error("RFP 검색 오류:", e);
+      alert(`유관 RFP 검색 중 오류가 발생했습니다: ${e instanceof Error ? e.message : '알 수 없는 오류'}`);
       setIsLoading(false);
     }
   };
@@ -228,12 +264,13 @@ const RFPSearchPage: React.FC = () => {
           </ModalSummary>
 
           <UploadArea>
-            <UploadLabel htmlFor="file">추가파일 업로드</UploadLabel>
+            <UploadLabel htmlFor="file">
+              📄 공고문 업로드 (필수)
+            </UploadLabel>
             <HiddenInput
               id="file"
               type="file"
-              accept=".docx"
-              multiple
+              accept=".docx,.pdf"
               onChange={(e) => {
                 const selectedFiles = Array.from(e.target.files ?? []);
                 setFiles(selectedFiles);
@@ -242,9 +279,26 @@ const RFPSearchPage: React.FC = () => {
             {files.length > 0 && (
               <FileList>
                 {files.map((file, idx) => (
-                  <li key={idx}>{file.name}</li>
+                  <FileItem key={idx}>
+                    <FileName>{file.name}</FileName>
+                    <FileSize>
+                      ({(file.size / 1024).toFixed(1)} KB)
+                    </FileSize>
+                    <RemoveBtn
+                      onClick={() => {
+                        setFiles(files.filter((_, i) => i !== idx));
+                      }}
+                    >
+                      ✕
+                    </RemoveBtn>
+                  </FileItem>
                 ))}
               </FileList>
+            )}
+            {files.length === 0 && (
+              <UploadHint>
+                .docx 또는 .pdf 파일을 업로드해주세요
+              </UploadHint>
             )}
           </UploadArea>
 
@@ -371,15 +425,18 @@ const ModalSummary = styled.div`
 `;
 
 const UploadLabel = styled.label`
-  padding: 12px 26px;
+  padding: 14px 32px;
   background-color: var(--color-accent);
   color: white;
   border-radius: 8px;
   font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
 
   &:hover {
     background-color: var(--color-accent-hover);
+    transform: translateY(-1px);
   }
 `;
 
@@ -392,7 +449,13 @@ const UploadArea = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+`;
+
+const UploadHint = styled.div`
+  font-size: 13px;
+  color: #6b7280;
+  text-align: center;
 `;
 
 const ModalActions = styled.div`
@@ -411,6 +474,7 @@ const MiniBtn = styled.button`
   cursor: pointer;
   font-size: 13px;
   color: #374151;
+  transition: all 0.2s;
 
   &:hover {
     background: #f9fafb;
@@ -419,17 +483,51 @@ const MiniBtn = styled.button`
 
 const FileList = styled.ul`
   margin-top: 12px;
-  padding: 12px 16px;
+  padding: 0;
   width: 100%;
-  max-width: 420px;
+  max-width: 500px;
+  list-style: none;
+`;
+
+const FileItem = styled.li`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
+  margin-bottom: 8px;
+`;
 
-  li {
-    font-size: 13px;
-    color: #374151;
-    line-height: 1.6;
+const FileName = styled.span`
+  flex: 1;
+  font-size: 13px;
+  color: #374151;
+  font-weight: 500;
+`;
+
+const FileSize = styled.span`
+  font-size: 12px;
+  color: #9ca3af;
+`;
+
+const RemoveBtn = styled.button`
+  width: 24px;
+  height: 24px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #fecaca;
   }
 `;
 
