@@ -23,6 +23,8 @@ const SignupPage: React.FC = () => {
   const [showTimer, setShowTimer] = useState(false);
   const [timeLeft, setTimeLeft] = useState(600);
 
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     if (!showTimer) return;
     if (timeLeft <= 0) return;
@@ -189,6 +191,43 @@ const SignupPage: React.FC = () => {
     navigate("/registration");
   };
 
+  const handleSignup = async () => {
+    setMessage("");
+    setMessageType("");
+
+    try {
+      setLoading(true);
+
+      // 백 DTO(기존에 우리가 맞춘 payload) 그대로 유지
+      // 회원가입에는 이메일과 비밀번호만 필요
+      const payload = {
+        email: email.trim(),
+        password,
+        passwordConfirm,
+      };
+
+      await http.post("/api/auth/company-signup", payload);
+
+      setMessage("회원가입이 완료되었습니다. 로그인 해주세요.");
+      setMessageType("success");
+
+      localStorage.removeItem("signup_email");
+      localStorage.removeItem("signup_password");
+      localStorage.removeItem("signup_passwordConfirm");
+
+      navigate("/login");
+    } catch (error: any) {
+      const msg =
+        error?.response?.data?.message ||
+        (typeof error?.response?.data === "string" ? error.response.data : null) ||
+        "회원가입에 실패했습니다.";
+      setMessage(msg);
+      setMessageType("error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Wrapper>
       <LoginBox>
@@ -268,8 +307,8 @@ const SignupPage: React.FC = () => {
         </ContentArea>
 
         <BottomRow>
-          <FloatingButton type="button" className="button_center" disabled={!isValid} onClick={goRegistration}>
-            회사 등록
+          <FloatingButton type="button" className="button_center" disabled={loading} onClick={handleSignup}>
+            회원가입
           </FloatingButton>
         </BottomRow>
       </LoginBox>
