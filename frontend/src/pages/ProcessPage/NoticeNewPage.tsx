@@ -41,7 +41,8 @@ const NoticeNewPage: React.FC = () => {
   const periodRef = useRef<HTMLInputElement | null>(null);
   const urlRef = useRef<HTMLInputElement | null>(null);
 
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>([]); // Reference files
+  const [noticeFiles, setNoticeFiles] = useState<File[]>([]); // Notice files
 
   // ✅ 공고 상세 API 호출 (ProcessPage와 동일)
   useEffect(() => {
@@ -193,11 +194,10 @@ const NoticeNewPage: React.FC = () => {
       )}
 
       <Card>
-        <div className="title" style={{ marginLeft: 0, marginBottom: 18 }}>
-          공고 분석
-        </div>
-
         <Section>
+          <div className="title" style={{ marginLeft: 0, marginBottom: 18 }}>
+            선택된 공고
+          </div>
           <ModalGrid>
             <div className="label">제목</div>
             <div className="text">{title}</div>
@@ -223,38 +223,103 @@ const NoticeNewPage: React.FC = () => {
           <ModalSummary>
             <div className="label">요약</div>
             <div className="text">{summary}</div>
+            <div className="summary-footer-text" style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e5e7eb', lineHeight: '1.8', fontSize: '14px', color: '#374151' }}>
+              <p style={{ marginBottom: '12px' }}>이 공고를 기준으로</p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 'bold' }}>
+                  <span style={{ color: '#22c55e' }}>✔</span> 자격요건 체크리스트
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 'bold' }}>
+                  <span style={{ color: '#22c55e' }}>✔</span> 사업 목적 요약
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 'bold' }}>
+                  <span style={{ color: '#22c55e' }}>✔</span> 평가 항목 요약
+                </div>
+              </div>
+            </div>
           </ModalSummary>
+        </Section>
 
-          <UploadArea>
-            <UploadLabel htmlFor="file">추가파일 업로드</UploadLabel>
-            <HiddenInput
-              id="file"
-              type="file"
-              accept=".docx"
-              multiple
-              onChange={(e) => {
-                const selectedFiles = Array.from(e.target.files ?? []);
-                setFiles(selectedFiles);
-              }}
-            />
+        <Section>
+          <div style={{ marginBottom: '12px', fontSize: '14px', color: '#6b7280' }}>
+            분석 정확도를 높이기 위해 아래 파일을 업로드 해주세요
+          </div>
 
-            {files.length > 0 && (
-              <FileList>
-                {files.map((file, idx) => (
-                  <li key={idx}>{file.name}</li>
-                ))}
-              </FileList>
-            )}
-          </UploadArea>
+          <Row>
+            <Section style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>권장 업로드 파일</div>
+              <ul style={{ fontSize: '14px', color: '#4b5563', margin: '0 0 16px 0', paddingLeft: '0', listStyle: 'none' }}>
+                <li style={{ marginBottom: '4px' }}><span style={{ color: '#22c55e', marginRight: '6px' }}>✔</span>사업 계획서 초안 또는 이전 제출분</li>
+                <li><span style={{ color: '#22c55e', marginRight: '6px' }}>✔</span>기업 소개서(IR)</li>
+              </ul>
 
-          <ModalActions>
+              <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px' }}>* 업로드한 파일을 기반으로</div>
+              <ul style={{ fontSize: '14px', color: '#4b5563', margin: '0 0 20px 0', paddingLeft: '20px' }}>
+                <li>공고 적합성 분석</li>
+                <li>부정합 공고 분석</li>
+              </ul>
+              <UploadArea>
+                <UploadLabel htmlFor="notice-file">공고문 선택</UploadLabel>
+                <HiddenInput
+                  id="notice-file"
+                  type="file"
+                  accept=".hwp,.pdf,.docx"
+                  multiple
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.files ?? []);
+                    setNoticeFiles(selected);
+                  }}
+                />
+                {noticeFiles.length > 0 && (
+                  <FileList>
+                    {noticeFiles.map((file, idx) => (
+                      <li key={idx}>{file.name}</li>
+                    ))}
+                  </FileList>
+                )}
+              </UploadArea>
+            </Section>
+
+            <Section style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ marginBottom: '10px', fontSize: '14px', color: '#6b7280' }}>
+                파일 선택 버튼을 클릭해 첨부해주세요.
+              </div>
+              <UploadArea>
+                <UploadLabel htmlFor="ref-file">참고자료 선택</UploadLabel>
+                <HiddenInput
+                  id="ref-file"
+                  type="file"
+                  accept=".hwp,.pdf,.docx"
+                  multiple
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.files ?? []);
+                    setFiles(selected);
+                  }}
+                />
+                {files.length > 0 && (
+                  <FileList>
+                    {files.map((file, idx) => (
+                      <li key={idx}>{file.name}</li>
+                    ))}
+                  </FileList>
+                )}
+              </UploadArea>
+
+              <MiniBtn type="button" onClick={handleSubmit} style={{ marginTop: '16px' }}>
+                분석
+              </MiniBtn>
+            </Section>
+          </Row>
+
+          {/* <ModalActions>
             <MiniBtn type="button" onClick={handleSubmit}>
               분석
             </MiniBtn>
             <MiniBtn type="button" onClick={handleBackToProcess}>
               닫기
             </MiniBtn>
-          </ModalActions>
+          </ModalActions> */}
         </Section>
       </Card>
     </Page>
@@ -294,148 +359,153 @@ const Section = styled.div`
   border: 1px solid #e5e7eb;
 `;
 
+const Row = styled.div`
+  display: flex;
+  gap: 16px;
+`;
+
 const ModalGrid = styled.div`
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  row-gap: 12px;
-  column-gap: 16px;
-  align-items: center;
+display: grid;
+grid - template - columns: 120px 1fr;
+row - gap: 12px;
+column - gap: 16px;
+align - items: center;
 
   .label {
-    font-size: 14px;
-    color: #374151;
-    font-weight: 500;
-  }
+  font - size: 14px;
+  color: #374151;
+  font - weight: 500;
+}
 
   .text {
-    font-size: 14px;
-    color: #1f2937;
-    line-height: 1.5;
-  }
+  font - size: 14px;
+  color: #1f2937;
+  line - height: 1.5;
+}
 
   a {
-    color: #2563eb;
-    text-decoration: underline;
+  color: #2563eb;
+  text - decoration: underline;
 
     &:hover {
-      opacity: 0.85;
-    }
+    opacity: 0.85;
   }
+}
 `;
 
 const ModalSummary = styled.div`
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
+margin - top: 16px;
+padding - top: 12px;
+border - top: 1px solid rgba(0, 0, 0, 0.12);
 
   .label {
-    font-size: 14px;
-    color: #374151;
-    font-weight: 500;
-    margin-bottom: 8px;
-  }
+  font - size: 14px;
+  color: #374151;
+  font - weight: 500;
+  margin - bottom: 8px;
+}
 
   .text {
-    font-size: 14px;
-    color: #1f2937;
-    line-height: 1.55;
-    white-space: pre-wrap;
-  }
+  font - size: 14px;
+  color: #1f2937;
+  line - height: 1.55;
+  white - space: pre - wrap;
+}
 `;
 
 const UploadLabel = styled.label`
-  padding: 12px 26px;
-  background-color: var(--color-accent);
-  color: white;
-  border-radius: 8px;
-  font-size: 15px;
-  cursor: pointer;
+padding: 12px 26px;
+background - color: var(--color - accent);
+color: white;
+border - radius: 8px;
+font - size: 15px;
+cursor: pointer;
 
   &:hover {
-    background-color: var(--color-accent-hover);
-  }
+  background - color: var(--color - accent - hover);
+}
 `;
 
 const HiddenInput = styled.input`
-  display: none;
+display: none;
 `;
 
 const UploadArea = styled.div`
-  margin: 24px 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
+margin: 24px 0;
+display: flex;
+flex - direction: column;
+align - items: center;
+gap: 10px;
 `;
 
 const ModalActions = styled.div`
-  margin-top: 22px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+margin - top: 22px;
+display: flex;
+justify - content: flex - end;
+gap: 10px;
 `;
 
 const MiniBtn = styled.button`
-  width: 80px;
-  height: 36px;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  color: #374151;
+width: 80px;
+height: 36px;
+background: #ffffff;
+border: 1px solid #d1d5db;
+border - radius: 6px;
+cursor: pointer;
+font - size: 13px;
+color: #374151;
 
   &:hover {
-    background: #f9fafb;
-  }
+  background: #f9fafb;
+}
 `;
 
 const FileList = styled.ul`
-  margin-top: 12px;
-  padding: 12px 16px;
-  width: 100%;
-  max-width: 420px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+margin - top: 12px;
+padding: 12px 16px;
+width: 100 %;
+max - width: 420px;
+background: #ffffff;
+border: 1px solid #e5e7eb;
+border - radius: 8px;
 
   li {
-    font-size: 13px;
-    color: #374151;
-    line-height: 1.6;
-  }
+  font - size: 13px;
+  color: #374151;
+  line - height: 1.6;
+}
 `;
 
 const LoadingOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+position: fixed;
+inset: 0;
+background: rgba(0, 0, 0, 0.45);
+z - index: 9999;
+display: flex;
+align - items: center;
+justify - content: center;
 `;
 
 const LoadingBox = styled.div`
-  background: #ffffff;
-  padding: 32px 40px;
-  border-radius: 14px;
-  text-align: center;
-  min-width: 240px;
+background: #ffffff;
+padding: 32px 40px;
+border - radius: 14px;
+text - align: center;
+min - width: 240px;
 `;
 
 const Spinner = styled.div`
-  width: 42px;
-  height: 42px;
-  border: 4px solid #e5e7eb;
-  border-top: 4px solid #2563eb;
-  border-radius: 50%;
-  animation: spin 0.9s linear infinite;
-  margin: 0 auto 16px;
+width: 42px;
+height: 42px;
+border: 4px solid #e5e7eb;
+border - top: 4px solid #2563eb;
+border - radius: 50 %;
+animation: spin 0.9s linear infinite;
+margin: 0 auto 16px;
 
-  @keyframes spin {
+@keyframes spin {
     to {
-      transform: rotate(360deg);
-    }
+    transform: rotate(360deg);
   }
+}
 `;

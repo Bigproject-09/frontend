@@ -90,7 +90,7 @@ const MainPage: React.FC = () => {
         </FeaturesSection>
 
         {/* CTA Section */}
-        <CTASection>
+        {/* <CTASection>
           <CTATitle>지금 바로 시작하세요</CTATitle>
           <CTASubtitle>
             RanDi와 함께 R&D 과제 수주 성공률을 높이세요
@@ -99,7 +99,7 @@ const MainPage: React.FC = () => {
             무료로 시작하기
             <ArrowIcon>→</ArrowIcon>
           </CTAButton>
-        </CTASection>
+        </CTASection> */}
       </ContentContainer>
     </PageWrapper>
   );

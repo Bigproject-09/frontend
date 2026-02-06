@@ -4,6 +4,7 @@
   border-top: 1px solid var(--color-border-light);
   background: white;
   margin-top: auto;
+  box-sizing: border-box;
 }
 
 /* Common Section */

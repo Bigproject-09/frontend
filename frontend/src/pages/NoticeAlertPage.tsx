@@ -159,6 +159,7 @@ const NoticeAlertPage: React.FC = () => {
 
   const view = searchParams.get("view");
   const type = searchParams.get("type");
+  const tabParam = searchParams.get("tab");
 
   const [items, setItems] = useState<NoticeItem[]>([]);
   // const [favIds, setFavIds] = useState<number[]>(loadFavIds);
@@ -201,6 +202,17 @@ const NoticeAlertPage: React.FC = () => {
       })
       .catch(console.error);
   }, []);
+
+  // Sync tab state with URL query parameter
+  useEffect(() => {
+    if (tabParam === "hashtag") {
+      setTab("HASHTAG");
+    } else if (tabParam === "fav") {
+      setTab("FAV");
+    } else {
+      setTab("ALL");
+    }
+  }, [tabParam]);
 
   /* =========================
      필터
@@ -443,9 +455,9 @@ const NoticeAlertPage: React.FC = () => {
                         {isFav ? "★" : "☆"}
                       </FavBtn>
                     </CardHeader>
-                    
+
                     <CardTitle>{it.title}</CardTitle>
-                    
+
                     <CardMeta>
                       <MetaItem>
                         <MetaLabel>기관</MetaLabel>
@@ -598,7 +610,7 @@ const NoticeAlertPage: React.FC = () => {
               )}
               {view === "main" && type === "announce" && (
                 <ApplyBtn onClick={() => handleApply_main_announce(selected.id)}>신청</ApplyBtn>
-              )}             
+              )}
               {view === "main" && type === "script" && (
                 <ApplyBtn onClick={() => handleApply_main_script(selected.id)}>신청</ApplyBtn>
               )}

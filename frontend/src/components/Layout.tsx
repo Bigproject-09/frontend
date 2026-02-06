@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Outlet, NavLink, useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Layout.css";
-import logo from "../assets/logo.png";
 import { useAuth } from "../auth/AuthProvider";
 import Footer from "./Footer";
 import UserSidebar from "./UserSidebar";
@@ -28,20 +27,13 @@ const Layout: React.FC = () => {
         onToggle={() => setCollapsed(prev => !prev)}
       />
       <div className="layout"
-        style={{ marginLeft: collapsed ? 64 : 220 }}>
-        <header className="header">
+        style={{ marginLeft: collapsed ? 72 : 280 }}>
+        {/* <header className="header">
           <nav className="nav">
             <div className="nav-left">
-              <button
-                className="logo-btn"
-                onClick={() => navigate("/")}>
-                <div className="logo">
-                  <img src={logo} alt="RanDi 로고" />
-                  <span className="logo-text">RanDi</span>
-                </div>
-              </button>
+              {/* Logo moved to Sidebar * /}
             </div>
-            <div className="nav-group-right">
+            {/* <div className="nav-group-right">
               <div className="nav-center">
                 <NavLink
                   to="/notice?view=notice"
@@ -58,8 +50,8 @@ const Layout: React.FC = () => {
                   </NavLink>
                 )}
               </div>
-            </div>
-            <div className="nav-right">
+            </div> * /}
+            {/* <div className="nav-right">
               {me ? (
                 <button onClick={onLogout} className="login-btn">
                   로그아웃
@@ -69,9 +61,9 @@ const Layout: React.FC = () => {
                   로그인
                 </button>
               )}
-            </div>
+            </div> * /}
           </nav>
-        </header>
+        </header> */}
 
         <main style={{ minHeight: "calc(100vh - 120px) " }}>
           <Outlet />
