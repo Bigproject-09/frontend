@@ -3,14 +3,14 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  width: 100%;
   overflow-x: hidden;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 8px; /* 로고랑 글자 사이 간격 */
+  gap: 8px;
+  /* 로고랑 글자 사이 간격 */
 }
 
 .logo img {
@@ -59,7 +59,8 @@
 .nav-center {
   /* margin-left: auto; */
   display: flex;
-  gap: 24px; /* span 사이 간격 */
+  gap: 24px;
+  /* span 사이 간격 */
   margin-right: 64px;
   cursor: pointer;
   white-space: nowrap;
@@ -88,7 +89,7 @@
 }
 
 .nav-btn:hover {
-  background-color: rgba(255,255,255,0.12);
+  background-color: rgba(255, 255, 255, 0.12);
   color: var(--color-text-white);
 }
 
@@ -112,9 +113,11 @@
 
 /* 본문 콘텐츠 */
 .content {
-  flex: 1; /* 화면 남은 공간 채우기 */
-  width : 100%;
-  padding: 0; /*전체 페이지 가로 길이 변경*/
+  flex: 1;
+  /* 화면 남은 공간 채우기 */
+  width: 100%;
+  padding: 0;
+  /*전체 페이지 가로 길이 변경*/
   box-sizing: border-box;
   min-width: 0;
 }
@@ -162,7 +165,7 @@
 }
 
 .nav-btn:hover {
-  background-color: rgba(255,255,255,0.12);
+  background-color: rgba(255, 255, 255, 0.12);
 }
 
 .nav-btn.active:hover {

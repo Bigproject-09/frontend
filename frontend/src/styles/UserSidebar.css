@@ -1,0 +1,45 @@
+.user-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 220px;
+  height: 100vh;
+  background: #1f2937;
+  color: white;
+  padding: 16px;
+  box-sizing: border-box;
+  transition: width 0.25s ease;
+  z-index: 1000;
+}
+
+.user-sidebar.collapsed {
+  width: 64px;
+}
+
+.sidebar-logo {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar-nav a {
+  color: #d1d5db;
+  text-decoration: none;
+}
+
+.sidebar-nav a.active {
+  color: white;
+  font-weight: bold;
+}
+
+.collapse-btn {
+  margin-top: auto;
+  height: 36px;
+}

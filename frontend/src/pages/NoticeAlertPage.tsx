@@ -394,7 +394,7 @@ const NoticeAlertPage: React.FC = () => {
   return (
     <Shell>
       <Layout>
-        <Side>
+        {/* <Side>
           <SideTab data-active={tab === "ALL"} onClick={() => setTab("ALL")}>
             전체 공고
           </SideTab>
@@ -404,7 +404,7 @@ const NoticeAlertPage: React.FC = () => {
           <SideTab data-active={tab === "FAV"} onClick={() => setTab("FAV")}>
             찜
           </SideTab>
-        </Side>
+        </Side> */}
 
         <Main>
           {/* ✅ 동적 제목 */}

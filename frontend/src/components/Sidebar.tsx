@@ -26,13 +26,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   children
 }) => {
 
-    const location = useLocation();
+  const location = useLocation();
 
   return (
     <div className="app-container">
 
       {/* 사이드바 */}
-      <aside className="sidebar">
+      {/* <aside className="sidebar">
 
         <nav className="sidebar-menu">
           {sidebarMenus.map((menu, i) => {
@@ -52,7 +52,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         })}
         </nav>
 
-      </aside>
+      </aside> */}
+
 
       {/* 메인 */}
       <div className="main-area">
