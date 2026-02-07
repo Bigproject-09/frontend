@@ -29,18 +29,29 @@ const ManagerPage: React.FC = () => {
   const [auditLogs, setAuditLogs] = useState<AuditLogDto[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // ★ 페이지네이션 상태 추가
+  const [page, setPage] = useState(0);        // 현재 페이지 (0부터 시작)
+  const [totalPages, setTotalPages] = useState(0); // 전체 페이지 수
+
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (token) {
       try {
         const decoded: any = jwtDecode(token);
         setRole(decoded.role); 
-        fetchRoleData(decoded.role);
+        // 초기 데이터 로딩 (page 상태에 따라 실행됨)
       } catch (e) {
         console.error("토큰 오류", e);
       }
     }
   }, []);
+
+  // ★ page나 role이 바뀌면 데이터를 다시 불러옴
+  useEffect(() => {
+    if (role) {
+      fetchRoleData(role);
+    }
+  }, [page, role]);
 
   const fetchRoleData = async (userRole: string) => {
     setLoading(true);
@@ -49,8 +60,12 @@ const ManagerPage: React.FC = () => {
         const res = await http.get("/api/mypage/projects");
         setMyProjects(res.data);
       } else if (userRole === "ADMIN") {
-        const res = await http.get("/api/mypage/audit-logs");
-        setAuditLogs(res.data);
+        // ★ [수정] 페이지 번호를 쿼리 파라미터로 보냄
+        const res = await http.get(`/api/mypage/audit-logs?page=${page}`);
+        
+        // ★ [수정] 백엔드가 Page 객체를 주므로 content와 totalPages를 꺼내야 함
+        setAuditLogs(res.data.content); 
+        setTotalPages(res.data.totalPages);
       }
     } catch (err) {
       console.error("데이터 로딩 실패", err);
@@ -70,7 +85,6 @@ const ManagerPage: React.FC = () => {
         </Header>
 
         <ContentSection>
-          {/* ▼▼▼ 여기 텍스트를 수정했습니다 ▼▼▼ */}
           <SectionTitle>
             {role === "ADMIN" ? "🛡️ 전체 보안 감사 로그" : "📂 진행 중인 공고"}
           </SectionTitle>
@@ -83,7 +97,6 @@ const ManagerPage: React.FC = () => {
               <Table>
                 <thead>
                   <tr>
-                    {/* ▼▼▼ 테이블 헤더도 수정했습니다 ▼▼▼ */}
                     <th style={{width: '50%'}}>공고명</th>
                     <th>상태</th>
                     <th>최근 수정일</th>
@@ -111,34 +124,57 @@ const ManagerPage: React.FC = () => {
               </Table>
             )}
 
-            {/* [CASE 2] 관리자 화면 (그대로 유지) */}
+            {/* [CASE 2] 관리자 화면 */}
             {role === "ADMIN" && !loading && (
-              <Table>
-                <thead>
-                  <tr>
-                    <th style={{width: '20%'}}>발생 시간</th>
-                    <th style={{width: '15%'}}>사용자</th>
-                    <th style={{width: '15%'}}>활동(Action)</th>
-                    <th>대상 문서 / 내용</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditLogs.length === 0 ? (
-                    <tr><td colSpan={4} className="empty">로그 내역이 없습니다.</td></tr>
-                  ) : (
-                    auditLogs.map((log) => (
-                      <tr key={log.id}>
-                        <td>{new Date(log.timestamp).toLocaleString()}</td>
-                        <td style={{ fontWeight: "bold", color: "#4b5563" }}>{log.userName}</td>
-                        <td>
-                          <ActionBadge action={log.action}>{log.action}</ActionBadge>
-                        </td>
-                        <td>{log.targetDocument}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </Table>
+              <>
+                <Table>
+                  <thead>
+                    <tr>
+                      <th style={{width: '20%'}}>발생 시간</th>
+                      <th style={{width: '15%'}}>사용자</th>
+                      <th style={{width: '15%'}}>활동(Action)</th>
+                      <th>대상 문서 / 내용</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLogs.length === 0 ? (
+                      <tr><td colSpan={4} className="empty">로그 내역이 없습니다.</td></tr>
+                    ) : (
+                      auditLogs.map((log) => (
+                        <tr key={log.id}>
+                          <td>{new Date(log.timestamp).toLocaleString()}</td>
+                          <td style={{ fontWeight: "bold", color: "#4b5563" }}>{log.userName}</td>
+                          <td>
+                            <ActionBadge action={log.action}>{log.action}</ActionBadge>
+                          </td>
+                          <td>{log.targetDocument}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </Table>
+
+                {/* ★ [추가] 페이지네이션 컨트롤러 */}
+                <PaginationBox>
+                  <PageBtn 
+                    disabled={page === 0} 
+                    onClick={() => setPage(page - 1)}
+                  >
+                    &lt; 이전
+                  </PageBtn>
+                  
+                  <PageInfo>
+                    {totalPages === 0 ? 0 : page + 1} / {totalPages}
+                  </PageInfo>
+                  
+                  <PageBtn 
+                    disabled={page >= totalPages - 1} 
+                    onClick={() => setPage(page + 1)}
+                  >
+                    다음 &gt;
+                  </PageBtn>
+                </PaginationBox>
+              </>
             )}
           </ContentArea>
         </ContentSection>
@@ -149,7 +185,7 @@ const ManagerPage: React.FC = () => {
 
 export default ManagerPage;
 
-/* ===== 스타일 정의 (기존과 동일) ===== */
+/* ===== 스타일 정의 ===== */
 const PageWrapper = styled.div`
   width: 100%;
   min-height: 100vh;
@@ -221,6 +257,8 @@ const ContentArea = styled.div`
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column; 
 `;
 
 const LoadingText = styled.div`
@@ -233,6 +271,7 @@ const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  flex: 1;
 
   th {
     background: #f9fafb;
@@ -297,4 +336,46 @@ const ActionButton = styled.button`
   &:hover {
     background: #eff6ff;
   }
+`;
+
+// ★ 스타일 추가: 페이지네이션 박스
+const PaginationBox = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 15px;
+  gap: 20px;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+`;
+
+// ★ 스타일 추가: 페이지 이동 버튼
+const PageBtn = styled.button`
+  padding: 6px 14px;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  
+  &:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #9ca3af;
+  }
+  
+  &:disabled {
+    background: #f3f4f6;
+    color: #d1d5db;
+    cursor: not-allowed;
+    border-color: #e5e7eb;
+  }
+`;
+
+// ★ 스타일 추가: 페이지 정보 텍스트
+const PageInfo = styled.span`
+  font-size: 14px;
+  color: #4b5563;
+  font-weight: 600;
 `;
