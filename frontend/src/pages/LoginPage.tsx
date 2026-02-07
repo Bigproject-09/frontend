@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
-import "../styles/Global.css";
+// import "../styles/Global.css"; // 경로 확인 필요
 import http from "../api/http";
 import { useAuth } from "../auth/AuthProvider";
+import { jwtDecode } from "jwt-decode"; // ★ 1. 이거 import 추가 (npm install jwt-decode 안했으면 해야 함)
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -41,10 +42,26 @@ const LoginPage: React.FC = () => {
         return;
       }
 
+      // 1. 토큰 저장
       localStorage.setItem("accessToken", accessToken);
+
+      // ★ 2. [추가된 부분] 토큰 까서 Role 저장하기!
+      try {
+        const decoded: any = jwtDecode(accessToken);
+        // decoded.role 안에 "ADMIN" 또는 "MEMBER"가 들어있음
+        if (decoded.role) {
+           localStorage.setItem("role", decoded.role);
+        }
+      } catch (e) {
+        console.error("토큰 해석 실패(로그인은 진행됨)", e);
+      }
+
+      // 3. 내 정보 갱신 (Context 업데이트)
       await refreshMe();
-      // 로그인 성공 후 이동(원하는 경로로 바꿔도 됨)
+      
+      // 4. 페이지 이동
       navigate("/");
+      
     } catch (err: any) {
       // GlobalExceptionHandler가 {message:"..."} 형태면 여기서 잡힘
       const msg =
@@ -123,6 +140,7 @@ const LoginPage: React.FC = () => {
   );
 };
 
+// ... (아래 스타일 코드는 그대로 두시면 됩니다)
 const ErrorText = styled.div`
   color: #dc2626;
   font-size: 13px;

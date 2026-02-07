@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
-import "../../styles/Global.css";
+// import "../../styles/Global.css"; // 경로가 맞는지 확인 필요
 
 type RFPStep =
   | "UPLOAD_CHECK"
@@ -20,6 +20,8 @@ const STEP_TEXT: Record<RFPStep, string> = {
 
 const RFPSearchPage: React.FC = () => {
   const navigate = useNavigate();
+  
+  // ✅ 1. 여기서 한 번만 선언하면 됩니다.
   const location = useLocation();
   const noticeId = location.state?.noticeId as number | undefined;
 
@@ -44,8 +46,8 @@ const RFPSearchPage: React.FC = () => {
   const urlRef = useRef<HTMLInputElement | null>(null);
 
   const [files, setFiles] = useState<File[]>([]);
-  const location = useLocation();
-  const noticeId = location.state?.noticeId as number | undefined;
+
+  // ❌ [삭제됨] 여기에 있던 중복 선언(loc, noticeId) 코드를 제거했습니다.
 
   useEffect(() => {
     if (!noticeId) {

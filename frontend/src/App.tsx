@@ -11,6 +11,10 @@ import WithdrawPage from "./pages/WithdrawalPage";
 
 import RegistrationPage from "./pages/RegistrationPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+
+// ★ 1. 여기 import 추가! (경로가 맞는지 확인해주세요)
+import ManagerPage from "./pages/ManagerPage/ManagerPage"; 
+
 import TokenTab from "./pages/ManagerPage/TokenTab";
 import PaymentPage from "./pages/ManagerPage/PaymentPage";
 import RoleManageTab from "./pages/ManagerPage/RoleManageTab";
@@ -59,10 +63,14 @@ function App() {
 
             {/* 여기부터 로그인 필요 */}
             <Route element={<ProtectedRoute />}>
+              
+              {/* ★ 2. 여기에 라우트 추가! (마이페이지/관리자 통합 페이지) */}
+              <Route path="/mypage" element={<ManagerPage />} />
+
               {/* 공고 */}
               <Route path="/notice" element={<NoticeAlertPage />} />
 
-              {/* 매니저 */}
+              {/* 기존 매니저 페이지들 (필요하다면 유지) */}
               <Route path="/manager/tokentab" element={<TokenTab />} />
               <Route path="/manager/payment" element={<PaymentPage />} />
               <Route path="/manager/rolemanagetab" element={<RoleManageTab />} />

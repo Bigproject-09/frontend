@@ -14,9 +14,8 @@ const Layout: React.FC = () => {
     navigate("/login");
   };
 
-const [searchParams] = useSearchParams();
-const tab = searchParams.get("tab");
-
+  const [searchParams] = useSearchParams();
+  const tab = searchParams.get("tab");
 
   return (
     <div className="layout">
@@ -25,56 +24,58 @@ const tab = searchParams.get("tab");
           <div className="nav-left">
             <button
               className="logo-btn"
-              onClick={() => navigate("/")}>
+              onClick={() => navigate("/")}
+            >
               <div className="logo">
                 <img src={logo} alt="RanDi 로고" />
                 <span className="logo-text">RanDi</span>
               </div>
             </button>
           </div>
+
           <div className="nav-group-right">
             <div className="nav-center">
               <NavLink
                 to="/notice?view=notice"
-                className={`nav-btn ${tab === "notice" ? "active" : ""}`}>
+                className={`nav-btn ${tab === "notice" ? "active" : ""}`}
+              >
                 공고
               </NavLink>
 
               <NavLink
                 to="/process?view=service"
-                className={`nav-btn ${tab === "service" ? "active" : ""}`}>
+                className={`nav-btn ${tab === "service" ? "active" : ""}`}
+              >
                 서비스
               </NavLink>
 
-              {/* <NavLink to="/faq" className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}>
-                FAQ
-              </NavLink> */}
-
+              {/* 로그인 상태(me)일 때만 '마이페이지' 버튼 표시 */}
               {me && (
                 <NavLink
-                  to="/manager/tokentab"
+                  to="/mypage"
                   className={({ isActive }) => `nav-btn ${isActive ? "active" : ""}`}
                 >
-                  관리자
+                  마이페이지
                 </NavLink>
               )}
+            </div>
           </div>
-          </div>
+
           <div className="nav-right">
-              {me ? (
-                <button onClick={onLogout} className="login-btn">
-                  로그아웃
-                </button>
-              ) : (
-                <button onClick={() => navigate("/login")} className="login-btn">
-                  로그인
-                </button>
-              )}
+            {me ? (
+              <button onClick={onLogout} className="login-btn">
+                로그아웃
+              </button>
+            ) : (
+              <button onClick={() => navigate("/login")} className="login-btn">
+                로그인
+              </button>
+            )}
           </div>
         </nav>
       </header>
 
-      <main style={{minHeight: "calc(100vh - 120px) "}}>
+      <main style={{ minHeight: "calc(100vh - 120px)" }}>
         <Outlet />
       </main>
 
