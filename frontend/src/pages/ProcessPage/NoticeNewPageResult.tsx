@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/Global.css";
-import {jsPDF} from "jspdf";
+import { jsPDF } from "jspdf";
 import { NotoSansKR } from "../../utils/NotoSansKR";
 
 // 타입 정의
@@ -20,6 +20,25 @@ interface AnalysisData {
     judgments: Judgment[];
     purpose?: string;
     evaluationItems?: string;
+
+    research_intent?: {
+        policy_background: string;
+        target_issues: string[];
+    };
+
+    evaluation_weight_analysis?: {
+        summary: string;
+        high_weight_items: {
+            item: string;
+            points: number;
+            strategy: string;
+        }[];
+    };
+
+    quantitative_targets?: {
+        deliverables: string[];
+        mandatory_requirements: string[];
+    };
 }
 
 // 더미 데이터
@@ -48,7 +67,50 @@ const DUMMY_DATA: AnalysisData = {
             ],
             additional_action: "회사가 해양수산과학기술 분야와 관련된 연구 실적이나 사업 계획이 있는지 추가 확인이 필요합니다. 현재 정보로는 해당 분야의 전문성을 입증하기 어렵습니다."
         },
-    ]
+    ],
+    research_intent: {
+        "policy_background": "정부는 기후변화로 인한 해양환경 급변에 대응하고, 신뢰도 높은 해양 기후변화 감시·예측 역량을 확보하며 국가 해양과학 경쟁력을 강화하고자 합니다. 특히 우리나라 해역 특성을 반영한 국내 기술 기반의 해양기후모델 확보가 시급하며, 이를 통해 과학적 데이터에 기반한 실효성 있는 맞춤형 정책 수립을 목표로 합니다.",
+        "target_issues": [
+            "가속화되는 해양 기후변화에 대한 신뢰도 높은 감시·예측 정보 생산 및 제공",
+            "한반도 주변 해역에 최적화된 국내 기술 기반의 해양·극지 환경 및 생태계 기후예측시스템 부재",
+            "해양 환경 생태계에 관한 기후변화 영향 예측 및 맞춤형 정책 수립을 위한 시스템 미비"
+        ]
+    },
+    evaluation_weight_analysis: {
+        "summary": "총 100점 만점 중 연구개발 계획(40%)과 연구역량(30%)이 전체 평가 배점의 70%를 차지하는 고배점 항목으로, 제안 기술의 우수성과 수행 주체의 역량을 핵심적으로 평가합니다. 추진체계(20%)와 성과활용 계획(10%)도 중요하게 다루어집니다.",
+        "high_weight_items": [
+            {
+                "item": "연구개발 계획 (40%)",
+                "points": 40,
+                "strategy": "RFP의 최종목표 및 세부 요구사항을 명확히 반영하고, 국내외 선행연구 및 시장 동향 분석을 기반으로 제안 기술의 차별성과 창의성을 구체적으로 제시해야 합니다. 특히, 최종 및 연차별 연구 목표의 정량적 성과지표와 목표치 설정의 적절성을 상세하고 현실적으로 증명해야 합니다. (세부 항목 중 '연구개발계획의 구체성 및 창의성' 15점, '정량적 성과지표 및 목표치 설정 적절성' 10점, 'RFP 요구사항 반영' 10점)"
+            },
+            {
+                "item": "연구역량 (30%)",
+                "points": 30,
+                "strategy": "주관연구책임자의 총괄 역량과 소속기관의 연구 인프라 및 관리 역량을 강조하고, 참여연구진 각 구성원의 전문성과 연구수행능력이 최종 목표 달성에 충분함을 입증해야 합니다. 유사 과제 수행 경험 및 관련 성과를 구체적인 데이터와 함께 제시하여 신뢰도를 높여야 합니다. (세부 항목 중 '연구책임자/소속기관 연구역량 및 관리방안' 20점)"
+            }
+        ]
+    },
+    quantitative_targets: {
+        deliverables: [
+            "전지구 해양기후 모델 사용자 매뉴얼 1식 (국내 독자적 모델링 기술 3건 이상 적용)",
+            "CMIP7 제출을 위한 해양기후변화전망 보고서 1식 (기후변화 시나리오 자료집 5종 이상 포함)",
+            "50년 해양기후자료 재분석·재예측 결과 보고서 1식 (기상자료 동화 포함)",
+            "지역 상세 해양기후변화 보고서 1식 (기후변화 시나리오 자료집 4종 이상 포함)",
+            "해양 상위 생태계 보고서 1식 (기후변화 시나리오 자료집 4종 이상 포함)",
+            "SCIE 논문 195건 이상",
+            "특허 등록 50건 이상",
+            "사업화 5건 이상"
+        ],
+        mandatory_requirements: [
+            "총 연구개발기간: 5년 이내 ('26. 4. ~ '30. 12. 이내)",
+            "당해 연구개발기간: 9개월 이내 ('26. 4. ~ '26. 12.)",
+            "총 정부지원연구개발비: 350억원 이내 (당해연도 45억원 이내)",
+            "영리기관 참여 시 총 연구기간 동안 정부지원연구개발비 5억원당 1명의 만 18세 이상 34세 이하 청년인력 신규채용 및 1년 이상 고용 유지 (1차년도 회계연도 종료 전 1명 이상 채용)",
+            "연구시설·장비 구입 시 3천만원 이상 1억원 미만 장비는 '연구시설·장비 구축계획서' 제출 (1억원 이상은 선정 후 NFEC 심사)",
+            "연구개발 성과물의 소유는 국가로 함 (특별한 사유 시 변경 가능)"
+        ]
+    },
 };
 
 
@@ -233,8 +295,8 @@ const NoticeNewPageResult: React.FC = () => {
 
                 announcementLines.forEach((line: string) => {
                     if (yPosition > 280) {
-                    doc.addPage();
-                    yPosition = 20;
+                        doc.addPage();
+                        yPosition = 20;
                     }
                     doc.text(line, margin + 10, yPosition);
                     yPosition += 5;
@@ -243,8 +305,8 @@ const NoticeNewPageResult: React.FC = () => {
                 // 문단 간 여백
                 yPosition += 4;
             });
-            
-            if(req.additional_action.length > 0){
+
+            if (req.additional_action.length > 0) {
                 // 추가 조치
                 doc.setFont("NotoSansKR", "normal");
                 doc.setFontSize(10);
@@ -262,7 +324,7 @@ const NoticeNewPageResult: React.FC = () => {
                 });
                 yPosition += 3;
             }
-            
+
 
             // 구분선
             if (index < analysisData.judgments.length - 1) {
@@ -351,28 +413,28 @@ const NoticeNewPageResult: React.FC = () => {
                                                     {/* {openQuoteId === req.id
                                                         ? "관련 법령 ▲"
                                                         : "관련 법령 ▼"} */}
-                                                        관련 법령
+                                                    관련 법령
                                                 </Label>
                                             )}
 
                                             {/* {openQuoteId === req.id && ( */}
-                                                <div
-                                                    style={{
-                                                        marginTop: 10,
-                                                        padding: 14,
-                                                        background: "#f1f3f5",
-                                                        borderRadius: 8,
-                                                        fontSize: 13,
-                                                        lineHeight: 1.6,
-                                                    }}
-                                                >
-                                                    {req.quote_from_announcement.map((quote, idx) => (
-                                                        <div key={idx} style={{ marginBottom: 8 }}>
-                                                            {quote}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            
+                                            <div
+                                                style={{
+                                                    marginTop: 10,
+                                                    padding: 14,
+                                                    background: "#f1f3f5",
+                                                    borderRadius: 8,
+                                                    fontSize: 13,
+                                                    lineHeight: 1.6,
+                                                }}
+                                            >
+                                                {req.quote_from_announcement.map((quote, idx) => (
+                                                    <div key={idx} style={{ marginBottom: 8 }}>
+                                                        {quote}
+                                                    </div>
+                                                ))}
+                                            </div>
+
 
                                             {req.additional_action !== "" && (
                                                 <ConfirmationBox>
@@ -392,18 +454,83 @@ const NoticeNewPageResult: React.FC = () => {
                 <br />
 
                 <div className="title" style={{ fontSize: 15 }}>
-                    사업 목적 요약
+                    과제 의도 및 목적
                 </div>
                 <Section>
-                    사업 목적
+                    <RequirementList>
+                        <RequirementItem>
+                            <RequirementHeader>
+                                <RequirementTitle>정책 배경</RequirementTitle>
+                            </RequirementHeader>
+                            <ExpandableText text={analysisData?.research_intent?.policy_background || ""} />
+                        </RequirementItem>
+                        <RequirementItem>
+                            <RequirementHeader>
+                                <RequirementTitle>해결 목표 이슈</RequirementTitle>
+                            </RequirementHeader>
+                            <ul style={{ paddingLeft: '20px' }}>
+                                {analysisData?.research_intent?.target_issues.map((issue, i) => (
+                                    <li key={i} style={{ fontSize: '14px', marginBottom: '4px', lineHeight: '1.6' }}>{issue}</li>
+                                ))}
+                            </ul>
+                        </RequirementItem>
+                    </RequirementList>
                 </Section>
                 <br />
 
                 <div className="title" style={{ fontSize: 15 }}>
-                    평가항목 요약
+                    평가 지표 분석
                 </div>
                 <Section>
-                    평가항목
+                    <RequirementList>
+                        <RequirementItem>
+                            <RequirementHeader>
+                                <RequirementTitle>요약</RequirementTitle>
+                            </RequirementHeader>
+                            <ExpandableText text={analysisData?.evaluation_weight_analysis?.summary || ""} />
+                        </RequirementItem>
+
+                        {analysisData?.evaluation_weight_analysis?.high_weight_items.map((item, i) => (
+                            <RequirementItem key={i}>
+                                <RequirementHeader>
+                                    <RequirementTitle>{item.item} ({item.points}점)</RequirementTitle>
+                                </RequirementHeader>
+                                <ExpandableText text={item.strategy} />
+                            </RequirementItem>
+                        ))}
+                    </RequirementList>
+                </Section>
+                <br />
+
+                <div className="title" style={{ fontSize: 15 }}>
+                    제출해야하는 문서
+                </div>
+                <Section>
+                    <RequirementList>
+                        <RequirementItem>
+                            <ul style={{ paddingLeft: '20px' }}>
+                                {analysisData?.quantitative_targets?.deliverables.map((doc, i) => (
+                                    <li key={i} style={{ fontSize: '14px', marginBottom: '4px', lineHeight: '1.6' }}>{doc}</li>
+                                ))}
+                            </ul>
+                        </RequirementItem>
+                    </RequirementList>
+                </Section>
+                <br />
+
+                <div className="title" style={{ fontSize: 15 }}>
+                    필수 준수 사항
+                </div>
+                <Section>
+                    <RequirementList>
+                        <RequirementItem>
+                            <ul style={{ paddingLeft: '20px' }}>
+                                {analysisData?.quantitative_targets?.mandatory_requirements.map((req, i) => (
+                                    <li key={i} style={{ fontSize: '14px', marginBottom: '4px', lineHeight: '1.6' }}>{req}</li>
+                                ))}
+                            </ul>
+                        </RequirementItem>
+                    </RequirementList>
                 </Section>
 
                 <RightActionRow>
