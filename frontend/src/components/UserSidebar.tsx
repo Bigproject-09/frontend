@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import "../styles/UserSidebar.css";
 import logo from "../assets/logo.png";
 import { useAuth } from "../auth/AuthProvider";
@@ -11,6 +11,7 @@ type Props = {
 
 const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { me, logout } = useAuth();
 
   const handleLogout = async () => {
@@ -94,15 +95,15 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
             {/* <div className="user-name">{me?.name || "사용자"}</div> */}
             <div className="user-email">{me?.email || "user@example.com"}</div>
           </div>
-              {me ? (
-                <button onClick={handleLogout} className="login-btn">
-                  로그아웃
-                </button>
-              ) : (
-                <button onClick={() => navigate("/login")} className="login-btn">
-                  로그인
-                </button>
-              )}
+          {me ? (
+            <button onClick={handleLogout} className="login-btn">
+              로그아웃
+            </button>
+          ) : (
+            <button onClick={() => navigate("/login")} className="login-btn">
+              로그인
+            </button>
+          )}
         </div>
 
         {/* 통계 카드 */}
@@ -160,16 +161,16 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
 
           {openMenu === "service" && (
             <div className="nav-submenu">
-              <NavLink to="/notice?view=main&type=analysis" className={({ isActive }) => isActive ? "active" : ""}>
+              <NavLink to="/notice?view=main&type=analysis" className={() => location.search.includes("type=analysis") ? "active" : ""}>
                 <span className="nav-text">공고문 분석</span>
               </NavLink>
-              <NavLink to="/notice?view=main&type=rfp" className={({ isActive }) => isActive ? "active" : ""}>
+              <NavLink to="/notice?view=main&type=rfp" className={() => location.search.includes("type=rfp") ? "active" : ""}>
                 <span className="nav-text">유관 RFP 검색</span>
               </NavLink>
-              <NavLink to="/notice?view=main&type=announce" className={({ isActive }) => isActive ? "active" : ""}>
+              <NavLink to="/notice?view=main&type=announce" className={() => location.search.includes("type=announce") ? "active" : ""}>
                 <span className="nav-text">발표자료 제작</span>
               </NavLink>
-              <NavLink to="/notice?view=main&type=script" className={({ isActive }) => isActive ? "active" : ""}>
+              <NavLink to="/notice?view=main&type=script" className={() => location.search.includes("type=script") ? "active" : ""}>
                 <span className="nav-text">스크립트 생성</span>
               </NavLink>
             </div>

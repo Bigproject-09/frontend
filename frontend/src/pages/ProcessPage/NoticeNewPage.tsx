@@ -41,7 +41,7 @@ const NoticeNewPage: React.FC = () => {
   const periodRef = useRef<HTMLInputElement | null>(null);
   const urlRef = useRef<HTMLInputElement | null>(null);
 
-  const [files, setFiles] = useState<File[]>([]); // Reference files
+
   const [noticeFiles, setNoticeFiles] = useState<File[]>([]); // Notice files
 
   // ✅ 공고 상세 API 호출 (ProcessPage와 동일)
@@ -259,8 +259,14 @@ const NoticeNewPage: React.FC = () => {
                 <li>공고 적합성 분석</li>
                 <li>부정합 공고 분석</li>
               </ul>
+            </Section>
+
+            <Section style={{ flex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: '40px' }}>
+              <div style={{ marginBottom: '10px', fontSize: '14px', color: '#6b7280' }}>
+                파일 선택 버튼을 클릭해 첨부해주세요.
+              </div>
               <UploadArea>
-                <UploadLabel htmlFor="notice-file">공고문 선택</UploadLabel>
+                <UploadLabel htmlFor="notice-file">📤 파일 선택</UploadLabel>
                 <HiddenInput
                   id="notice-file"
                   type="file"
@@ -268,61 +274,56 @@ const NoticeNewPage: React.FC = () => {
                   multiple
                   onChange={(e) => {
                     const selected = Array.from(e.target.files ?? []);
-                    setNoticeFiles(selected);
+                    setNoticeFiles((prev) => [...prev, ...selected]);
+                    e.target.value = '';
                   }}
                 />
                 {noticeFiles.length > 0 && (
                   <FileList>
-                    {noticeFiles.map((file, idx) => (
-                      <li key={idx}>{file.name}</li>
-                    ))}
+                    {noticeFiles.map((file, idx) => {
+                      const lastDot = file.name.lastIndexOf(".");
+                      const name = lastDot > -1 ? file.name.substring(0, lastDot) : file.name;
+                      const ext = lastDot > -1 ? file.name.substring(lastDot) : "";
+                      return (
+                        <li
+                          key={idx}
+                          onClick={() => {
+                            const fileUrl = URL.createObjectURL(file);
+                            window.open(fileUrl, '_blank');
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+                            <span style={{ flex: '0 1 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {name}
+                            </span>
+                            <span style={{ flexShrink: 0 }}>{ext}</span>
+                          </div>
+                          <button
+                            className="delete-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNoticeFiles(prev => prev.filter((_, i) => i !== idx));
+                            }}
+                          >
+                            ×
+                          </button>
+                        </li>
+                      );
+                    })}
                   </FileList>
                 )}
               </UploadArea>
-            </Section>
-
-            <Section style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ marginBottom: '10px', fontSize: '14px', color: '#6b7280' }}>
-                파일 선택 버튼을 클릭해 첨부해주세요.
-              </div>
-              <UploadArea>
-                <UploadLabel htmlFor="ref-file">참고자료 선택</UploadLabel>
-                <HiddenInput
-                  id="ref-file"
-                  type="file"
-                  accept=".hwp,.pdf,.docx"
-                  multiple
-                  onChange={(e) => {
-                    const selected = Array.from(e.target.files ?? []);
-                    setFiles(selected);
-                  }}
-                />
-                {files.length > 0 && (
-                  <FileList>
-                    {files.map((file, idx) => (
-                      <li key={idx}>{file.name}</li>
-                    ))}
-                  </FileList>
-                )}
-              </UploadArea>
-
-              <MiniBtn type="button" onClick={handleSubmit} style={{ marginTop: '16px' }}>
-                분석
-              </MiniBtn>
             </Section>
           </Row>
-
-          {/* <ModalActions>
-            <MiniBtn type="button" onClick={handleSubmit}>
-              분석
-            </MiniBtn>
-            <MiniBtn type="button" onClick={handleBackToProcess}>
-              닫기
-            </MiniBtn>
-          </ModalActions> */}
         </Section>
-      </Card>
-    </Page>
+
+        <ModalActions>
+          <MiniBtn type="button" onClick={handleSubmit}>
+            분석
+          </MiniBtn>
+        </ModalActions>
+      </Card >
+    </Page >
   );
 };
 
@@ -414,16 +415,17 @@ border - top: 1px solid rgba(0, 0, 0, 0.12);
 `;
 
 const UploadLabel = styled.label`
-padding: 12px 26px;
-background - color: var(--color - accent);
-color: white;
-border - radius: 8px;
-font - size: 15px;
-cursor: pointer;
+  padding: 12px 26px;
+  background-color: #2563eb;
+  color: white;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
 
   &:hover {
-  background - color: var(--color - accent - hover);
-}
+    background-color: #1d4ed8;
+  }
 `;
 
 const HiddenInput = styled.input`
@@ -431,17 +433,19 @@ display: none;
 `;
 
 const UploadArea = styled.div`
-margin: 24px 0;
-display: flex;
-flex - direction: column;
-align - items: center;
-gap: 10px;
+  margin: 24px 0;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 20px;
+  width: 100%;
+  justify-content: center;
 `;
 
 const ModalActions = styled.div`
-margin - top: 22px;
+margin-top: 22px;
 display: flex;
-justify - content: flex - end;
+justify-content: flex-end;
 gap: 10px;
 `;
 
@@ -463,17 +467,48 @@ color: #374151;
 const FileList = styled.ul`
 margin - top: 12px;
 padding: 12px 16px;
-width: 100 %;
-max - width: 420px;
-background: #ffffff;
-border: 1px solid #e5e7eb;
-border - radius: 8px;
+  width: 420px;
+  // max-width: 420px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  max-height: 150px;
+  overflow-y: auto;
 
   li {
-  font - size: 13px;
-  color: #374151;
-  line - height: 1.6;
-}
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+
+    &:hover {
+      background-color: #f3f4f6;
+    }
+
+    .delete-btn {
+        display: none;
+        background: none;
+        border: none;
+        color: #ef4444;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 0 4px;
+        margin-left: 8px;
+
+        &:hover {
+            color: #dc2626;
+        }
+    }
+
+    &:hover .delete-btn {
+        display: block;
+    }
+  }
 `;
 
 const LoadingOverlay = styled.div`
