@@ -1,23 +1,47 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import "../styles/UserSidebar.css";
 import logo from "../assets/logo.png";
 import { useAuth } from "../auth/AuthProvider";
+import { META_KEY } from "../common/constants";
 
 type Props = {
   collapsed: boolean;
   onToggle: () => void;
 };
 
+type NoticeMeta = {
+  fav: boolean;
+  read: boolean;
+}
+
+type NoticeMetaMap = Record<number, NoticeMeta>;
+
+const loadMetaMap = (): NoticeMetaMap => {
+  try {
+    const raw = localStorage.getItem(META_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};0
+
+
 const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { me, logout } = useAuth();
 
-  const handleLogout = async () => {
+  const [metaMap, setMetaMap] = useState<NoticeMetaMap>(loadMetaMap);
+
+  const favCount = useMemo(() => {
+  return Object.values(metaMap).filter(meta => meta.fav).length;
+  }, [metaMap]);
+
+  async function handleLogout() {
     await logout();
     navigate("/");
-  };
+  }
   const [stats, setStats] = useState({
     totalNotices: 0,
     appliedNotices: 0,
@@ -33,7 +57,7 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
     setStats({
       totalNotices: 120,
       appliedNotices: 8,
-      favNotices: 15,
+      favNotices: favCount,
     });
   }, []);
 

@@ -2,7 +2,7 @@
 import styled from "styled-components";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Global.css";
-// import { STORAGE_KEY } from "../common/constants";
+import { META_KEY } from "../common/constants";
 import React, { useEffect, useMemo, useState } from "react";
 import HashtagTab from "./HashtagTab";
 
@@ -34,9 +34,7 @@ type NoticeMeta = {
 
 type NoticeMetaMap = Record<number, NoticeMeta>;
 
-const META_KEY = "bb_notice_meta_v1"; // 찜하기, 미확인이 저장되는 키
-
-const FAV_KEY = "bb_notice_favs_v1"; // 찜하기만 저장되는 키
+// const FAV_KEY = "bb_notice_favs_v1"; // 찜하기만 저장되는 키
 const PAGE_SIZE = 6;
 
 type ReadFilter = "ALL" | "READ" | "UNREAD";
