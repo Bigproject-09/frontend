@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const http = axios.create({
-  baseURL: "",
+  baseURL: "/", // ✅ 비워두지 말고 루트로
   headers: { "Content-Type": "application/json" },
 });
 
@@ -13,6 +13,5 @@ http.interceptors.request.use((config) => {
   }
   return config;
 });
- 
+
 export default http;
-// 크아악

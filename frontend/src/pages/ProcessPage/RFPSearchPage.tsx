@@ -1,7 +1,8 @@
+// RFPSearchPage.tsx
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
-// import "../../styles/Global.css"; // 경로가 맞는지 확인 필요
+import http from "../../api/http";
 
 type RFPStep =
   | "UPLOAD_CHECK"
@@ -20,8 +21,6 @@ const STEP_TEXT: Record<RFPStep, string> = {
 
 const RFPSearchPage: React.FC = () => {
   const navigate = useNavigate();
-  
-  // ✅ 1. 여기서 한 번만 선언하면 됩니다.
   const location = useLocation();
   const noticeId = location.state?.noticeId as number | undefined;
 
@@ -47,8 +46,6 @@ const RFPSearchPage: React.FC = () => {
 
   const [files, setFiles] = useState<File[]>([]);
 
-  // ❌ [삭제됨] 여기에 있던 중복 선언(loc, noticeId) 코드를 제거했습니다.
-
   useEffect(() => {
     if (!noticeId) {
       setPageError("공고 ID가 전달되지 않았습니다.");
@@ -58,12 +55,10 @@ const RFPSearchPage: React.FC = () => {
     setPageLoading(true);
     setPageError(null);
 
-    fetch(`/api/notices/${noticeId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`API 오류: ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
+    (async () => {
+      try {
+        const { data } = await http.get(`/api/notices/${noticeId}`);
+
         const stripHtml = (html: string) => {
           if (!html) return "";
           const tmp = document.createElement("DIV");
@@ -77,14 +72,13 @@ const RFPSearchPage: React.FC = () => {
         setUrl(data.link || "");
         setSummary(stripHtml(data.description));
         setBudget("-");
-
-        setPageLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("공고 조회 오류:", err);
         setPageError("공고 정보를 불러오는데 실패했습니다.");
+      } finally {
         setPageLoading(false);
-      });
+      }
+    })();
   }, [noticeId]);
 
   const requiredFields = useMemo(
@@ -99,11 +93,10 @@ const RFPSearchPage: React.FC = () => {
   );
 
   const focusFirstEmpty = () => {
-    const firstEmpty = requiredFields.find((f) => !f.value.trim());
+    const firstEmpty = requiredFields.find((f) => !String(f.value).trim());
     if (!firstEmpty) return false;
 
     alert(`${firstEmpty.label} 항목을 입력해 주세요.`);
-
     const el = firstEmpty.ref.current;
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -119,11 +112,7 @@ const RFPSearchPage: React.FC = () => {
 
       const start = Date.now();
       const timer = setInterval(() => {
-        const elapsed = Date.now() - start;
-        const percent = Math.min(
-          Math.floor((elapsed / duration) * 100),
-          100
-        );
+        const percent = Math.min(Math.floor(((Date.now() - start) / duration) * 100), 100);
         setProgress(percent);
 
         if (percent >= 100) {
@@ -134,64 +123,59 @@ const RFPSearchPage: React.FC = () => {
     });
   };
 
-  const handleSubmit = async (id: number) => {
-    // ✅ 파일 체크
-    if (files.length === 0) {
-      alert("공고문 파일을 업로드해주세요.");
-      return;
-    }
+  const handleSubmit = async () => {
+  if (!noticeId) return;
 
-    if (focusFirstEmpty()) return;
+  if (files.length === 0) {
+    alert("공고문 파일을 업로드해주세요.");
+    return;
+  }
 
-    setIsLoading(true);
+  setIsLoading(true);
 
-    try {
-      await runStep("UPLOAD_CHECK", 300);
-      await runStep("FILE_PARSING", 800);
+  try {
+    await runStep("UPLOAD_CHECK", 250);
+    await runStep("FILE_PARSING", 700);
+    await runStep("CHECKLIST_CREATE", 900);
 
-      // ✅ FormData로 파일 + notice_id 전송
-      const formData = new FormData();
-      formData.append("file", files[0]); // 첫 번째 파일만 전송
-      if (id) {
-        formData.append("notice_id", id.toString());
-      }
+    // ✅ 업로드 파일을 텍스트로 변환(브라우저에서 직접 파싱은 어려우니)
+    // ✅ Spring에 파일을 보내서 notice_text를 만들도록 하거나,
+    // ✅ FastAPI /parse로 보내서 텍스트를 만든 뒤 Spring Step2를 호출하는 방식 중 택1
 
-      await runStep("CHECKLIST_CREATE", 1000);
+    // [추천] Spring에 파일 업로드 -> Spring이 /parse 호출 -> notice_text 만들기 -> FastAPI step2 호출
+    const formData = new FormData();
+    formData.append("file", files[0]);
 
-      // ✅ FastAPI 호출 - 유관 RFP 검색
-      const response = await fetch("http://localhost:8000/api/analyze/step2", {
-        method: "POST",
-        body: formData, // ← JSON이 아닌 FormData로 전송
-      });
+    const companyId = 1;
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "RFP 검색 실패");
-      }
+    // ✅ (1) Spring: 업로드+파싱+step2까지 한 번에 처리하는 엔드포인트로 바꾸는 게 제일 깔끔
+    const token = localStorage.getItem("accessToken");
+    const { data: result } = await http.post(
+      `/api/notices/${noticeId}/search-rfp?companyId=${companyId}`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+       },
+       }
+    );
 
-      const result = await response.json();
+    await runStep("PURPOSE_SUMMARY", 650);
+    await runStep("CATEGORY_SUMMARY", 450);
 
-      await runStep("PURPOSE_SUMMARY", 800);
-      await runStep("CATEGORY_SUMMARY", 600);
-
-      // ✅ 결과 페이지로 이동 (검색 결과 전달)
-      navigate("/process/rfp/result", {
-        state: {
-          noticeId: id,
-          rfpResult: result.data // 검색 결과 전달
-        },
-      });
-    } catch (e) {
-      console.error("RFP 검색 오류:", e);
-      alert(`유관 RFP 검색 중 오류가 발생했습니다: ${e instanceof Error ? e.message : '알 수 없는 오류'}`);
-      setIsLoading(false);
-    }
-  };
-
-  const handleBackToProcess = (id: number) => {
-    navigate("/process", {
-      state: { noticeId: id },
+    navigate("/process/rfp/result", {
+      state: { noticeId, rfpResult: result },
     });
+  } catch (e: any) {
+    console.error("RFP 검색 오류:", e);
+    alert("유관 RFP 검색 중 오류가 발생했습니다.");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+  const handleBackToProcess = () => {
+    if (!noticeId) return;
+    navigate("/process", { state: { noticeId } });
   };
 
   if (pageLoading) {
@@ -208,13 +192,9 @@ const RFPSearchPage: React.FC = () => {
     return (
       <Page>
         <Card>
-          <div style={{ textAlign: "center", padding: 40, color: "red" }}>
-            {pageError}
-          </div>
+          <div style={{ textAlign: "center", padding: 40, color: "red" }}>{pageError}</div>
           <div style={{ textAlign: "center", paddingBottom: 20 }}>
-            <MiniBtn type="button" onClick={() => navigate("/process")}>
-              돌아가기
-            </MiniBtn>
+            <MiniBtn type="button" onClick={() => navigate("/process")}>돌아가기</MiniBtn>
           </div>
         </Card>
       </Page>
@@ -235,9 +215,7 @@ const RFPSearchPage: React.FC = () => {
       )}
 
       <Card>
-        <div className="title" style={{ marginLeft: 0, marginBottom: 18 }}>
-          유관 RFP 검색
-        </div>
+        <div className="title" style={{ marginLeft: 0, marginBottom: 18 }}>유관 RFP 검색</div>
 
         <Section>
           <ModalGrid>
@@ -252,13 +230,7 @@ const RFPSearchPage: React.FC = () => {
 
             <div className="label">URL</div>
             <div className="text">
-              {url ? (
-                <a href={url} target="_blank" rel="noreferrer">
-                  {url}
-                </a>
-              ) : (
-                "-"
-              )}
+              {url ? <a href={url} target="_blank" rel="noreferrer">{url}</a> : "-"}
             </div>
           </ModalGrid>
 
@@ -268,63 +240,31 @@ const RFPSearchPage: React.FC = () => {
           </ModalSummary>
 
           <UploadArea>
-            <UploadLabel htmlFor="file">
-              📄 공고문 업로드 (필수)
-            </UploadLabel>
+            <UploadLabel htmlFor="file">📄 공고문 업로드 (필수)</UploadLabel>
             <HiddenInput
               id="file"
               type="file"
               accept=".docx,.pdf"
-              onChange={(e) => {
-                const selectedFiles = Array.from(e.target.files ?? []);
-                setFiles(selectedFiles);
-              }}
+              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
             />
-            {files.length > 0 && (
+            {files.length > 0 ? (
               <FileList>
                 {files.map((file, idx) => (
                   <FileItem key={idx}>
                     <FileName>{file.name}</FileName>
-                    <FileSize>
-                      ({(file.size / 1024).toFixed(1)} KB)
-                    </FileSize>
-                    <RemoveBtn
-                      onClick={() => {
-                        setFiles(files.filter((_, i) => i !== idx));
-                      }}
-                    >
-                      ✕
-                    </RemoveBtn>
+                    <FileSize>({(file.size / 1024).toFixed(1)} KB)</FileSize>
+                    <RemoveBtn onClick={() => setFiles(files.filter((_, i) => i !== idx))}>✕</RemoveBtn>
                   </FileItem>
                 ))}
               </FileList>
-            )}
-            {files.length === 0 && (
-              <UploadHint>
-                .docx 또는 .pdf 파일을 업로드해주세요
-              </UploadHint>
+            ) : (
+              <UploadHint>.docx 또는 .pdf 파일을 업로드해주세요</UploadHint>
             )}
           </UploadArea>
 
           <ModalActions>
-            <MiniBtn
-              type="button"
-              onClick={() => {
-                if (!noticeId) return;
-                handleSubmit(noticeId);
-              }}
-            >
-              검색
-            </MiniBtn>
-            <MiniBtn
-              type="button"
-              onClick={() => {
-                if (!noticeId) return;
-                handleBackToProcess(noticeId);
-              }}
-            >
-              닫기
-            </MiniBtn>
+            <MiniBtn type="button" onClick={handleSubmit}>검색</MiniBtn>
+            <MiniBtn type="button" onClick={handleBackToProcess}>닫기</MiniBtn>
           </ModalActions>
         </Section>
       </Card>
@@ -334,7 +274,7 @@ const RFPSearchPage: React.FC = () => {
 
 export default RFPSearchPage;
 
-/* ===== styled-components ===== */
+/* ===== styled-components (원본 유지) ===== */
 
 const Page = styled.div`
   width: 100%;
@@ -386,26 +326,7 @@ const ModalGrid = styled.div`
   a {
     color: #2563eb;
     text-decoration: underline;
-
-    &:hover {
-      opacity: 0.85;
-    }
-  }
-
-  .input {
-    width: 100%;
-    height: 38px;
-    padding: 0 12px;
-    box-sizing: border-box;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
-  }
-
-  .input:focus {
-    outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px rgba(46, 111, 219, 0.15);
+    &:hover { opacity: 0.85; }
   }
 `;
 
@@ -479,10 +400,7 @@ const MiniBtn = styled.button`
   font-size: 13px;
   color: #374151;
   transition: all 0.2s;
-
-  &:hover {
-    background: #f9fafb;
-  }
+  &:hover { background: #f9fafb; }
 `;
 
 const FileList = styled.ul`
@@ -529,10 +447,7 @@ const RemoveBtn = styled.button`
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-
-  &:hover {
-    background: #fecaca;
-  }
+  &:hover { background: #fecaca; }
 `;
 
 const LoadingOverlay = styled.div`
@@ -562,23 +477,5 @@ const Spinner = styled.div`
   animation: spin 0.9s linear infinite;
   margin: 0 auto 16px;
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-`;
-
-const ResultBox = styled.div`
-  margin-top: 20px;
-  padding: 16px 18px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #f9fafb;
-`;
-
-const ResultTitle = styled.div`
-  font-size: 14px;
-  font-weight: 800;
-  margin: 10px 0;
+  @keyframes spin { to { transform: rotate(360deg); } }
 `;

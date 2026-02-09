@@ -35,9 +35,11 @@ interface Step2ResultExpanded {
   track_b?: TrackHit[];
 }
 
-interface Step2Response {
+interface SpringStep2Envelope {
   status: string;
-  data: ReportData | Step2ResultExpanded;
+  noticeId: number;
+  savedReferenceCount?: number;
+  fastapi?: any; // FastAPI 원본
 }
 
 const RFPSearchPageResult: React.FC = () => {
@@ -45,7 +47,7 @@ const RFPSearchPageResult: React.FC = () => {
   const location = useLocation();
 
   const noticeId = location.state?.noticeId as number | undefined;
-  const rfpResult = location.state?.rfpResult as ReportData | Step2ResultExpanded | undefined;
+  const rfpResult = location.state?.rfpResult as SpringStep2Envelope | undefined;
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -54,7 +56,6 @@ const RFPSearchPageResult: React.FC = () => {
   const [trackA, setTrackA] = useState<TrackHit[]>([]);
   const [trackB, setTrackB] = useState<TrackHit[]>([]);
 
-  // ✅ 다운로드 함수 추가
   const handleDownload = () => {
     if (!report) {
       alert("다운로드할 데이터가 없습니다.");
@@ -82,67 +83,40 @@ const RFPSearchPageResult: React.FC = () => {
     }
   };
 
+  const unpackFastApiData = (fastapi: any) => {
+    const data = fastapi?.data ?? fastapi; // 혹시 이미 data만 온 경우도 방어
+    const expanded = data as Step2ResultExpanded;
+
+    if (expanded && expanded.report) {
+      setReport(expanded.report ?? null);
+      setTrackA(expanded.track_a ?? []);
+      setTrackB(expanded.track_b ?? []);
+    } else {
+      setReport(data as ReportData);
+      setTrackA([]);
+      setTrackB([]);
+    }
+  };
+
   useEffect(() => {
     if (!noticeId) {
       setErrorMsg("noticeId가 없습니다.");
       return;
     }
 
-    if (rfpResult) {
-      console.log("✅ 검색 페이지에서 전달받은 결과 사용");
-
-      const expanded = rfpResult as Step2ResultExpanded;
-
-      if (expanded && expanded.report) {
-        setReport(expanded.report ?? null);
-        setTrackA(expanded.track_a ?? []);
-        setTrackB(expanded.track_b ?? []);
-      } else {
-        setReport(rfpResult as ReportData);
-        setTrackA([]);
-        setTrackB([]);
-      }
-
+    if (!rfpResult) {
+      setErrorMsg("결과 데이터가 없습니다. (state 전달 누락)");
       return;
     }
 
-    console.log("⚠️ 결과 없음 - API 직접 호출");
-    setLoading(true);
-    setErrorMsg(null);
+    // ✅ Spring envelope → fastapi → data
+    const fastapi = rfpResult.fastapi;
+    if (!fastapi) {
+      setErrorMsg("fastapi 응답이 없습니다.");
+      return;
+    }
 
-    fetch("http://localhost:8000/api/analyze/step2", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notice_id: noticeId }),
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          throw new Error(`Step2 호출 실패: ${res.status} ${text}`);
-        }
-        return res.json() as Promise<Step2Response>;
-      })
-      .then((json) => {
-        const data = json?.data;
-        const expanded = data as Step2ResultExpanded;
-
-        if (expanded && expanded.report) {
-          setReport(expanded.report ?? null);
-          setTrackA(expanded.track_a ?? []);
-          setTrackB(expanded.track_b ?? []);
-        } else {
-          setReport(data as ReportData);
-          setTrackA([]);
-          setTrackB([]);
-        }
-
-        setLoading(false);
-      })
-      .catch((e) => {
-        console.error(e);
-        setErrorMsg("유관 RFP 검색 결과를 불러오지 못했습니다.");
-        setLoading(false);
-      });
+    unpackFastApiData(fastapi);
   }, [noticeId, rfpResult]);
 
   const handleBack = (id: number) => {
@@ -152,40 +126,9 @@ const RFPSearchPageResult: React.FC = () => {
   };
 
   const handleReExtract = (id: number) => {
-    setReport(null);
-    setTrackA([]);
-    setTrackB([]);
-    setLoading(true);
-    setErrorMsg(null);
-
-    fetch("http://localhost:8000/api/analyze/step2", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notice_id: id }),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`재추출 실패: ${res.status}`);
-        return res.json() as Promise<Step2Response>;
-      })
-      .then((json) => {
-        const data = json?.data;
-        const expanded = data as Step2ResultExpanded;
-
-        if (expanded && expanded.report) {
-          setReport(expanded.report ?? null);
-          setTrackA(expanded.track_a ?? []);
-          setTrackB(expanded.track_b ?? []);
-        } else {
-          setReport(data as ReportData);
-        }
-
-        setLoading(false);
-      })
-      .catch((e) => {
-        console.error(e);
-        setErrorMsg("재추출 중 오류가 발생했습니다.");
-        setLoading(false);
-      });
+    // 재추출은 결과 페이지에서 직접 호출하지 말고
+    // 검색 페이지로 돌아가서 재실행하는 게 깔끔함(업로드 파일 필요)
+    handleBack(id);
   };
 
   if (loading) {
@@ -410,20 +353,10 @@ const Section = styled.div`
   box-sizing: border-box;
   overflow-y: auto;
 
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-  &::-webkit-scrollbar-track {
-    background: #f1f3f5;
-    border-radius: 10px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: #adb5bd;
-    border-radius: 10px;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background: #868e96;
-  }
+  &::-webkit-scrollbar { width: 8px; }
+  &::-webkit-scrollbar-track { background: #f1f3f5; border-radius: 10px; }
+  &::-webkit-scrollbar-thumb { background: #adb5bd; border-radius: 10px; }
+  &::-webkit-scrollbar-thumb:hover { background: #868e96; }
 `;
 
 const Divider = styled.div`
@@ -448,9 +381,7 @@ const ListItem = styled.li`
   padding: 16px;
   transition: box-shadow 0.2s;
 
-  &:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  }
+  &:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
 `;
 
 const ItemTitle = styled.div`
@@ -476,17 +407,9 @@ const SimilarityBadge = styled.span<{ level: string }>`
   font-size: 11px;
   font-weight: 600;
   background: ${(props) =>
-    props.level === "상"
-      ? "#fef3c7"
-      : props.level === "중"
-      ? "#dbeafe"
-      : "#f3f4f6"};
+    props.level === "상" ? "#fef3c7" : props.level === "중" ? "#dbeafe" : "#f3f4f6"};
   color: ${(props) =>
-    props.level === "상"
-      ? "#92400e"
-      : props.level === "중"
-      ? "#1e40af"
-      : "#374151"};
+    props.level === "상" ? "#92400e" : props.level === "중" ? "#1e40af" : "#374151"};
 `;
 
 const ItemBody = styled.div`
@@ -557,19 +480,13 @@ const ActionButton = styled.button<{ variant?: "primary" | "secondary" }>`
     background: #ffffff;
     border: 1px solid #d1d5db;
     color: #374151;
-
-    &:hover {
-      background: #f9fafb;
-    }
+    &:hover { background: #f9fafb; }
   `
       : `
     background: var(--color-accent, #3b82f6);
     border: none;
     color: white;
-
-    &:hover {
-      background: var(--color-accent-hover, #2563eb);
-    }
+    &:hover { background: var(--color-accent-hover, #2563eb); }
   `}
 `;
 
@@ -608,9 +525,5 @@ const LoadingSpinner = styled.div`
   animation: spin 1s linear infinite;
   margin: 60px auto 0;
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 `;
