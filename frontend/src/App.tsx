@@ -11,7 +11,7 @@ import TermPage from "./pages/TermPage";
 import SignupPage from "./pages/SignupPage";
 import WithdrawPage from "./pages/WithdrawalPage";
 
-import RegistrationPage from "./pages/RegistrationPage";
+// import RegistrationPage from "./pages/RegistrationPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 // ★ 1. 여기 import 추가! (경로가 맞는지 확인해주세요)
@@ -55,7 +55,7 @@ function App() {
           {/* 레이아웃 없이 단독 페이지 */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route path="/registration" element={<RegistrationPage />} />
+          {/* <Route path="/registration" element={<RegistrationPage />} /> */}
           <Route path="/term" element={<TermPage />} />
           <Route path="/withdrawal" element={<WithdrawPage />} />
 

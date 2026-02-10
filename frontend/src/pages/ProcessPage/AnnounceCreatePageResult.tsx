@@ -19,6 +19,8 @@ interface PPTResult {
   deck_title: string;
   total_slides: number;
   pptx_path: string;
+  pptx_filename?: string;   // ✅ 추가
+  download_url?: string;    // ✅ 추가(선택)
   sections: string[];
   slides?: Slide[];
   db_saved?: boolean;
@@ -47,21 +49,57 @@ const AnnounceCreatePageResult: React.FC = () => {
     });
   };
 
-  const handleDownloadPPT = () => {
-    if (!pptResult?.pptx_path) {
-      alert("다운로드할 PPT 파일이 없습니다.");
-      return;
+  const handleDownloadPPT = async () => {
+    if (!pptResult) return;
+
+    // 1) 서버가 내려준 download_url 우선 사용
+    let downloadUrl: string | null = null;
+
+    if (pptResult.download_url) {
+        // download_url이 "/download/xxx.pptx" 형태라면 베이스만 붙이면 됨
+        downloadUrl = `http://localhost:8000${pptResult.download_url}`;
+    } else if (pptResult.pptx_filename) {
+        downloadUrl = `http://localhost:8000/download/${encodeURIComponent(
+        pptResult.pptx_filename
+        )}`;
+    } else if (pptResult.pptx_path) {
+        // (하위호환) 절대경로 기반은 권장 X. 가능하면 위 2개로 가세요.
+        alert("다운로드 정보(pptx_filename)가 없습니다. 서버 응답을 확인하세요.");
+        return;
+    } else {
+        alert("다운로드할 PPT 파일이 없습니다.");
+        return;
     }
 
-    // FastAPI 서버에서 파일 다운로드
-    const downloadUrl = `http://localhost:8000/download/${encodeURIComponent(pptResult.pptx_path)}`;
+    try {
+        setLoading(true);
 
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.download = `${pptResult.deck_title}.pptx`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        const res = await fetch(downloadUrl, { method: "GET" });
+        if (!res.ok) {
+        throw new Error(`다운로드 실패: ${res.status}`);
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+
+        // 파일명: 서버 filename 헤더가 있어도, 여기서 지정해주면 안정적
+        const safeTitle =
+        (pptResult.deck_title || "발표자료").replace(/[\\/:*?"<>|]/g, "").trim() || "발표자료";
+        a.download = `${safeTitle}.pptx`;
+
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        window.URL.revokeObjectURL(url);
+    } catch (e: any) {
+        alert(e?.message || "다운로드 중 오류가 발생했습니다.");
+    } finally {
+        setLoading(false);
+    }
   };
 
   if (!pptResult) {
@@ -101,67 +139,28 @@ const AnnounceCreatePageResult: React.FC = () => {
           )}
         </InfoSection>
 
-        {/* 섹션 구성 */}
-        <SectionTitle>섹션 구성</SectionTitle>
-        <Section>
-          {pptResult.sections && pptResult.sections.length > 0 ? (
-            <SectionList>
-              {pptResult.sections.map((section, idx) => (
-                <SectionItem key={idx}>
-                  <SectionNumber>{idx + 1}</SectionNumber>
-                  <SectionName>{section}</SectionName>
-                </SectionItem>
-              ))}
-            </SectionList>
-          ) : (
-            <EmptyMessage>섹션 정보가 없습니다.</EmptyMessage>
-          )}
-        </Section>
-
-        {/* 슬라이드 미리보기 */}
-        {pptResult.slides && pptResult.slides.length > 0 && (
-          <>
-            <SectionTitle>슬라이드 미리보기 (상위 10개)</SectionTitle>
-            <Section>
-              <SlideList>
-                {pptResult.slides.slice(0, 10).map((slide, idx) => (
-                  <SlideItem key={idx}>
-                    <SlideHeader>
-                      <SlideNumber>슬라이드 {idx + 1}</SlideNumber>
-                      <SectionBadge>{slide.section}</SectionBadge>
-                    </SlideHeader>
-                    <SlideTitle>{slide.slide_title}</SlideTitle>
-                    {slide.key_message && (
-                      <KeyMessage>💡 {slide.key_message}</KeyMessage>
-                    )}
-                    {slide.bullets && slide.bullets.length > 0 && (
-                      <BulletList>
-                        {slide.bullets.map((bullet, bidx) => (
-                          <BulletItem key={bidx}>• {bullet}</BulletItem>
-                        ))}
-                      </BulletList>
-                    )}
-                  </SlideItem>
-                ))}
-              </SlideList>
-            </Section>
-          </>
-        )}
-
         {/* 액션 버튼 */}
-        <RightActionRow>
-          <button
-            type="button"
-            className="button_center"
-            style={{ width: 120 }}
-            onClick={() => {
-              if (!noticeId) return;
-              handleBack(noticeId);
-            }}
-          >
-            다시 생성
-          </button>
-        </RightActionRow>
+        <ModalActions>
+            <MiniBtn
+                type="button"
+                onClick={() => {
+                if (!noticeId) return;
+                handleBack(noticeId);
+                }}
+            >
+                재생성
+            </MiniBtn>
+
+            <MiniBtn
+                type="button"
+                onClick={() => {
+                if (!noticeId) return;
+                navigate("/process", { state: { noticeId } });
+                }}
+            >
+                닫기
+            </MiniBtn>
+        </ModalActions>
 
         <DownloadWrapper>
           <DownloadButton onClick={handleDownloadPPT}>
@@ -378,19 +377,13 @@ const EmptyMessage = styled.div`
   padding: 40px;
 `;
 
-const RightActionRow = styled.div`
-  margin-top: 32px;
-  display: flex;
-  justify-content: flex-end;
-`;
-
 const DownloadWrapper = styled.div`
   margin-top: 30px;
   display: flex;
   justify-content: center;
 `;
 
-const DownloadButton = styled.button`
+const DownloadButton = styled.button<{ disabled?: boolean }>`
   padding: 14px 32px;
   background-color: #00b894;
   color: white;
@@ -409,5 +402,35 @@ const DownloadButton = styled.button`
 
   &:active {
     transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+`;
+
+
+const ModalActions = styled.div`
+  margin-top: 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+`;
+
+const MiniBtn = styled.button`
+  width: 80px;
+  height: 36px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+
+  &:hover {
+    background: #f9fafb;
   }
 `;

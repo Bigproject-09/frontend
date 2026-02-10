@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/Global.css";
+import jsPDF from "jspdf";
+import { NotoSansKR } from "../../utils/NotoSansKR";
 
 type Similarity = "상" | "중" | "하" | string;
 
@@ -63,23 +65,170 @@ const RFPSearchPageResult: React.FC = () => {
     }
 
     try {
-      const jsonStr = JSON.stringify(report, null, 2);
-      const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `RFP분석결과_${new Date().toISOString().slice(0, 10)}.json`;
+      // 한글 폰트 추가
+      doc.addFileToVFS("NotoSansKR-Regular.ttf", NotoSansKR);
+      doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "normal");
+      doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "bold");
 
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      let y = 20;
 
-      alert("다운로드가 완료되었습니다!");
+      // 제목
+      doc.setFont("NotoSansKR", "bold");
+      doc.setFontSize(18);
+      doc.text("유관 RFP 검색 결과", margin, y);
+      y += 15;
+
+      // 날짜
+      doc.setFont("NotoSansKR", "normal");
+      doc.setFontSize(10);
+      const today = new Date().toLocaleDateString("ko-KR");
+      doc.text(`작성일: ${today}`, margin, y);
+      y += 10;
+
+      // 구분선
+      doc.setLineWidth(0.5);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 10;
+
+      // 1. 분석 요약
+      if (report.summary_opinion) {
+        doc.setFont("NotoSansKR", "bold");
+        doc.setFontSize(12);
+        doc.text("1. 분석 요약", margin, y);
+        y += 8;
+
+        doc.setFont("NotoSansKR", "normal");
+        doc.setFontSize(10);
+        const lines = doc.splitTextToSize(report.summary_opinion, pageWidth - margin * 2);
+        lines.forEach((line: string) => {
+          if (y > pageHeight - margin) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(line, margin, y);
+          y += 5;
+        });
+        y += 10;
+      }
+
+      // 2. Track A
+      if (report.track_a_comparison && report.track_a_comparison.length > 0) {
+        if (y > pageHeight - margin) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.setFont("NotoSansKR", "bold");
+        doc.setFontSize(12);
+        doc.text("2. Track A: 동일 주관 기관 유사 전략 (중복성 집중 검토)", margin, y);
+        y += 8;
+
+        report.track_a_comparison.forEach((item, idx) => {
+          if (y > pageHeight - margin) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.setFont("NotoSansKR", "bold");
+          doc.setFontSize(10);
+          doc.text(`[${idx + 1}] ${item.title ?? "제목 없음"}`, margin, y);
+          y += 5;
+
+          doc.setFont("NotoSansKR", "normal");
+          doc.setFontSize(9);
+          const meta = `(${item.year ?? "연도미상"}, ${item.ministry ?? "부처미상"}) / 유사도: ${item.similarity ?? "-"}`;
+          doc.text(meta, margin + 5, y);
+          y += 5;
+
+          const diffLines = doc.splitTextToSize(`차이점: ${item.difference ?? "-"}`, pageWidth - margin * 2 - 5);
+          diffLines.forEach((line: string) => {
+            if (y > pageHeight - margin) {
+              doc.addPage();
+              y = 20;
+            }
+            doc.text(line, margin + 5, y);
+            y += 4;
+          });
+          y += 4;
+        });
+        y += 6;
+      }
+
+      // 3. Track B
+      if (report.track_b_comparison && report.track_b_comparison.length > 0) {
+        if (y > pageHeight - margin) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.setFont("NotoSansKR", "bold");
+        doc.setFontSize(12);
+        doc.text("3. Track B: 타 부처 유사 전략 (차별성 집중 검토)", margin, y);
+        y += 8;
+
+        report.track_b_comparison.forEach((item, idx) => {
+          if (y > pageHeight - margin) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.setFont("NotoSansKR", "bold");
+          doc.setFontSize(10);
+          doc.text(`[${idx + 1}] ${item.title ?? "제목 없음"}`, margin, y);
+          y += 5;
+
+          doc.setFont("NotoSansKR", "normal");
+          doc.setFontSize(9);
+          const meta = `(${item.year ?? "연도미상"}, ${item.ministry ?? "부처미상"}) / 유사도: ${item.similarity ?? "-"}`;
+          doc.text(meta, margin + 5, y);
+          y += 5;
+
+          const diffLines = doc.splitTextToSize(`차이점: ${item.difference ?? "-"}`, pageWidth - margin * 2 - 5);
+          diffLines.forEach((line: string) => {
+            if (y > pageHeight - margin) {
+              doc.addPage();
+              y = 20;
+            }
+            doc.text(line, margin + 5, y);
+            y += 4;
+          });
+          y += 4;
+        });
+        y += 6;
+      }
+
+      // 4. 권장 차별화 전략
+      if (report.strategies && report.strategies.length > 0) {
+        if (y > pageHeight - margin) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.setFont("NotoSansKR", "bold");
+        doc.setFontSize(12);
+        doc.text("4. 권장 차별화 전략", margin, y);
+        y += 8;
+
+        doc.setFont("NotoSansKR", "normal");
+        doc.setFontSize(10);
+        report.strategies.forEach((st, idx) => {
+          const stLines = doc.splitTextToSize(`${idx + 1}. ${st}`, pageWidth - margin * 2);
+          stLines.forEach((line: string) => {
+            if (y > pageHeight - margin) {
+              doc.addPage();
+              y = 20;
+            }
+            doc.text(line, margin, y);
+            y += 5;
+          });
+          y += 2;
+        });
+      }
+
+      doc.save(`RFP_분석결과_${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (error) {
-      console.error("다운로드 오류:", error);
-      alert("다운로드 중 오류가 발생했습니다.");
+      console.error("PDF 생성 오류:", error);
+      alert("PDF 생성 중 오류가 발생했습니다.");
     }
   };
 
@@ -96,6 +245,12 @@ const RFPSearchPageResult: React.FC = () => {
       setTrackA([]);
       setTrackB([]);
     }
+  };
+
+  const handleClose = (id: number) => {
+    navigate("/process", {
+      state: { noticeId: id },
+    });
   };
 
   useEffect(() => {
@@ -265,32 +420,31 @@ const RFPSearchPageResult: React.FC = () => {
           )}
         </Section>
 
-        <RightActionRow>
-          <ActionButton
+        <ModalActions>
+          <MiniBtn
             type="button"
-            variant="secondary"
             onClick={() => {
               if (!noticeId) return;
-              handleReExtract(noticeId);
+              handleReExtract(noticeId); // = handleBack(noticeId)
             }}
           >
-            🔄 재추출
-          </ActionButton>
-          <ActionButton
+            재추출
+          </MiniBtn>
+
+          <MiniBtn
             type="button"
-            variant="secondary"
             onClick={() => {
               if (!noticeId) return;
-              handleBack(noticeId);
+              handleClose(noticeId);
             }}
           >
-            ← 뒤로가기
-          </ActionButton>
-        </RightActionRow>
+            닫기
+          </MiniBtn>
+        </ModalActions>
 
         <DownloadWrapper>
           <DownloadButton type="button" onClick={handleDownload}>
-            📥 분석 리포트 다운로드 (JSON)
+            📥 분석 리포트 다운로드 (PDF)
           </DownloadButton>
         </DownloadWrapper>
       </Card>
@@ -526,4 +680,26 @@ const LoadingSpinner = styled.div`
   margin: 60px auto 0;
 
   @keyframes spin { to { transform: rotate(360deg); } }
+`;
+
+const ModalActions = styled.div`
+  margin-top: 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+`;
+
+const MiniBtn = styled.button`
+  width: 80px;
+  height: 36px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+
+  &:hover {
+    background: #f9fafb;
+  }
 `;

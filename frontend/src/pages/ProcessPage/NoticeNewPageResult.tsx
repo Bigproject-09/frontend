@@ -60,6 +60,12 @@ const NoticeNewPageResult: React.FC = () => {
 
   const [aggregated, setAggregated] = useState<NoticeAnalysisAggregatedResponse | null>(null);
 
+  const handleClose = (id: number) => {
+    navigate("/process", {
+      state: { noticeId: id },
+    });
+  };
+
   useEffect(() => {
     if (!noticeId) {
       setError("noticeId가 없습니다. /process에서 다시 들어오세요.");
@@ -726,4 +732,31 @@ const Tag = styled.span`
   border: 1px solid #d1d5db;
   background: #fff;
   margin-right: 6px;
+`;
+            
+const Code = styled.span`
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+`;
+
+const ModalActions = styled.div`
+  margin-top: 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+`;
+
+const MiniBtn = styled.button`
+  width: 80px;
+  height: 36px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+
+  &:hover {
+    background: #f9fafb;
+  }
 `;

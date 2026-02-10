@@ -331,6 +331,9 @@ const NoticeNewPage: React.FC = () => {
           <MiniBtn type="button" onClick={handleSubmit}>
             분석
           </MiniBtn>
+          <MiniBtn type="button" onClick={handleBackToProcess}>
+            닫기
+          </MiniBtn>
         </ModalActions>
       </Card >
     </Page >
@@ -453,25 +456,25 @@ const UploadArea = styled.div`
 `;
 
 const ModalActions = styled.div`
-margin-top: 22px;
-display: flex;
-justify-content: flex-end;
-gap: 10px;
+  margin-top: 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 `;
 
 const MiniBtn = styled.button`
-width: 80px;
-height: 36px;
-background: #ffffff;
-border: 1px solid #d1d5db;
-border - radius: 6px;
-cursor: pointer;
-font - size: 13px;
-color: #374151;
+  width: 80px;
+  height: 36px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
 
   &:hover {
-  background: #f9fafb;
-}
+    background: #f9fafb;
+  }
 `;
 
 const FileList = styled.ul`
