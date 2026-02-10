@@ -6,15 +6,19 @@ import http from "../../api/http";
 
 type AnnounceStep =
   | "UPLOAD_CHECK"
-  | "CHECKLIST_CREATE"
-  | "PURPOSE_SUMMARY"
-  | "CATEGORY_SUMMARY";
+  | "TEXT_EXTRACT"
+  | "SECTION_SPLIT"
+  | "SLIDE_GENERATE"
+  | "SLIDE_MERGE"
+  | "PPT_CREATE";
 
 const STEP_TEXT: Record<AnnounceStep, string> = {
-  UPLOAD_CHECK: "추가 파일 확인 중...",
-  CHECKLIST_CREATE: "체크리스트 생성 중...",
-  PURPOSE_SUMMARY: "사업 목적 요약 중...",
-  CATEGORY_SUMMARY: "평가항목 요약 중...",
+  UPLOAD_CHECK: "파일 확인 중...",
+  TEXT_EXTRACT: "텍스트 추출 중...",
+  SECTION_SPLIT: "섹션 분할 중...",
+  SLIDE_GENERATE: "슬라이드 생성 중 (Gemini API)...",
+  SLIDE_MERGE: "슬라이드 병합 중...",
+  PPT_CREATE: "PPTX 생성 중 (Gamma API)...",
 };
 
 const AnnounceCreatePage: React.FC = () => {
@@ -32,18 +36,11 @@ const AnnounceCreatePage: React.FC = () => {
   const [step, setStep] = useState<AnnounceStep>("UPLOAD_CHECK");
   const [progress, setProgress] = useState(0);
 
-  const titleRef = useRef<HTMLInputElement | null>(null);
-  const orgRef = useRef<HTMLInputElement | null>(null);
-  const budgetRef = useRef<HTMLInputElement | null>(null);
-  const periodRef = useRef<HTMLInputElement | null>(null);
-  const urlRef = useRef<HTMLInputElement | null>(null);
-  const summaryRef = useRef<HTMLTextAreaElement | null>(null);
-
   const [files, setFiles] = useState<File[]>([]);
   const location = useLocation();
   const noticeId = location.state?.noticeId as number | undefined;
 
-  // ✅ 공고 상세 API 호출 (ProcessPage와 동일)
+  // ✅ 공고 상세 API 호출
   useEffect(() => {
     if (!noticeId) return;
 
@@ -63,7 +60,7 @@ const AnnounceCreatePage: React.FC = () => {
         setPeriod(data.reqstDt || "-");
         setUrl(data.link || "-");
         setSummary(stripHtml(data.description));
-        setBudget("-"); // 예산 필드 생기면 매핑
+        setBudget("-");
       } catch (err) {
         console.error("공고 조회 오류:", err);
         setTitle("-");
@@ -95,24 +92,63 @@ const AnnounceCreatePage: React.FC = () => {
     });
   };
 
-  const handleSubmit = async (id: number) => {
+  // ✅ PPT 생성 핸들러 (FastAPI Step 3 호출)
+  const handleGeneratePPT = async () => {
+    if (files.length === 0) {
+      alert("제안서 파일을 업로드해주세요.");
+      return;
+    }
+
     setIsLoading(true);
     setPptResult(null);
 
     try {
-      await runStep("UPLOAD_CHECK", 400);
-      await runStep("CHECKLIST_CREATE", 400);
+      // 1) 파일 확인
+      await runStep("UPLOAD_CHECK", 500);
 
-      const { data } = await http.post(`/api/notices/${id}/generate-ppt`, null, {
-        params: { companyId: 1 },
-      });
-      setPptResult(data);
+      // 2) FormData 생성
+      const formData = new FormData();
+      formData.append("file", files[0]); // 첫 번째 파일 사용
+      if (noticeId) {
+        formData.append("notice_id", noticeId.toString());
+      }
 
-      await runStep("PURPOSE_SUMMARY", 300);
-      await runStep("CATEGORY_SUMMARY", 300);
-    } catch (e) {
+      // 3) FastAPI Step 3 호출 (각 단계별 progress 시뮬레이션)
+      const steps: AnnounceStep[] = [
+        "TEXT_EXTRACT",
+        "SECTION_SPLIT",
+        "SLIDE_GENERATE",
+        "SLIDE_MERGE",
+        "PPT_CREATE",
+      ];
+
+      // 병렬: API 호출 + 진행률 시뮬레이션
+      const apiPromise = http.post(
+        "http://localhost:8000/api/analyze/step3",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      // 진행률 시뮬레이션 (총 60초 가정: 텍스트 5초, 섹션 5초, 슬라이드 30초, 병합 5초, PPTX 15초)
+      const durations = [5000, 5000, 30000, 5000, 15000];
+
+      for (let i = 0; i < steps.length; i++) {
+        await runStep(steps[i], durations[i]);
+      }
+
+      // API 응답 대기
+      const { data } = await apiPromise;
+
+      setPptResult(data.data);
+      alert(`PPT 생성 완료!\n파일: ${data.data.pptx_path}`);
+    } catch (e: any) {
       console.error(e);
-      alert("실행 중 오류가 발생했습니다.");
+      const errorMsg = e.response?.data?.message || "PPT 생성 중 오류가 발생했습니다.";
+      alert(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -169,12 +205,11 @@ const AnnounceCreatePage: React.FC = () => {
           </ModalSummary>
 
           <UploadArea>
-            <UploadLabel htmlFor="file">추가파일 업로드</UploadLabel>
+            <UploadLabel htmlFor="file">제안서 파일 업로드 (.pdf)</UploadLabel>
             <HiddenInput
               id="file"
               type="file"
-              accept=".docx"
-              multiple
+              accept=".pptx,.pdf,.docx"
               onChange={(e) => {
                 const selectedFiles = Array.from(e.target.files ?? []);
                 setFiles(selectedFiles);
@@ -190,15 +225,13 @@ const AnnounceCreatePage: React.FC = () => {
           </UploadArea>
 
           <ModalActions>
-            <MiniBtn
+            <GenerateBtn
               type="button"
-              onClick={() => {
-                if (!noticeId) return;
-                handleSubmit(noticeId);
-              }}
+              onClick={handleGeneratePPT}
+              disabled={files.length === 0 || isLoading}
             >
-              제작
-            </MiniBtn>
+              PPT 생성
+            </GenerateBtn>
             <MiniBtn
               type="button"
               onClick={() => {
@@ -210,16 +243,34 @@ const AnnounceCreatePage: React.FC = () => {
             </MiniBtn>
           </ModalActions>
 
-          {/* ✅ PPT 생성 결과 출력: return 안, Section 안 */}
+          {/* ✅ PPT 생성 결과 출력 */}
           {pptResult && (
             <ResultBox>
-              <ResultTitle>PPT 생성 결과</ResultTitle>
-              <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>
-                {JSON.stringify(pptResult, null, 2)}
-              </pre>
+              <ResultTitle>✅ PPT 생성 완료!</ResultTitle>
+              <ResultItem>
+                <ResultLabel>제목:</ResultLabel>
+                <ResultValue>{pptResult.deck_title}</ResultValue>
+              </ResultItem>
+              <ResultItem>
+                <ResultLabel>슬라이드 수:</ResultLabel>
+                <ResultValue>{pptResult.total_slides}장</ResultValue>
+              </ResultItem>
+              <ResultItem>
+                <ResultLabel>파일 경로:</ResultLabel>
+                <ResultValue>{pptResult.pptx_path}</ResultValue>
+              </ResultItem>
+              <ResultItem>
+                <ResultLabel>섹션:</ResultLabel>
+                <ResultValue>{pptResult.sections?.join(", ")}</ResultValue>
+              </ResultItem>
+              {pptResult.db_saved !== undefined && (
+                <ResultItem>
+                  <ResultLabel>DB 저장:</ResultLabel>
+                  <ResultValue>{pptResult.db_saved ? "성공" : "실패"}</ResultValue>
+                </ResultItem>
+              )}
             </ResultBox>
           )}
-
         </Section>
       </Card>
     </Page>
@@ -342,6 +393,26 @@ const ModalActions = styled.div`
   gap: 10px;
 `;
 
+const GenerateBtn = styled.button`
+  padding: 10px 24px;
+  background: var(--color-accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+
+  &:hover:not(:disabled) {
+    background: var(--color-accent-hover);
+  }
+
+  &:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+  }
+`;
+
 const MiniBtn = styled.button`
   width: 80px;
   height: 36px;
@@ -390,7 +461,10 @@ const LoadingBox = styled.div`
   padding: 32px 40px;
   border-radius: 14px;
   text-align: center;
-  min-width: 240px;
+  min-width: 280px;
+  font-size: 15px;
+  color: #374151;
+  line-height: 1.6;
 `;
 
 const Spinner = styled.div`
@@ -409,17 +483,34 @@ const Spinner = styled.div`
   }
 `;
 
-
 const ResultBox = styled.div`
   margin-top: 20px;
-  padding: 16px 18px;
-  border: 1px solid #e5e7eb;
+  padding: 20px;
+  border: 2px solid #10b981;
   border-radius: 12px;
-  background: #f9fafb;
+  background: #f0fdf4;
 `;
 
 const ResultTitle = styled.div`
+  font-size: 16px;
+  font-weight: 700;
+  color: #059669;
+  margin-bottom: 16px;
+`;
+
+const ResultItem = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
   font-size: 14px;
-  font-weight: 800;
-  margin: 10px 0;
+`;
+
+const ResultLabel = styled.span`
+  font-weight: 600;
+  color: #374151;
+  min-width: 100px;
+`;
+
+const ResultValue = styled.span`
+  color: #1f2937;
 `;

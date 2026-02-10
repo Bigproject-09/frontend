@@ -44,8 +44,7 @@ const RFPSearchPage: React.FC = () => {
   const urlRef = useRef<HTMLInputElement | null>(null);
 
   const [files, setFiles] = useState<File[]>([]);
-  const location = useLocation();
-  const noticeId = location.state?.noticeId as number | undefined;
+
 
   useEffect(() => {
     if (!noticeId) {
