@@ -23,6 +23,8 @@ const SignupPage: React.FC = () => {
   const [showTimer, setShowTimer] = useState(false);
   const [timeLeft, setTimeLeft] = useState(600);
 
+  const [signupLoading, setSignupLoading] = useState(false);
+
   useEffect(() => {
     if (!showTimer) return;
     if (timeLeft <= 0) return;
@@ -46,7 +48,6 @@ const SignupPage: React.FC = () => {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  /** 인증번호 요청 (백: POST /api/auth/email/send, req: {email}) */
   const handleSendCode = async () => {
     if (!email.trim()) {
       setMessage("이메일을 입력해주세요.");
@@ -57,18 +58,16 @@ const SignupPage: React.FC = () => {
     try {
       const emailValue = email.trim();
 
-      // 1) 중복 확인
       const checkRes = await http.post("/api/auth/email/check", { email: emailValue });
       const available = Boolean(checkRes.data?.available);
 
       if (!available) {
         setMessage(checkRes.data?.message || "이미 사용 중인 이메일입니다.");
         setMessageType("error");
-        return; // 여기서 종료 (send 안 함)
+        return;
       }
-      
-      // 2) 사용 가능하면 인증 코드 발송
-      await http.post("/api/auth/email/send", { email: email.trim() });
+
+      await http.post("/api/auth/email/send", { email: emailValue });
 
       setMessage("인증코드를 발송했습니다.");
       setMessageType("success");
@@ -80,15 +79,12 @@ const SignupPage: React.FC = () => {
       setCodeError(false);
       setIsEmailVerified(false);
     } catch (error: any) {
-      console.error(error);
-      // 백에서 message 내려주면 그걸 우선
       const msg = error?.response?.data?.message || "인증 코드 발송 실패";
       setMessage(msg);
       setMessageType("error");
     }
   };
 
-  /** 인증 확인 (백: POST /api/auth/email/verify, res: {verified:boolean, message:string}) */
   const handleVerifyCode = async () => {
     if (!email.trim()) {
       setMessage("이메일을 먼저 입력해주세요.");
@@ -128,7 +124,6 @@ const SignupPage: React.FC = () => {
         setMessageType("error");
       }
     } catch (error: any) {
-      console.error(error);
       const msg = error?.response?.data?.message || "인증 확인 중 오류가 발생했습니다.";
       setMessage(msg);
       setMessageType("error");
@@ -180,13 +175,47 @@ const SignupPage: React.FC = () => {
     password.length > 0 &&
     passwordConfirm.length > 0;
 
-  const goRegistration = () => {
-    // ✅ 다음 페이지(RegistrationPage)에서 AuthDtos.CompanySignupRequest로 합쳐서 보낼 값
-    localStorage.setItem("signup_email", email.trim());
-    localStorage.setItem("signup_password", password);
-    localStorage.setItem("signup_passwordConfirm", passwordConfirm);
+  // ✅ 여기서 가입 완료
+  const handleSignup = async () => {
+    setMessage("");
+    setMessageType("");
 
-    navigate("/registration");
+    if (!isValid) {
+      setMessage("이메일 인증과 비밀번호 입력을 완료해주세요.");
+      setMessageType("error");
+      return;
+    }
+    if (!code || code.trim().length !== 6) {
+      setMessage("인증번호 6자리를 입력해주세요.");
+      setMessageType("error");
+      return;
+    }
+
+    try {
+      setSignupLoading(true);
+
+      const payload = {
+        email: email.trim(),
+        password,
+        passwordConfirm,
+        authCode: code.trim(), // ✅ DTO에 맞춤
+      };
+
+      await http.post("/api/auth/company-signup", payload);
+
+      setMessage("회원가입이 완료되었습니다. 로그인 해주세요.");
+      setMessageType("success");
+      navigate("/login");
+    } catch (error: any) {
+      const msg =
+        error?.response?.data?.message ||
+        (typeof error?.response?.data === "string" ? error.response.data : null) ||
+        "회원가입에 실패했습니다.";
+      setMessage(msg);
+      setMessageType("error");
+    } finally {
+      setSignupLoading(false);
+    }
   };
 
   return (
@@ -195,6 +224,8 @@ const SignupPage: React.FC = () => {
         <Title>회원가입</Title>
 
         <ContentArea>
+          {/* ...입력 UI는 기존 그대로... */}
+
           <div className="inputGroup">
             <div className="label">이메일 입력</div>
             <Row>
@@ -204,7 +235,6 @@ const SignupPage: React.FC = () => {
                 placeholder="이메일"
                 onChange={(e) => {
                   setEmail(e.target.value);
-                  // 이메일 바뀌면 인증상태 초기화
                   setIsEmailVerified(false);
                   setShowTimer(false);
                   setTimeLeft(600);
@@ -268,8 +298,13 @@ const SignupPage: React.FC = () => {
         </ContentArea>
 
         <BottomRow>
-          <FloatingButton type="button" className="button_center" disabled={!isValid} onClick={goRegistration}>
-            회사 등록
+          <FloatingButton
+            type="button"
+            className="button_center"
+            disabled={!isValid || signupLoading}
+            onClick={handleSignup}
+          >
+            {signupLoading ? "가입 중..." : "회원가입 완료"}
           </FloatingButton>
         </BottomRow>
       </LoginBox>
