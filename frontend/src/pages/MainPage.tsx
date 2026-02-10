@@ -6,6 +6,16 @@ const MainPage: React.FC = () => {
   const navigate = useNavigate();
   const [serchParams] = useSearchParams();
 
+  const handleStartClick = () => {
+    const token = localStorage.getItem('accessToken');
+
+    if (token) {
+      navigate('/notice');
+    } else {
+      navigate('/login');
+    }
+  };
+
   return (
     <PageWrapper>
       <ContentContainer>
@@ -212,7 +222,7 @@ const CardGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: var(--spacing-xl);
-  
+              
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
   }

@@ -18,7 +18,6 @@ const Layout: React.FC = () => {
   const [searchParams] = useSearchParams();
   const tab = searchParams.get("tab");
 
-
   return (
     <>
       {/* ✅ 사이드바는 layout 밖 */}
@@ -68,7 +67,6 @@ const Layout: React.FC = () => {
         <main style={{ minHeight: "calc(100vh - 120px) " }}>
           <Outlet />
         </main>
-
         <Footer />
       </div>
     </>

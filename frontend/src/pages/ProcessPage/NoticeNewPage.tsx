@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/Global.css";
+import http from "../../api/http";
 
 type AnalyzeStep =
   | "UPLOAD_CHECK"
@@ -54,12 +55,10 @@ const NoticeNewPage: React.FC = () => {
     setPageLoading(true);
     setPageError(null);
 
-    fetch(`/api/notices/${noticeId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`API 오류: ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
+    (async () => {
+      try {
+        const { data } = await http.get(`/api/notices/${noticeId}`);
+
         const stripHtml = (html: string) => {
           if (!html) return "-";
           const tmp = document.createElement("DIV");
@@ -72,15 +71,14 @@ const NoticeNewPage: React.FC = () => {
         setPeriod(data.reqstDt || "-");
         setUrl(data.link || "-");
         setSummary(stripHtml(data.description));
-        // setBudget("-"); // 예산 필드 생기면 매핑
-
-        setPageLoading(false);
-      })
-      .catch((err) => {
+        //setBudget("-"); // 예산 필드 생기면 매핑
+      } catch (err) {
         console.error("공고 조회 오류:", err);
         setPageError("공고 정보를 불러오는데 실패했습니다.");
+      } finally {
         setPageLoading(false);
-      });
+      }
+    })();
   }, [noticeId]);
 
   const requiredFields = useMemo(
@@ -97,7 +95,7 @@ const NoticeNewPage: React.FC = () => {
   const focusFirstEmpty = () => {
     // 지금 화면은 입력폼이 아니라서 사실상 항상 false로 동작하겠지만,
     // 나중에 편집/입력폼으로 바꿀 때를 위해 유지
-    const firstEmpty = requiredFields.find((f) => !String(f.value).trim() || f.value === "-");
+    const firstEmpty = requiredFields.find((f) => !String(f.value).trim());
     if (!firstEmpty) return false;
 
     alert(`${firstEmpty.label} 항목을 확인해 주세요.`);
@@ -133,16 +131,28 @@ const NoticeNewPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await runStep("UPLOAD_CHECK", 800);
-      await runStep("CHECKLIST_CREATE", 1400);
-      await runStep("PURPOSE_SUMMARY", 1200);
-      await runStep("CATEGORY_SUMMARY", 900);
+      // UI 진행바
+      await runStep("UPLOAD_CHECK", 600);
+
+      // ✅ 실제 분석 실행 (Spring -> FastAPI)
+      await runStep("CHECKLIST_CREATE", 400);
+      const { data: result } = await http.post(
+        `/api/notices/${noticeId}/analyze`,
+        null,
+        { params: { companyId: 1 } }
+      );
+
+      // (옵션) 심층 분석/요약 단계도 UI로만 보여줌
+      await runStep("PURPOSE_SUMMARY", 400);
+      await runStep("CATEGORY_SUMMARY", 400);
 
       navigate("/process/analysis/result", {
-        state: { noticeId },
+        state: { noticeId, result },
       });
-    } catch {
+    } catch (e) {
+      console.error(e);
       alert("분석 중 오류가 발생했습니다.");
+    } finally {
       setIsLoading(false);
     }
   };
