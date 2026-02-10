@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
+import ScrollToTop from "./components/ScrollToTop";
 
 import MainPage from "./pages/MainPage";
 import LoginPage from "./pages/LoginPage";
@@ -40,6 +41,8 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+      {/* 페이지 이동할 때 마다 스크롤 맨 위로 */}
+      <ScrollToTop />
         <Routes>
           {/* 레이아웃 없이 단독 페이지 */}
           <Route path="/login" element={<LoginPage />} />
