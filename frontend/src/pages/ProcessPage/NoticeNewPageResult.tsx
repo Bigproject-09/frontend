@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../../styles/Global.css";
@@ -7,133 +7,58 @@ import http from "../../api/http";
 import { jsPDF } from "jspdf";
 import { NotoSansKR } from "../../utils/NotoSansKR";
 
-// ====== HEAD 쪽 DB/API 결과 타입(요약 리스트) ======
-type ChecklistRow = {
-  checklistId: number;
-  type: string;
-  content: string;
-};
+type EligibilityStatus = "가능" | "불가" | "보류";
 
-type RefRow = {
-  referenceId: number;
-  type: string;
-  title: string;
-  url: string;
-};
+type NoticeAnalysisAggregatedResponse = {
+  eligibility: {
+    status: EligibilityStatus;
+    summary: string;
 
-type StoredRaw = {
-  checklist?: any; // FastAPI checklist_json
-  analysis?: any; // FastAPI analysis_json
-  overall_eligibility?: any;
-};
+    judgments: Array<{
+      id: number;
+      category: string;
+      requirement_text: string;
+      judgment: EligibilityStatus;
+      reason: string;
+      company_info_used: string;
+      quote_from_announcement: string;
+      additional_action: string | null;
+    }>;
 
-// ====== frontend UI가 쓰는 타입 ======
-interface Judgment {
-  id: number;
-  category: string;
-  requirement_text: string;
-  judgment: "가능" | "불가능" | "확인 필요";
-  reason: string;
-  // 최종적으로 UI/PDF에서 항상 배열로 다룰 거라 string[]로 고정
-  quote_from_announcement: string[];
-  additional_action: string;
-}
-
-interface AnalysisData {
-  judgments: Judgment[];
-  purpose?: string;
-  evaluationItems?: string;
-}
-
-// ====== FastAPI / DB raw JSON -> UI 타입으로 변환 ======
-function normalizeAnalysisData(rawChecklist: any, rawAnalysis: any): AnalysisData | null {
-  if (!rawChecklist && !rawAnalysis) return null;
-
-  const list =
-    rawChecklist?.judgments ??
-    rawChecklist?.requirements ??
-    rawChecklist?.items ??
-    rawAnalysis?.judgments ??
-    rawAnalysis?.requirements ??
-    rawAnalysis?.items ??
-    [];
-
-  const judgments: Judgment[] = Array.isArray(list)
-    ? list.map((it: any, idx: number) => {
-        // quote_from_announcement: string | string[] 케이스 모두 처리
-        const quotes = (() => {
-          const q = it?.quote_from_announcement ?? it?.quotes ?? [];
-          if (Array.isArray(q)) return q.map((x: any) => String(x));
-          if (q === null || q === undefined) return [];
-          return [String(q)];
-        })();
-
-        return {
-          id: Number(it?.id ?? idx + 1),
-          category: String(it?.category ?? it?.title ?? it?.requirement_category ?? `항목 ${idx + 1}`),
-          requirement_text: String(it?.requirement_text ?? it?.requirement ?? it?.text ?? it?.requirementText ?? ""),
-          judgment: ((): Judgment["judgment"] => {
-            const v = String(it?.judgment ?? it?.result ?? it?.status ?? "").trim();
-            if (v === "가능" || v === "불가능" || v === "확인 필요") return v as any;
-            if (v.toLowerCase() === "ok" || v.toLowerCase() === "pass" || v === "충족") return "가능";
-            if (v.toLowerCase() === "no" || v.toLowerCase() === "fail" || v === "미충족") return "불가능";
-            return "확인 필요";
-          })(),
-          reason: String(it?.reason ?? it?.why ?? it?.rationale ?? ""),
-          quote_from_announcement: quotes,
-          additional_action: String(it?.additional_action ?? it?.action ?? it?.next_step ?? ""),
-        };
-      })
-    : [];
-
-  // ===== 목적/평가항목: 네가 준 실제 analysis_json 구조에 맞춤 =====
-  // 목적 요약: background.summary
-  const purpose = rawAnalysis?.background?.summary ?? "";
-
-  // 평가항목 요약: evaluation_criteria[] (title + points)
-  const evaluationItems = Array.isArray(rawAnalysis?.evaluation_criteria)
-    ? rawAnalysis.evaluation_criteria
-        .map((c: any) => {
-          const t = c?.title ? `- ${String(c.title)}` : "";
-          const p = c?.points !== undefined ? ` (${String(c.points)}점)` : "";
-          return (t + p).trim();
-        })
-        .filter(Boolean)
-        .join("\n")
-    : "";
-
-  return {
-    judgments,
-    purpose: purpose ? String(purpose) : undefined,
-    evaluationItems: evaluationItems ? String(evaluationItems) : undefined,
+    missing_info: string[];
+    warning_items: string[];
+    recommendations: string[];
   };
-}
+
+  research_intent: {
+    policy_background: string;
+    target_issues: string[];
+  };
+
+  evaluation_weight_analysis: {
+    summary: string;
+    high_weight_items: Array<{
+      item: string;
+      points: number;
+      strategy: string;
+    }>;
+  };
+
+  deliverables: string[];
+  mandatory_requirements: string[];
+};
 
 const NoticeNewPageResult: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const noticeId = location.state?.noticeId as number | undefined;
-  const step1Result = location.state?.result as any | undefined;
 
   // HEAD 로직 유지(조회 + 에러/로딩)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [checklists, setChecklists] = useState<ChecklistRow[]>([]);
-  const [references, setReferences] = useState<RefRow[]>([]);
-  const [storedRaw, setStoredRaw] = useState<StoredRaw>({});
-
-  // frontend UI용 state
-  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
-
-  const rawChecklist = useMemo(() => {
-    return step1Result?.fastapi?.data?.checklist ?? storedRaw.checklist ?? null;
-  }, [step1Result, storedRaw]);
-
-  const rawAnalysis = useMemo(() => {
-    return step1Result?.fastapi?.data?.analysis ?? storedRaw.analysis ?? null;
-  }, [step1Result, storedRaw]);
+  const [aggregated, setAggregated] = useState<NoticeAnalysisAggregatedResponse | null>(null);
 
   useEffect(() => {
     if (!noticeId) {
@@ -145,31 +70,23 @@ const NoticeNewPageResult: React.FC = () => {
     setError(null);
 
     http
-      .get(`/api/notices/${noticeId}/analysis-results`)
+      .get(`/api/notices/${noticeId}/analysis-aggregated`)
       .then(({ data }) => {
-        setChecklists((data.checklists ?? []) as ChecklistRow[]);
-        setReferences((data.references ?? []) as RefRow[]);
-        setStoredRaw((data.raw ?? {}) as StoredRaw);
+        setAggregated(data as NoticeAnalysisAggregatedResponse);
       })
       .catch((e) => {
         console.error(e);
-        setError("저장된 결과 조회 실패");
+        setError("분석 결과 조회 실패");
       })
       .finally(() => setLoading(false));
   }, [noticeId]);
-
-  // raw -> UI 변환
-  useEffect(() => {
-    const normalized = normalizeAnalysisData(rawChecklist, rawAnalysis);
-    setAnalysisData(normalized);
-  }, [rawChecklist, rawAnalysis]);
 
   const handleBack = (id: number) => {
     navigate("/process/analysis", { state: { noticeId: id } });
   };
 
   const handleDownloadPDF = () => {
-    if (!analysisData?.judgments || analysisData.judgments.length === 0) {
+    if (!aggregated) {
       alert("다운로드할 데이터가 없습니다.");
       return;
     }
@@ -180,118 +97,183 @@ const NoticeNewPageResult: React.FC = () => {
     doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "normal");
     doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "bold");
 
-    let y = 20;
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 20;
     const contentWidth = pageWidth - margin * 2;
+    const today = new Date().toLocaleDateString("ko-KR");
 
+    let y = 20;
+
+    const addPageIfNeeded = (minSpace: number) => {
+      if (y + minSpace <= pageHeight - margin) return;
+      doc.addPage();
+      y = 20;
+    };
+
+    const writeParagraph = (text: string, opts?: { indent?: number; fontSize?: number }) => {
+      const indent = opts?.indent ?? 0;
+      const fontSize = opts?.fontSize ?? 10;
+      doc.setFontSize(fontSize);
+
+      const lines = doc.splitTextToSize(text ?? "", contentWidth - indent);
+      lines.forEach((line: string) => {
+        addPageIfNeeded(8);
+        doc.text(line, margin + indent, y);
+        y += 5;
+      });
+    };
+
+    const writeSectionTitle = (title: string) => {
+      addPageIfNeeded(18);
+      doc.setFont("NotoSansKR", "bold");
+      doc.setFontSize(14);
+      doc.text(title, margin, y);
+      y += 8;
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.4);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+      doc.setFont("NotoSansKR", "normal");
+    };
+
+    // ====== Header ======
     doc.setFont("NotoSansKR", "bold");
     doc.setFontSize(18);
-    doc.text("자격 요건 체크리스트", margin, y);
-    y += 15;
+    doc.text("공고문 분석 결과", margin, y);
+    y += 12;
 
     doc.setFont("NotoSansKR", "normal");
     doc.setFontSize(10);
-    const today = new Date().toLocaleDateString("ko-KR");
     doc.text(`작성일: ${today}`, margin, y);
-    y += 10;
+    y += 7;
+
+    if (noticeId) {
+      doc.text(`noticeId: ${noticeId}`, margin, y);
+      y += 7;
+    }
 
     doc.setLineWidth(0.5);
     doc.line(margin, y, pageWidth - margin, y);
-    y += 10;
+    y += 12;
 
-    analysisData.judgments.forEach((req, idx) => {
-      if (y > 250) {
-        doc.addPage();
-        y = 20;
-      }
+    // ====== 1. 자격요건 체크리스트 ======
+    writeSectionTitle("1. 자격요건 체크리스트");
+    doc.setFont("NotoSansKR", "normal");
+    writeParagraph(`전체 판정: ${aggregated.eligibility?.status ?? "보류"}`);
+    writeParagraph(aggregated.eligibility?.summary ?? "데이터 없음");
+    y += 4;
 
-      doc.setFont("NotoSansKR", "bold");
-      doc.setFontSize(12);
-      doc.text(`${idx + 1}. ${req.category}`, margin, y);
-      y += 8;
-
-      doc.setFont("NotoSansKR", "normal");
-      doc.setFontSize(10);
-
-      doc.text("요구사항:", margin + 5, y);
-      y += 6;
-      doc.splitTextToSize(req.requirement_text, contentWidth - 10).forEach((line: string) => {
-        if (y > 280) {
-          doc.addPage();
-          y = 20;
-        }
-        doc.text(line, margin + 10, y);
-        y += 5;
-      });
-      y += 3;
-
-      doc.text("가능 여부:", margin + 5, y);
-      y += 6;
-      doc.splitTextToSize(req.judgment, contentWidth - 10).forEach((line: string) => {
-        if (y > 280) {
-          doc.addPage();
-          y = 20;
-        }
-        doc.text(line, margin + 10, y);
-        y += 5;
-      });
-      y += 8;
-
-      if (req.reason) {
-        doc.text("근거:", margin + 5, y);
-        y += 6;
-        doc.splitTextToSize(req.reason, contentWidth - 10).forEach((line: string) => {
-          if (y > 280) {
-            doc.addPage();
-            y = 20;
-          }
-          doc.text(line, margin + 10, y);
-          y += 5;
-        });
-        y += 6;
-      }
-
-      if (req.quote_from_announcement.length > 0) {
-        doc.text("관련 법령:", margin + 5, y);
-        y += 6;
-
-        req.quote_from_announcement.forEach((quote: string) => {
-          doc.splitTextToSize(quote, contentWidth - 10).forEach((line: string) => {
-            if (y > 280) {
-              doc.addPage();
-              y = 20;
-            }
-            doc.text(line, margin + 10, y);
-            y += 5;
-          });
-          y += 4;
-        });
-        y += 4;
-      }
-
-      if (req.additional_action) {
-        doc.text("추가 조치:", margin + 5, y);
-        y += 6;
-        doc.splitTextToSize(req.additional_action, contentWidth - 10).forEach((line: string) => {
-          if (y > 280) {
-            doc.addPage();
-            y = 20;
-          }
-          doc.text(line, margin + 10, y);
-          y += 5;
-        });
-        y += 6;
-      }
-
-      if (idx < analysisData.judgments.length - 1) {
-        doc.setDrawColor(200, 200, 200);
-        doc.line(margin, y, pageWidth - margin, y);
+    const judgments = aggregated.eligibility?.judgments ?? [];
+    if (judgments.length === 0) {
+      writeParagraph("판정 항목이 없습니다.");
+    } else {
+      judgments.forEach((req, idx) => {
+        addPageIfNeeded(16);
+        doc.setFont("NotoSansKR", "bold");
+        doc.setFontSize(12);
+        doc.text(`${idx + 1}. ${req.category} (${req.judgment})`, margin, y);
         y += 8;
-      }
-    });
 
-    doc.save(`자격요건_체크리스트_${today}.pdf`);
+        doc.setFont("NotoSansKR", "normal");
+        writeParagraph(`요구사항: ${req.requirement_text}`, { indent: 4 });
+        if (req.reason) writeParagraph(`근거: ${req.reason}`, { indent: 4 });
+        if (req.quote_from_announcement) writeParagraph(`관련 법령/인용: ${req.quote_from_announcement}`, { indent: 4 });
+        if (req.additional_action) writeParagraph(`추가 조치: ${req.additional_action}`, { indent: 4 });
+
+        y += 4;
+        if (idx < judgments.length - 1) {
+          addPageIfNeeded(10);
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.3);
+          doc.line(margin, y, pageWidth - margin, y);
+          y += 8;
+        }
+      });
+    }
+
+    const missingInfo = aggregated.eligibility?.missing_info ?? [];
+    const warningItems = aggregated.eligibility?.warning_items ?? [];
+    const recommendations = aggregated.eligibility?.recommendations ?? [];
+
+    if (missingInfo.length > 0) {
+      y += 2;
+      doc.setFont("NotoSansKR", "bold");
+      writeParagraph("확인 필요한 정보", { fontSize: 11 });
+      doc.setFont("NotoSansKR", "normal");
+      missingInfo.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
+    }
+
+    if (warningItems.length > 0) {
+      y += 2;
+      doc.setFont("NotoSansKR", "bold");
+      writeParagraph("주의 사항", { fontSize: 11 });
+      doc.setFont("NotoSansKR", "normal");
+      warningItems.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
+    }
+
+    if (recommendations.length > 0) {
+      y += 2;
+      doc.setFont("NotoSansKR", "bold");
+      writeParagraph("추천 사항", { fontSize: 11 });
+      doc.setFont("NotoSansKR", "normal");
+      recommendations.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
+    }
+
+    // ====== 2. 과제 의도 및 목적 ======
+    y += 6;
+    writeSectionTitle("2. 과제 의도 및 목적");
+    writeParagraph(aggregated.research_intent?.policy_background ?? "데이터 없음");
+    const targetIssues = aggregated.research_intent?.target_issues ?? [];
+    if (targetIssues.length > 0) {
+      y += 2;
+      doc.setFont("NotoSansKR", "bold");
+      writeParagraph("해결하려는 이슈", { fontSize: 11 });
+      doc.setFont("NotoSansKR", "normal");
+      targetIssues.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
+    }
+
+    // ====== 3. 평가지표 분석 ======
+    y += 6;
+    writeSectionTitle("3. 평가지표 분석");
+    writeParagraph(aggregated.evaluation_weight_analysis?.summary ?? "데이터 없음");
+    const highWeightItems = aggregated.evaluation_weight_analysis?.high_weight_items ?? [];
+    if (highWeightItems.length > 0) {
+      y += 2;
+      doc.setFont("NotoSansKR", "bold");
+      writeParagraph("고배점 항목 및 대응 전략", { fontSize: 11 });
+      doc.setFont("NotoSansKR", "normal");
+
+      highWeightItems.forEach((it) => {
+        y += 2;
+        doc.setFont("NotoSansKR", "bold");
+        writeParagraph(`- (${it.points}점) ${it.item}`, { indent: 4 });
+        doc.setFont("NotoSansKR", "normal");
+        if (it.strategy) writeParagraph(it.strategy, { indent: 8 });
+      });
+    }
+
+    // ====== 4. 제출 문서 리스트 ======
+    y += 6;
+    writeSectionTitle("4. 제출 문서 리스트");
+    const deliverables = aggregated.deliverables ?? [];
+    if (deliverables.length === 0) {
+      writeParagraph("데이터 없음");
+    } else {
+      deliverables.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
+    }
+
+    // ====== 5. 필수 준수사항 ======
+    y += 6;
+    writeSectionTitle("5. 필수 준수사항");
+    const mandatory = aggregated.mandatory_requirements ?? [];
+    if (mandatory.length === 0) {
+      writeParagraph("데이터 없음");
+    } else {
+      mandatory.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
+    }
+
+    doc.save(`공고문_분석_결과_${today}.pdf`);
   };
 
   // ====== 에러/로딩 ======
@@ -342,10 +324,17 @@ const NoticeNewPageResult: React.FC = () => {
           <PDFDownloadButton onClick={handleDownloadPDF}>PDF로 다운로드</PDFDownloadButton>
         </ChecklistHeader>
 
-        <Section>
-          {analysisData?.judgments && analysisData.judgments.length > 0 ? (
+        <ScrollSection>
+          {aggregated?.eligibility && (
+            <div style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
+              <StatusBadge status={aggregated.eligibility.status}>{aggregated.eligibility.status}</StatusBadge>
+              <Text>{aggregated.eligibility.summary}</Text>
+            </div>
+          )}
+
+          {aggregated?.eligibility?.judgments && aggregated.eligibility.judgments.length > 0 ? (
             <RequirementList>
-              {analysisData.judgments.map((req) => (
+              {aggregated.eligibility.judgments.map((req) => (
                 <RequirementItem key={req.id}>
                   <RequirementHeader>
                     <HeaderLeft>
@@ -356,15 +345,15 @@ const NoticeNewPageResult: React.FC = () => {
 
                   <ExpandableText text={req.requirement_text} />
 
-                  {(req.reason || req.quote_from_announcement.length > 0 || req.additional_action) && (
+                  {(req.reason || req.quote_from_announcement || req.additional_action) && (
                     <ArrowWrapper>{/* 여기서 토글 넣고 싶으면 넣어 */}</ArrowWrapper>
                   )}
 
-                  {(req.reason || req.quote_from_announcement.length > 0 || req.additional_action) && (
+                  {(req.reason || req.quote_from_announcement || req.additional_action) && (
                     <>
                       {req.reason && <ExpandableText text={req.reason} />}
 
-                      {req.quote_from_announcement.length > 0 && (
+                      {req.quote_from_announcement && (
                         <>
                           <Label style={{ marginTop: 12, color: "#0984e3" }}>관련 법령</Label>
                           <div
@@ -377,11 +366,7 @@ const NoticeNewPageResult: React.FC = () => {
                               lineHeight: 1.6,
                             }}
                           >
-                            {req.quote_from_announcement.map((q, idx) => (
-                              <div key={idx} style={{ marginBottom: 8 }}>
-                                {q}
-                              </div>
-                            ))}
+                            <div style={{ marginBottom: 8 }}>{req.quote_from_announcement}</div>
                           </div>
                         </>
                       )}
@@ -400,24 +385,87 @@ const NoticeNewPageResult: React.FC = () => {
           ) : (
             <EmptyMessage>자격 요건 데이터가 없습니다.</EmptyMessage>
           )}
+        </ScrollSection>
+
+        <br />
+
+        <div className="title" style={{ fontSize: 15 }}>
+          과제 의도 및 목적
+        </div>
+        <Section>
+          <Text>{aggregated?.research_intent?.policy_background ?? "데이터 없음"}</Text>
+          {aggregated?.research_intent?.target_issues && aggregated.research_intent.target_issues.length > 0 && (
+            <ul style={{ margin: "12px 0 0 0", paddingLeft: 18 }}>
+              {aggregated.research_intent.target_issues.map((it, idx) => (
+                <li key={idx} style={{ margin: "6px 0", lineHeight: 1.5 }}>
+                  {it}
+                </li>
+              ))}
+            </ul>
+          )}
         </Section>
 
         <br />
 
         <div className="title" style={{ fontSize: 15 }}>
-          사업 목적 요약
+          평가지표 분석
         </div>
         <Section>
-          <Text>{analysisData?.purpose ?? "데이터 없음"}</Text>
+          {aggregated?.evaluation_weight_analysis?.summary && (
+            <Text style={{ marginBottom: 12 }}>{aggregated.evaluation_weight_analysis.summary}</Text>
+          )}
+
+          {aggregated?.evaluation_weight_analysis?.high_weight_items &&
+          aggregated.evaluation_weight_analysis.high_weight_items.length > 0 ? (
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {aggregated.evaluation_weight_analysis.high_weight_items.map((it, idx) => (
+                <li key={idx} style={{ margin: "10px 0", lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 700 }}>{it.item}</div>
+                  <div style={{ marginTop: 4, color: "#636e72" }}>
+                    <Tag>{it.points}점</Tag> {it.strategy}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Text>데이터 없음</Text>
+          )}
         </Section>
 
         <br />
-
         <div className="title" style={{ fontSize: 15 }}>
-          평가항목 요약
+          제출 문서 리스트
         </div>
         <Section>
-          <Text style={{ whiteSpace: "pre-wrap" }}>{analysisData?.evaluationItems ?? "데이터 없음"}</Text>
+          {aggregated?.deliverables && aggregated.deliverables.length > 0 ? (
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {aggregated.deliverables.map((c, idx) => (
+                <li key={idx} style={{ margin: "8px 0", lineHeight: 1.5 }}>
+                  {c}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyMessage>데이터 없음</EmptyMessage>
+          )}
+        </Section>
+
+        <br />
+        <div className="title" style={{ fontSize: 15 }}>
+          필수 준수사항
+        </div>
+        <Section>
+          {aggregated?.mandatory_requirements && aggregated.mandatory_requirements.length > 0 ? (
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {aggregated.mandatory_requirements.map((c, idx) => (
+                <li key={idx} style={{ margin: "8px 0", lineHeight: 1.5 }}>
+                  {c}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyMessage>데이터 없음</EmptyMessage>
+          )}
         </Section>
 
         <RightActionRow>
@@ -430,51 +478,6 @@ const NoticeNewPageResult: React.FC = () => {
             재추출
           </button>
         </RightActionRow>
-
-        {/* (옵션) HEAD 기능: DB에 저장된 요약 체크리스트/참고자료도 같이 보여주기 */}
-        <br />
-        <div className="title" style={{ fontSize: 15 }}>
-          저장된 체크리스트(요약)
-        </div>
-        <Section>
-          {checklists.length === 0 ? (
-            <EmptyMessage>저장된 체크리스트가 없습니다.</EmptyMessage>
-          ) : (
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {checklists.map((c) => (
-                <li key={c.checklistId} style={{ margin: "8px 0", lineHeight: 1.5 }}>
-                  <Tag>{c.type}</Tag> {c.content}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-
-        <div className="title" style={{ fontSize: 15 }}>
-          참고자료
-        </div>
-        <Section>
-          {references.length === 0 ? (
-            <EmptyMessage>저장된 참고자료가 없습니다.</EmptyMessage>
-          ) : (
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {references.map((r) => (
-                <li key={r.referenceId} style={{ margin: "8px 0", lineHeight: 1.5 }}>
-                  <Tag>{r.type}</Tag>{" "}
-                  {r.url?.startsWith("http") ? (
-                    <a href={r.url} target="_blank" rel="noreferrer">
-                      {r.title}
-                    </a>
-                  ) : (
-                    <>
-                      {r.title} — <Code>{r.url}</Code>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
       </Card>
     </Container>
   );
@@ -511,9 +514,9 @@ const ExpandableText: React.FC<{ text: string }> = ({ text }) => {
       >
         {text}
       </Text>
-      {isOverflowing && !isExpanded && (
-        <MoreButton onClick={() => setIsExpanded(true)} style={{ flexShrink: 0 }}>
-          [더보기]
+      {(isOverflowing || isExpanded) && (
+        <MoreButton onClick={() => setIsExpanded((v) => !v)} style={{ flexShrink: 0 }}>
+          [{isExpanded ? "접기" : "더보기"}]
         </MoreButton>
       )}
     </div>
@@ -560,12 +563,15 @@ const Text = styled.div`
 
 const Section = styled.div`
   width: 100%;
-  height: 300px;
   background: #f8f9fa;
   border-radius: 12px;
   padding: 28px;
   box-sizing: border-box;
   position: relative;
+`;
+
+const ScrollSection = styled(Section)`
+  height: clamp(420px, 60vh, 760px);
   overflow-y: auto;
 
   &::-webkit-scrollbar {
@@ -696,16 +702,16 @@ const StatusBadge = styled.div<{ status: string }>`
     switch (props.status) {
       case "가능":
         return "#00b894";
-      case "불가능":
+      case "불가":
         return "#d63031";
-      case "확인 필요":
+      case "보류":
         return "#fdcb6e";
       default:
         return "#b2bec3";
     }
   }};
   ${(props) =>
-    props.status === "확인 필요" &&
+    props.status === "보류" &&
     `
       color: #2d3436;
     `}
@@ -720,9 +726,4 @@ const Tag = styled.span`
   border: 1px solid #d1d5db;
   background: #fff;
   margin-right: 6px;
-`;
-
-const Code = styled.span`
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 12px;
 `;
