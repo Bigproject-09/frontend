@@ -12,6 +12,24 @@ type AnnounceStep =
   | "SLIDE_MERGE"
   | "PPT_CREATE";
 
+type Slide = {
+  section: string;
+  slide_title: string;
+  key_message: string;
+  bullets: string[];
+};
+
+type PPTResult = {
+  deck_title: string;
+  total_slides: number;
+  pptx_path: string;
+  sections?: string[];
+  slides?: Slide[];
+  db_saved?: boolean;
+  pptx_filename?: string;   // 서버가 주면 사용
+  download_url?: string;    // 서버가 주면 사용
+};
+
 const STEP_TEXT: Record<AnnounceStep, string> = {
   UPLOAD_CHECK: "파일 확인 중...",
   TEXT_EXTRACT: "텍스트 추출 중...",
@@ -19,7 +37,7 @@ const STEP_TEXT: Record<AnnounceStep, string> = {
   SLIDE_GENERATE: "슬라이드 생성 중 (Gemini API)...",
   SLIDE_MERGE: "슬라이드 병합 중...",
   PPT_CREATE: "PPTX 생성 중 (Gamma API)...",
-};
+}; 
 
 const AnnounceCreatePage: React.FC = () => {
   const navigate = useNavigate();
@@ -32,7 +50,7 @@ const AnnounceCreatePage: React.FC = () => {
   const [summary, setSummary] = useState("-");
 
   const [isLoading, setIsLoading] = useState(false);
-  const [pptResult, setPptResult] = useState<any | null>(null);
+  const [pptResult, setPptResult] = useState<PPTResult | null>(null);
   const [step, setStep] = useState<AnnounceStep>("UPLOAD_CHECK");
   const [progress, setProgress] = useState(0);
 
@@ -143,8 +161,16 @@ const AnnounceCreatePage: React.FC = () => {
       // API 응답 대기
       const { data } = await apiPromise;
 
-      setPptResult(data.data);
-      alert(`PPT 생성 완료!\n파일: ${data.data.pptx_path}`);
+      const result: PPTResult = data.data;
+      setPptResult(result);
+
+      // 성공하면 결과 페이지로 이동
+      navigate("/process/announce/result", {
+        state: {
+          noticeId,
+          pptResult: result,
+        },
+      });
     } catch (e: any) {
       console.error(e);
       const errorMsg = e.response?.data?.message || "PPT 생성 중 오류가 발생했습니다.";
@@ -242,35 +268,6 @@ const AnnounceCreatePage: React.FC = () => {
               닫기
             </MiniBtn>
           </ModalActions>
-
-          {/* ✅ PPT 생성 결과 출력 */}
-          {pptResult && (
-            <ResultBox>
-              <ResultTitle>✅ PPT 생성 완료!</ResultTitle>
-              <ResultItem>
-                <ResultLabel>제목:</ResultLabel>
-                <ResultValue>{pptResult.deck_title}</ResultValue>
-              </ResultItem>
-              <ResultItem>
-                <ResultLabel>슬라이드 수:</ResultLabel>
-                <ResultValue>{pptResult.total_slides}장</ResultValue>
-              </ResultItem>
-              <ResultItem>
-                <ResultLabel>파일 경로:</ResultLabel>
-                <ResultValue>{pptResult.pptx_path}</ResultValue>
-              </ResultItem>
-              <ResultItem>
-                <ResultLabel>섹션:</ResultLabel>
-                <ResultValue>{pptResult.sections?.join(", ")}</ResultValue>
-              </ResultItem>
-              {pptResult.db_saved !== undefined && (
-                <ResultItem>
-                  <ResultLabel>DB 저장:</ResultLabel>
-                  <ResultValue>{pptResult.db_saved ? "성공" : "실패"}</ResultValue>
-                </ResultItem>
-              )}
-            </ResultBox>
-          )}
         </Section>
       </Card>
     </Page>

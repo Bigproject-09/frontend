@@ -28,7 +28,7 @@ const MainPage: React.FC = () => {
               <br />
               성공적인 과제 수주를 위한 가장 확실한 솔루션
             </Subtitle>
-            <CTAButton onClick={() => navigate("/login")}>
+            <CTAButton onClick={handleStartClick}>
               지금 시작하기
               <ArrowIcon>→</ArrowIcon>
             </CTAButton>

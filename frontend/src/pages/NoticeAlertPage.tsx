@@ -376,11 +376,27 @@ const NoticeAlertPage: React.FC = () => {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageNumbers = getPageNumbers(page, totalPages);
 
-  // ✅ 제목 텍스트 동적 변경
+  // 제목 텍스트 동적 변경
   const getTitleText = () => {
     if (tab === "HASHTAG") return "해시태그";
     if (tab === "FAV") return "찜";
     return "공고 목록";
+  };
+
+  // 신청 버튼 핸들러를 view/type에 따라 고르고,
+  // view/type가 없으면 기본 handleApply로 보냄
+  const getApplyHandler = () => {
+    if (!selected) return () => {};
+
+    if (view === "main") {
+      if (type === "analysis") return () => handleApply_main_analysis(selected.id);
+      if (type === "rfp") return () => handleApply_main_rfp(selected.id);
+      if (type === "announce") return () => handleApply_main_announce(selected.id);
+      if (type === "script") return () => handleApply_main_script(selected.id);
+    }
+
+    // 기본값 (쿼리 없을 때도 "신청" 보이게 + 동작)
+    return () => handleApply(selected.id);
   };
 
   /* =========================
@@ -476,7 +492,12 @@ const NoticeAlertPage: React.FC = () => {
                     )}
 
                     <CardActions>
-                      <ApplyBtn>
+                      <ApplyBtn
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openNotice(it);
+                        }}
+                      >
                         신청하기
                       </ApplyBtn>
                     </CardActions>
@@ -597,21 +618,7 @@ const NoticeAlertPage: React.FC = () => {
             </ModalSummary>
 
             <ModalActions>
-              {view === "notice" && (
-                <ApplyBtn onClick={() => handleApply(selected.id)}>신청</ApplyBtn>
-              )}
-              {view === "main" && type === "analysis" && (
-                <ApplyBtn onClick={() => handleApply_main_analysis(selected.id)}>신청</ApplyBtn>
-              )}
-              {view === "main" && type === "rfp" && (
-                <ApplyBtn onClick={() => handleApply_main_rfp(selected.id)}>신청</ApplyBtn>
-              )}
-              {view === "main" && type === "announce" && (
-                <ApplyBtn onClick={() => handleApply_main_announce(selected.id)}>신청</ApplyBtn>
-              )}
-              {view === "main" && type === "script" && (
-                <ApplyBtn onClick={() => handleApply_main_script(selected.id)}>신청</ApplyBtn>
-              )}
+              <ApplyBtn onClick={getApplyHandler()}>신청</ApplyBtn>
               <CloseBtn onClick={() => setSelected(null)}>닫기</CloseBtn>
             </ModalActions>
           </ModalCard>

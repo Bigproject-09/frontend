@@ -202,7 +202,7 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
         </div>
 
         {me && (
-          <NavLink to="/manager/tokentab" className={({ isActive }) => isActive ? "active" : ""}>
+          <NavLink to="/mypage?tab=logs" className={({ isActive }) => isActive ? "active" : ""}>
             <span className="nav-icon">👤</span>
             <span className="nav-text">관리자</span>
           </NavLink>

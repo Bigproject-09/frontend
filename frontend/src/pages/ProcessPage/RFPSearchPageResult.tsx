@@ -247,6 +247,12 @@ const RFPSearchPageResult: React.FC = () => {
     }
   };
 
+  const handleClose = (id: number) => {
+    navigate("/process", {
+      state: { noticeId: id },
+    });
+  };
+
   useEffect(() => {
     if (!noticeId) {
       setErrorMsg("noticeId가 없습니다.");
@@ -414,28 +420,27 @@ const RFPSearchPageResult: React.FC = () => {
           )}
         </Section>
 
-        <RightActionRow>
-          <ActionButton
+        <ModalActions>
+          <MiniBtn
             type="button"
-            variant="secondary"
             onClick={() => {
               if (!noticeId) return;
-              handleReExtract(noticeId);
+              handleReExtract(noticeId); // = handleBack(noticeId)
             }}
           >
-            🔄 재추출
-          </ActionButton>
-          <ActionButton
+            재추출
+          </MiniBtn>
+
+          <MiniBtn
             type="button"
-            variant="secondary"
             onClick={() => {
               if (!noticeId) return;
-              handleBack(noticeId);
+              handleClose(noticeId);
             }}
           >
-            ← 뒤로가기
-          </ActionButton>
-        </RightActionRow>
+            닫기
+          </MiniBtn>
+        </ModalActions>
 
         <DownloadWrapper>
           <DownloadButton type="button" onClick={handleDownload}>
@@ -675,4 +680,26 @@ const LoadingSpinner = styled.div`
   margin: 60px auto 0;
 
   @keyframes spin { to { transform: rotate(360deg); } }
+`;
+
+const ModalActions = styled.div`
+  margin-top: 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+`;
+
+const MiniBtn = styled.button`
+  width: 80px;
+  height: 36px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+
+  &:hover {
+    background: #f9fafb;
+  }
 `;
