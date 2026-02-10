@@ -525,35 +525,39 @@ padding: 12px 16px;
 `;
 
 const LoadingOverlay = styled.div`
-position: fixed;
-inset: 0;
-background: rgba(0, 0, 0, 0.45);
-z - index: 9999;
-display: flex;
-align - items: center;
-justify - content: center;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const LoadingBox = styled.div`
-background: #ffffff;
-padding: 32px 40px;
-border - radius: 14px;
-text - align: center;
-min - width: 240px;
+  background: #ffffff;
+  padding: 32px 40px;
+  border-radius: 14px;
+  text-align: center;
+  min-width: 280px;
+  font-size: 15px;
+  color: #374151;
+  line-height: 1.6;
 `;
 
 const Spinner = styled.div`
-width: 42px;
-height: 42px;
-border: 4px solid #e5e7eb;
-border - top: 4px solid #2563eb;
-border - radius: 50 %;
-animation: spin 0.9s linear infinite;
-margin: 0 auto 16px;
+  width: 42px;
+  height: 42px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #2563eb;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  margin: 0 auto 16px;
 
-@keyframes spin {
+  @keyframes spin {
     to {
-    transform: rotate(360deg);
+      transform: rotate(360deg);
+    }
   }
-}
 `;
