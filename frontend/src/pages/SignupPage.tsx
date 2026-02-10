@@ -282,36 +282,51 @@ export default SignupPage;
 /* styles (그대로) */
 const Title = styled.div`
   position: absolute;
-  top: 48px;
-  left: 48px;
-  font-size: 44px;
-  font-weight: 700;
-  color: var(--color-primary);
+  top: var(--spacing-2xl);
+  left: var(--spacing-2xl);
+  font-size: 42px;
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
 `;
 
 const Wrapper = styled.div`
   min-height: 100vh;
-  background: linear-gradient(135deg, #1f3a5f 0%, #162c48 100%);
+  background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: var(--spacing-xl);
+  box-sizing: border-box;
 `;
 
 const LoginBox = styled.div`
-  width: 800px;
-  height: 800px;
-  background-color: #ffffff;
-  border-radius: 14px;
+  width: 100%;
+  max-width: 800px;
+  min-height: 800px;
+  background-color: white;
+  border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
   position: relative;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-xl);
+  padding: var(--spacing-xl);
 `;
 
 const Row = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
+  
+  button {
+    white-space: nowrap;
+    padding: 0 var(--spacing-lg);
+    height: 48px;
+    min-width: 100px;
+  }
 `;
 
 const ContentArea = styled.div`
@@ -320,15 +335,16 @@ const ContentArea = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 40px;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-xl) 0;
 `;
 
 const FloatingButton = styled.button`
   position: absolute;
-  right: 40px;
-  bottom: 30px;
-  width: 120px;
-  padding: 10px 22px;
+  right: var(--spacing-2xl);
+  bottom: var(--spacing-xl);
+  min-width: 120px;
+  padding: 12px var(--spacing-lg);
 
   &:disabled {
     opacity: 0.5;
@@ -337,14 +353,16 @@ const FloatingButton = styled.button`
 `;
 
 const ErrorText = styled.div`
-  color: red;
+  color: var(--color-error);
   font-size: 13px;
-  margin-top: 4px;
+  margin-top: var(--spacing-xs);
+  font-weight: var(--font-weight-medium);
 `;
 
 const Timer = styled.div`
   font-size: 14px;
-  color: purple;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
   min-width: 48px;
 `;
 
@@ -355,7 +373,21 @@ const BottomRow = styled.div`
 `;
 
 const MessageText = styled.p<{ type: "error" | "success" | "" }>`
-  margin-top: 8px;
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
   font-size: 14px;
-  color: ${({ type }) => (type === "error" ? "#dc2626" : type === "success" ? "#16a34a" : "#000")};
+  font-weight: var(--font-weight-medium);
+  background: ${({ type }) => 
+    type === "error" ? "rgba(239, 68, 68, 0.1)" : 
+    type === "success" ? "rgba(16, 185, 129, 0.1)" : 
+    "transparent"};
+  color: ${({ type }) => 
+    type === "error" ? "var(--color-error)" : 
+    type === "success" ? "var(--color-success)" : 
+    "var(--color-text-primary)"};
+  border: 1px solid ${({ type }) => 
+    type === "error" ? "rgba(239, 68, 68, 0.3)" : 
+    type === "success" ? "rgba(16, 185, 129, 0.3)" : 
+    "var(--color-border-light)"};
 `;

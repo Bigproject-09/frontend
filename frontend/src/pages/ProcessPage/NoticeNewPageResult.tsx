@@ -323,6 +323,7 @@ const NoticeNewPageResult: React.FC = () => {
           <div style={{ padding: 20 }}>로딩 중...</div>
         </Card>
       </Container>
+
     );
   }
 

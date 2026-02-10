@@ -2,7 +2,7 @@
 import styled from "styled-components";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Global.css";
-import { STORAGE_KEY } from "../common/constants";
+import { META_KEY } from "../common/constants";
 import React, { useEffect, useMemo, useState } from "react";
 import HashtagTab from "./HashtagTab";
 
@@ -34,9 +34,7 @@ type NoticeMeta = {
 
 type NoticeMetaMap = Record<number, NoticeMeta>;
 
-const META_KEY = "bb_notice_meta_v1"; // 찜하기, 미확인이 저장되는 키
-
-const FAV_KEY = "bb_notice_favs_v1"; // 찜하기만 저장되는 키
+// const FAV_KEY = "bb_notice_favs_v1"; // 찜하기만 저장되는 키
 const PAGE_SIZE = 6;
 
 type ReadFilter = "ALL" | "READ" | "UNREAD";
@@ -47,20 +45,20 @@ type TabKey = "ALL" | "HASHTAG" | "FAV";
 /* =========================
    유틸
 ========================= */
-const loadFavIds = (): number[] => {
-  try {
-    const raw = localStorage.getItem(FAV_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
+// const loadFavIds = (): number[] => {
+//   try {
+//     const raw = localStorage.getItem(FAV_KEY);
+//     return raw ? JSON.parse(raw) : [];
+//   } catch {
+//     return [];
+//   }
+// };
 
-const saveFavIds = (ids: number[]) => {
-  try {
-    localStorage.setItem(FAV_KEY, JSON.stringify(ids));
-  } catch { }
-};
+// const saveFavIds = (ids: number[]) => {
+//   try {
+//     localStorage.setItem(FAV_KEY, JSON.stringify(ids));
+//   } catch { }
+// };
 
 // 찜하기와 안읽음 저장
 const loadMetaMap = (): NoticeMetaMap => {
@@ -158,6 +156,8 @@ const NoticeAlertPage: React.FC = () => {
   const [searchParams] = useSearchParams();
 
   const view = searchParams.get("view");
+  const type = searchParams.get("type");
+  const tabParam = searchParams.get("tab");
 
   const [items, setItems] = useState<NoticeItem[]>([]);
   // const [favIds, setFavIds] = useState<number[]>(loadFavIds);
@@ -182,17 +182,6 @@ const NoticeAlertPage: React.FC = () => {
       .then((data) => {
         const list = data.content ?? data;
 
-        // const normalized: NoticeItem[] = list.map((n: any) => ({
-        //   id: n.noticeId,
-        //   title: n.title,
-        //   score: n.score ?? 0,
-        //   isRead: false,
-        //   dday: calcDday(n.reqstDt),
-        //   hashtags: n.hashtags ?? [],
-        //   org: n.excInsttNm ?? "-",
-        //   period: n.reqstDt ?? "-",
-        // }));
-
         const normalized: NoticeItem[] = list.map((n: any) => {
           const meta = metaMap[n.noticeId];
 
@@ -211,6 +200,17 @@ const NoticeAlertPage: React.FC = () => {
       })
       .catch(console.error);
   }, []);
+
+  // Sync tab state with URL query parameter
+  useEffect(() => {
+    if (tabParam === "hashtag") {
+      setTab("HASHTAG");
+    } else if (tabParam === "fav") {
+      setTab("FAV");
+    } else {
+      setTab("ALL");
+    }
+  }, [tabParam]);
 
   /* =========================
      필터
@@ -235,15 +235,6 @@ const NoticeAlertPage: React.FC = () => {
     if (ddayFilter === "D4_7") return d >= 4 && d <= 7;
     return d >= 8;
   };
-
-  // const passScore = (it: NoticeItem) => {
-  //   const s = it.score;
-  //   if (scoreFilter === "ALL") return true;
-  //   if (scoreFilter === "S80") return s >= 80;
-  //   if (scoreFilter === "S70") return s >= 70 && s < 80;
-  //   if (scoreFilter === "S60") return s >= 60 && s < 70;
-  //   return s < 60;
-  // };
 
   /* =========================
      상세 열기
@@ -304,17 +295,6 @@ const NoticeAlertPage: React.FC = () => {
     });
   };
 
-
-  // const toggleFav = (id: number) => {
-  //   setFavIds((prev) => {
-  //     const next = prev.includes(id)
-  //       ? prev.filter((x) => x !== id)
-  //       : [...prev, id];
-  //     saveFavIds(next);
-  //     return next;
-  //   });
-  // };
-
   const toggleFav = (id: number) => {
     setMetaMap((prev) => {
       const next = {
@@ -332,7 +312,24 @@ const NoticeAlertPage: React.FC = () => {
 
 
   const handleApply = (id: number) => {
-    navigate("/process", { state: { noticeId: id } });
+    navigate("/process?view=notice", { state: { noticeId: id } });
+  };
+
+  // 메인 화면을 통해 바로 들어올경우
+  const handleApply_main_analysis = (id: number) => {
+    navigate("/process/analysis", { state: { noticeId: id } });
+  };
+
+  const handleApply_main_rfp = (id: number) => {
+    navigate("/process/rfp", { state: { noticeId: id } });
+  };
+
+  const handleApply_main_announce = (id: number) => {
+    navigate("/process/announce", { state: { noticeId: id } });
+  };
+
+  const handleApply_main_script = (id: number) => {
+    navigate("/process/script", { state: { noticeId: id } });
   };
 
   const handleClearFilters = () => {
@@ -359,7 +356,6 @@ const NoticeAlertPage: React.FC = () => {
   ========================= */
   const baseByTab = useMemo(() => {
     if (tab === "ALL") return items;
-    // if (tab === "FAV") return items.filter((it) => favIds.includes(it.id));
     if (tab === "FAV") return items.filter((it) => metaMap[it.id]?.fav);
     return [];
   }, [items, metaMap, tab]);
@@ -370,7 +366,6 @@ const NoticeAlertPage: React.FC = () => {
       .filter((it) => (t ? it.title.toLowerCase().includes(t) : true))
       .filter(passRead)
       .filter(passDday)
-    // .filter(passScore);
   }, [baseByTab, filterText, readFilter, ddayFilter, scoreFilter]);
 
   const pagedItems = useMemo(() => {
@@ -393,153 +388,140 @@ const NoticeAlertPage: React.FC = () => {
   ========================= */
   return (
     <Shell>
-      <Layout>
-        <Side>
-          <SideTab data-active={tab === "ALL"} onClick={() => setTab("ALL")}>
-            전체 공고
-          </SideTab>
-          <SideTab data-active={tab === "HASHTAG"} onClick={() => setTab("HASHTAG")}>
-            해시태그
-          </SideTab>
-          <SideTab data-active={tab === "FAV"} onClick={() => setTab("FAV")}>
-            찜
-          </SideTab>
-        </Side>
-
-        <Main>
-          {/* ✅ 동적 제목 */}
+      <Main>
+        {/* 헤더 */}
+        <Header>
           <Title>{getTitleText()}</Title>
-
-          {tab !== "HASHTAG" && (
-            <Section>
-              <FilterRow>
-                <SearchInput
-                  type="text"
-                  placeholder="공고 제목 검색"
-                  value={filterText}
-                  onChange={(e) => setFilterText(e.target.value)}
-                />
-                <Select
-                  value={readFilter}
-                  onChange={(e) => setReadFilter(e.target.value as ReadFilter)}
-                >
-                  <option value="ALL">전체</option>
-                  <option value="READ">읽음</option>
-                  <option value="UNREAD">읽지 않음</option>
-                </Select>
-                <Select
-                  value={ddayFilter}
-                  onChange={(e) => setDdayFilter(e.target.value as DdayFilter)}
-                >
-                  <option value="ALL">마감일 전체</option>
-                  <option value="D0_1">D-0 ~ D-1</option>
-                  <option value="D2_3">D-2 ~ D-3</option>
-                  <option value="D4_7">D-4 ~ D-7</option>
-                  <option value="D8PLUS">D-8 이상</option>
-                </Select>
-                <Select
-                  value={scoreFilter}
-                  onChange={(e) => setScoreFilter(e.target.value as ScoreFilter)}
-                >
-                  <option value="ALL">점수 전체</option>
-                  <option value="S80">80점 이상</option>
-                  <option value="S70">70점대</option>
-                  <option value="S60">60점대</option>
-                  <option value="S0">60점 미만</option>
-                </Select>
-                <ClearBtn onClick={handleClearFilters}>초기화</ClearBtn>
-              </FilterRow>
-            </Section>
-          )}
-
-          {tab === "HASHTAG" ? (
-            <HashtagTab
-              items={items}
-              onApply={handleApply}
-              onViewNotice={openNotice}  // ✅ 추가
+          <HeaderActions>
+            <SearchInput
+              type="text"
+              placeholder="🔍 공고 제목 검색"
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
             />
-          ) : (
-            <Section>
-              <HeaderRow>
-                <div>공고 제목</div>
-                <Center>기한</Center>
-                {/* <Center>추천점수</Center> */}
-                <ActionHeader>
-                  <ActionHeaderItem>찜</ActionHeaderItem>
-                </ActionHeader>
-              </HeaderRow>
+          </HeaderActions>
+        </Header>
 
-              {pagedItems.length > 0 ? (
-                pagedItems.map((it) => {
-                  // const isFav = favIds.includes(it.id);
-                  const isFav = metaMap[it.id]?.fav;
-                  const isRead = metaMap[it.id]?.read;
+        {tab !== "HASHTAG" && (
+          <FilterSection>
+            <Select
+              value={readFilter}
+              onChange={(e) => setReadFilter(e.target.value as ReadFilter)}
+            >
+              <option value="ALL">전체</option>
+              <option value="READ">읽음</option>
+              <option value="UNREAD">읽지 않음</option>
+            </Select>
+            <Select
+              value={ddayFilter}
+              onChange={(e) => setDdayFilter(e.target.value as DdayFilter)}
+            >
+              <option value="ALL">마감일 전체</option>
+              <option value="D0_1">D-0 ~ D-1</option>
+              <option value="D2_3">D-2 ~ D-3</option>
+              <option value="D4_7">D-4 ~ D-7</option>
+              <option value="D8PLUS">D-8 이상</option>
+            </Select>
+            <ClearBtn onClick={handleClearFilters}>초기화</ClearBtn>
+          </FilterSection>
+        )}
 
-                  return (
-                    <Row key={it.id}>
-                      <TitleWrapper>
-                        <TitleButton onClick={() => openNotice(it)}>
-                          {it.title}
-                        </TitleButton>
-                        {!it.isRead && <UnreadBadge>미확인</UnreadBadge>}
-                      </TitleWrapper>
-                      <Center>{it.dday}</Center>
-                      {/* <Center>{it.score}</Center> */}
-                      <Actions>
-                        <FavBtn
-                          data-active={isFav}
-                          onClick={() => toggleFav(it.id)}
-                        >
-                          <FavIcon>{isFav ? "★" : "☆"}</FavIcon>
-                        </FavBtn>
-                        <MiniBtn onClick={() => handleApply(it.id)}>
-                          신청
-                        </MiniBtn>
-                      </Actions>
-                    </Row>
-                  );
-                })
-              ) : (
-                <Empty>조건에 맞는 공고가 없습니다.</Empty>
-              )}
+        {tab === "HASHTAG" ? (
+          <HashtagTab
+            items={items}
+            onApply={handleApply}
+            onViewNotice={openNotice}
+          />
+        ) : (
+          <CardGrid>
+            {pagedItems.length > 0 ? (
+              pagedItems.map((it) => {
+                const isFav = metaMap[it.id]?.fav;
+                const isRead = metaMap[it.id]?.read;
 
-              {totalPages > 1 && (
-                <Pagination>
-                  <PageBtn
-                    disabled={page === 1}
-                    onClick={() => page > 1 && setPage(page - 1)}
-                  >
-                    ‹
-                  </PageBtn>
-
-                  {pageNumbers.map((p, idx) => {
-                    if (p === "...") {
-                      return <Ellipsis key={`ellipsis-${idx}`}>...</Ellipsis>;
-                    }
-                    return (
-                      <PageBtn
-                        key={p}
-                        data-active={p === page}
-                        onClick={() => setPage(p as number)}
+                return (
+                  <NoticeCard key={it.id} onClick={() => openNotice(it)}>
+                    <CardHeader>
+                      {!it.isRead && <UnreadBadge>미확인</UnreadBadge>}
+                      <FavBtn
+                        data-active={isFav}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFav(it.id);
+                        }}
                       >
-                        {p}
-                      </PageBtn>
-                    );
-                  })}
+                        {isFav ? "★" : "☆"}
+                      </FavBtn>
+                    </CardHeader>
 
-                  <PageBtn
-                    disabled={page === totalPages}
-                    onClick={() => page < totalPages && setPage(page + 1)}
-                  >
-                    ›
-                  </PageBtn>
-                </Pagination>
-              )}
-            </Section>
-          )}
+                    <CardTitle>{it.title}</CardTitle>
 
-        </Main>
-      </Layout>
+                    <CardMeta>
+                      <MetaItem>
+                        <MetaLabel>기관</MetaLabel>
+                        <MetaValue>{it.org}</MetaValue>
+                      </MetaItem>
+                      <MetaItem>
+                        <MetaLabel>기한</MetaLabel>
+                        <DdayBadge>{it.dday}</DdayBadge>
+                      </MetaItem>
+                    </CardMeta>
+
+                    {it.hashtags && it.hashtags.length > 0 && (
+                      <HashtagContainer>
+                        {it.hashtags.slice(0, 3).map((tag, i) => (
+                          <HashtagBadge key={i}>#{tag}</HashtagBadge>
+                        ))}
+                      </HashtagContainer>
+                    )}
+
+                    <CardActions>
+                      <ApplyBtn>
+                        신청하기
+                      </ApplyBtn>
+                    </CardActions>
+                  </NoticeCard>
+                );
+              })
+            ) : (
+              <Empty>조건에 맞는 공고가 없습니다.</Empty>
+            )}
+          </CardGrid>
+        )}
+
+        {totalPages > 1 && (
+          <Pagination>
+            <PageBtn
+              disabled={page === 1}
+              onClick={() => page > 1 && setPage(page - 1)}
+            >
+              ‹
+            </PageBtn>
+
+            {pageNumbers.map((p, idx) => {
+              if (p === "...") {
+                return <Ellipsis key={`ellipsis-${idx}`}>...</Ellipsis>;
+              }
+              return (
+                <PageBtn
+                  key={p}
+                  data-active={p === page}
+                  onClick={() => setPage(p as number)}
+                >
+                  {p}
+                </PageBtn>
+              );
+            })}
+
+            <PageBtn
+              disabled={page === totalPages}
+              onClick={() => page < totalPages && setPage(page + 1)}
+            >
+              ›
+            </PageBtn>
+          </Pagination>
+        )}
+      </Main>
 
       {selected && (
         <ModalOverlay onClick={() => setSelected(null)}>
@@ -557,7 +539,7 @@ const NoticeAlertPage: React.FC = () => {
                 <div>
                   {selected.period ?? "-"}
                   {selected.dday && selected.dday !== "-" && (
-                    <span style={{ marginLeft: "12px", fontWeight: "600", color: "var(--color-accent)" }}>
+                    <span style={{ marginLeft: "12px", fontWeight: "600", color: "#5B68E8" }}>
                       ({selected.dday})
                     </span>
                   )}
@@ -615,8 +597,22 @@ const NoticeAlertPage: React.FC = () => {
             </ModalSummary>
 
             <ModalActions>
-              <MiniBtn onClick={() => handleApply(selected.id)}>신청</MiniBtn>
-              <MiniBtn onClick={() => setSelected(null)}>닫기</MiniBtn>
+              {view === "notice" && (
+                <ApplyBtn onClick={() => handleApply(selected.id)}>신청</ApplyBtn>
+              )}
+              {view === "main" && type === "analysis" && (
+                <ApplyBtn onClick={() => handleApply_main_analysis(selected.id)}>신청</ApplyBtn>
+              )}
+              {view === "main" && type === "rfp" && (
+                <ApplyBtn onClick={() => handleApply_main_rfp(selected.id)}>신청</ApplyBtn>
+              )}
+              {view === "main" && type === "announce" && (
+                <ApplyBtn onClick={() => handleApply_main_announce(selected.id)}>신청</ApplyBtn>
+              )}
+              {view === "main" && type === "script" && (
+                <ApplyBtn onClick={() => handleApply_main_script(selected.id)}>신청</ApplyBtn>
+              )}
+              <CloseBtn onClick={() => setSelected(null)}>닫기</CloseBtn>
             </ModalActions>
           </ModalCard>
         </ModalOverlay>
@@ -627,275 +623,272 @@ const NoticeAlertPage: React.FC = () => {
 
 export default NoticeAlertPage;
 
-/* styled-components는 동일 */
+/* styled-components */
 const Shell = styled.div`
   width: 100%;
-  height: 100vh;
-  background-color: var(--color-bg-main);
-`;
-
-const Layout = styled.div`
-  display: flex;
-  height: 100%;
-`;
-
-const Side = styled.aside`
-  width: 240px;
-  background: var(--color-primary);
-  color: rgba(255, 255, 255, 0.85);
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 16px 12px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const SideTab = styled.button`
-  position: relative;
-  width: calc(100% + 14px);
-  height: 42px;
-  margin-right: -14px;
-
-  display: flex;
-  align-items: center;
-  padding: 0 20px;
-
-  background: transparent;
-  border: none;
-  outline: none;
-
-  font-size: 18px;
-  text-align: left;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.9);
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  &:focus,
-  &:focus-visible,
-  &:active {
-    outline: none;
-  }
-
-  &[data-active="true"] {
-    background: #ffffff;
-    color: var(--color-primary);
-    font-weight: 600;
-    border-radius: 6px 0 0 6px;
-  }
+  min-height: 100vh;
+  background-color: #F5F7FA;
 `;
 
 const Main = styled.main`
-  flex: 1;
-  padding: 60px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 40px 24px;
   box-sizing: border-box;
-  overflow-y: auto;
 `;
 
-const Title = styled.div`
-  font-size: 35px;
-  font-weight: 800;
-  margin-bottom: 24px;
-  color: var(--color-primary);
-`;
-
-const Section = styled.div`
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 20px 24px;
-  box-sizing: border-box;
-  margin-bottom: 20px;
-  border: 1px solid rgba(0,0,0,0.08);
-`;
-
-const FilterRow = styled.div`
+const Header = styled.div`
   display: flex;
+  justify-content: space-between;
   align-items: center;
+  margin-bottom: 32px;
+`;
+
+const Title = styled.h1`
+  font-size: 32px;
+  font-weight: 700;
+  color: #1F2937;
+  margin: 0;
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
   gap: 12px;
-  flex-wrap: wrap;
+  align-items: center;
 `;
 
 const SearchInput = styled.input`
-  flex: 1;
-  min-width: 200px;
-  height: 40px;
-  padding: 0 14px;
-  border: 1px solid rgba(0,0,0,0.15);
-  border-radius: 6px;
+  width: 320px;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
   font-size: 14px;
   outline: none;
+  background: white;
 
   &:focus {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px rgba(46,111,219,0.15);
+    border-color: #5B68E8;
+    box-shadow: 0 0 0 3px rgba(91, 104, 232, 0.1);
   }
 
   &::placeholder {
-    color: rgba(0,0,0,0.4);
+    color: #9CA3AF;
   }
+`;
+
+const FilterSection = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
 `;
 
 const Select = styled.select`
   height: 40px;
-  background-color: #ffffff;
-  border: 1px solid rgba(0,0,0,0.15);
+  background-color: white;
+  border: 1px solid #E5E7EB;
   outline: none;
   padding: 0 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   cursor: pointer;
 
   &:focus {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px rgba(46,111,219,0.15);
+    border-color: #5B68E8;
+    box-shadow: 0 0 0 3px rgba(91, 104, 232, 0.1);
   }
 `;
 
 const ClearBtn = styled.button`
   height: 40px;
-  padding: 0 16px;
-  background: #ffffff;
-  border: 1px solid rgba(0,0,0,0.2);
-  border-radius: 6px;
+  padding: 0 20px;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 500;
+  color: #6B7280;
 
   &:hover {
-    background: #f5f7fa;
+    background: #F9FAFB;
+    border-color: #D1D5DB;
   }
 `;
 
-const HeaderRow = styled.div`
+const CardGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 120px 300px;
-  align-items: center;
-  padding: 12px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  border-bottom: 2px solid rgba(0,0,0,0.1);
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
 `;
 
-const Row = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 120px 300px;
-  align-items: center;
-  padding: 16px 0;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
-
-  &:last-child {
-    border-bottom: none;
-  }
-`;
-
-const ActionHeader = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-`;
-
-const ActionHeaderItem = styled.div`
-  font-size: 14px;
-  color: #333;
-  text-align: center;
-  font-weight: 600;
-  width: 36px;
-  margin-right: 82px;
-`;
-
-const TitleButton = styled.button`
-  background: none;
-  border: none;
+const NoticeCard = styled.div`
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
   cursor: pointer;
-  font-size: 14px;
-  text-align: left;
-  padding: 0;
-  color: #333;
+  transition: all 0.3s ease;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
   &:hover {
-    text-decoration: underline;
-    color: var(--color-accent);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(91, 104, 232, 0.15);
+    border-color: #5B68E8;
   }
 `;
 
-const TitleWrapper = styled.div`
+const CardHeader = styled.div`
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  margin-bottom: 16px;
+  min-height: 28px;
 `;
 
 const UnreadBadge = styled.span`
   font-size: 12px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: rgba(46,111,219,0.12);
-  color: var(--color-accent);
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #5B68E8 0%, #7B88F0 100%);
+  color: white;
   font-weight: 600;
-`;
-
-const Center = styled.div`
-  text-align: center;
-  font-size: 14px;
-  color: #333;
-`;
-
-const Actions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  align-items: center;
 `;
 
 const FavBtn = styled.button`
   width: 36px;
   height: 36px;
-  background: #ffffff;
-  border: 1px solid rgba(0,0,0,0.15);
-  border-radius: 6px;
+  background: white;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 8px;
   cursor: pointer;
-  position: relative;
+  font-size: 20px;
+  color: #FFC107;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 
   &[data-active="true"] {
-    border-color: var(--color-accent);
-    background: rgba(46,111,219,0.05);
+    border-color: #FFC107;
+    background: #FFFBF0;
   }
 
   &:hover {
-    background: #f5f7fa;
-  }
-
-  &[data-active="true"]:hover {
-    background: rgba(46,111,219,0.1);
+    background: #FFFBF0;
+    transform: scale(1.1);
   }
 `;
 
-const FavIcon = styled.span`
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+const CardTitle = styled.h3`
   font-size: 18px;
-  line-height: 1;
-  display: block;
-  color: var(--color-accent);
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0 0 16px 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 `;
 
-const MiniBtn = styled.button`
-  width: 72px;
-  height: 36px;
-  background: var(--color-accent);
-  color: var(--color-text-white);
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
+const CardMeta = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #F9FAFB;
+  border-radius: 12px;
+`;
+
+const MetaItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const MetaLabel = styled.span`
+  font-size: 13px;
+  color: #6B7280;
   font-weight: 500;
+`;
+
+const MetaValue = styled.span`
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+`;
+
+const DdayBadge = styled.span`
+  font-size: 14px;
+  font-weight: 600;
+  color: #EF4444;
+  background: #FEF2F2;
+  padding: 4px 12px;
+  border-radius: 6px;
+`;
+
+const HashtagContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+`;
+
+const HashtagBadge = styled.span`
+  display: inline-block;
+  padding: 6px 12px;
+  background: rgba(91, 104, 232, 0.1);
+  color: #5B68E8;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+`;
+
+const CardActions = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const ApplyBtn = styled.button`
+  flex: 1;
+  height: 42px;
+  background: linear-gradient(135deg, #5B68E8 0%, #7B88F0 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.2s;
 
   &:hover {
-    background: var(--color-accent-hover);
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(91, 104, 232, 0.3);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`;
+
+const CloseBtn = styled.button`
+  flex: 1;
+  height: 42px;
+  background: white;
+  color: #6B7280;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #F9FAFB;
   }
 `;
 
@@ -904,106 +897,107 @@ const Pagination = styled.div`
   justify-content: center;
   align-items: center;
   gap: 8px;
-  padding-top: 20px;
-  margin-top: 16px;
-  border-top: 1px solid rgba(0,0,0,0.06);
+  margin-top: 32px;
 `;
 
 const PageBtn = styled.button<{ disabled?: boolean }>`
-  min-width: 32px;
-  height: 32px;
-  background: none;
-  border: 1px solid rgba(0,0,0,0.15);
-  border-radius: 6px;
+  min-width: 40px;
+  height: 40px;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
-  padding: 0 8px;
-  color: #666;
+  padding: 0 12px;
+  color: #6B7280;
+  font-weight: 500;
 
   &:hover:not(:disabled) {
-    background: #f5f7fa;
+    background: #F9FAFB;
+    border-color: #5B68E8;
+    color: #5B68E8;
   }
 
   &[data-active="true"] {
-    background: var(--color-accent);
+    background: linear-gradient(135deg, #5B68E8 0%, #7B88F0 100%);
     color: white;
-    border-color: var(--color-accent);
+    border-color: #5B68E8;
     font-weight: 600;
   }
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.5;
+    opacity: 0.4;
   }
 `;
 
 const Ellipsis = styled.span`
-  padding: 0 4px;
-  color: #999;
+  padding: 0 8px;
+  color: #9CA3AF;
   font-size: 14px;
 `;
 
 const Empty = styled.div`
-  padding: 40px 0;
+  grid-column: 1 / -1;
+  padding: 80px 0;
   text-align: center;
-  font-size: 14px;
-  color: #999;
+  font-size: 16px;
+  color: #9CA3AF;
 `;
 
 const ModalOverlay = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 24px;
   box-sizing: border-box;
   z-index: 9999;
+  backdrop-filter: blur(4px);
 `;
 
 const ModalCard = styled.div`
   width: 760px;
   max-width: 95vw;
   max-height: 90vh;
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 28px;
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
   box-sizing: border-box;
   overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 `;
 
 const ModalTitle = styled.div`
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #333;
+  margin-bottom: 24px;
+  color: #1F2937;
 `;
 
 const ModalGrid = styled.div`
   display: grid;
   grid-template-columns: 140px 1fr;
-  row-gap: 14px;
-  column-gap: 16px;
+  row-gap: 16px;
+  column-gap: 20px;
   align-items: start;
 
   .label {
     font-weight: 600;
-    color: #555;
+    color: #6B7280;
     font-size: 14px;
   }
 
   div:not(.label) {
-    color: #333;
+    color: #374151;
     font-size: 14px;
     word-break: break-word;
   }
 
   a {
-    color: var(--color-accent);
+    color: #5B68E8;
     text-decoration: underline;
 
     &:hover {
@@ -1013,29 +1007,29 @@ const ModalGrid = styled.div`
 `;
 
 const ModalSummary = styled.div`
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 2px solid #F3F4F6;
 
   .label {
     font-weight: 600;
-    color: #555;
+    color: #6B7280;
     font-size: 14px;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
   }
 
   div:not(.label) {
     font-size: 14px;
     line-height: 1.6;
-    color: #333;
+    color: #374151;
   }
 `;
 
 const ModalActions = styled.div`
-  margin-top: 24px;
+  margin-top: 28px;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
 `;
 
 const AttachFileList = styled.div`
@@ -1049,7 +1043,7 @@ const AttachFileButton = styled.button`
   border: none;
   padding: 0;
   font-size: 14px;
-  color: var(--color-accent);
+  color: #5B68E8;
   text-decoration: underline;
   word-break: break-all;
   text-align: left;
@@ -1058,20 +1052,4 @@ const AttachFileButton = styled.button`
   &:hover {
     opacity: 0.8;
   }
-`;
-
-const HashtagContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-`;
-
-const HashtagBadge = styled.span`
-  display: inline-block;
-  padding: 4px 10px;
-  background: rgba(46, 111, 219, 0.1);
-  color: var(--color-accent);
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 500;
 `;

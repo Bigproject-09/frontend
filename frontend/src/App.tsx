@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import Footer from "./components/Footer";
+import ScrollToTop from "./components/ScrollToTop";
+
 
 import MainPage from "./pages/MainPage";
 // 회원가입 및 로그인
@@ -47,12 +49,13 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+      {/* 페이지 이동할 때 마다 스크롤 맨 위로 */}
+      <ScrollToTop />
         <Routes>
           {/* 레이아웃 없이 단독 페이지 */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/registration" element={<RegistrationPage />} />
-          <Route path="/resetPassword" element={<ResetPasswordPage />} />
           <Route path="/term" element={<TermPage />} />
           <Route path="/withdrawal" element={<WithdrawPage />} />
 
