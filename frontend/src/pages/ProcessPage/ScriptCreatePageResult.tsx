@@ -24,6 +24,11 @@ const ScriptCreatePageResult: React.FC = () => {
             state: { noticeId: id },
         });
     };
+    const handleClose = (id: number) => {
+      navigate("/process", {
+        state: { noticeId: id },
+      });
+    };
 
     if (!scriptData) {
         return <Container>로딩 중...</Container>;
@@ -79,19 +84,27 @@ const ScriptCreatePageResult: React.FC = () => {
                     )}
                 </Section>
 
-                <RightActionRow>
-                    <button
-                        type="button"
-                        className="button_center"
-                        style={{ width: 120 }}
-                        onClick={() => {
-                            if (!noticeId) return;
-                            handleBack(noticeId);
-                        }}
-                    >
-                        재생성
-                    </button>
-                </RightActionRow>
+                <ModalActions>
+                  <MiniBtn
+                    type="button"
+                    onClick={() => {
+                      if (!noticeId) return;
+                      handleBack(noticeId);
+                    }}
+                  >
+                    재생성
+                  </MiniBtn>
+
+                  <MiniBtn
+                    type="button"
+                    onClick={() => {
+                      if (!noticeId) return;
+                      handleClose(noticeId);
+                    }}
+                  >
+                    닫기
+                  </MiniBtn>
+                </ModalActions>
 
                 <DownloadWrapper>
                     <DownloadButton onClick={() => alert("PPT 다운로드 기능 준비 중")}>
@@ -229,6 +242,28 @@ const ScriptContent = styled.p`
   color: #2d3436;
   line-height: 1.8;
   margin: 0;
+`;
+
+const ModalActions = styled.div`
+  margin-top: 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+`;
+
+const MiniBtn = styled.button`
+  width: 80px;
+  height: 36px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+
+  &:hover {
+    background: #f9fafb;
+  }
 `;
 
 /* Q&A 관련 스타일 */

@@ -149,19 +149,27 @@ const AnnounceCreatePageResult: React.FC = () => {
         )}
 
         {/* 액션 버튼 */}
-        <RightActionRow>
-          <button
-            type="button"
-            className="button_center"
-            style={{ width: 120 }}
-            onClick={() => {
-              if (!noticeId) return;
-              handleBack(noticeId);
-            }}
-          >
-            다시 생성
-          </button>
-        </RightActionRow>
+        <ModalActions>
+            <MiniBtn
+                type="button"
+                onClick={() => {
+                if (!noticeId) return;
+                handleBack(noticeId);
+                }}
+            >
+                재생성
+            </MiniBtn>
+
+            <MiniBtn
+                type="button"
+                onClick={() => {
+                if (!noticeId) return;
+                navigate("/process", { state: { noticeId } });
+                }}
+            >
+                닫기
+            </MiniBtn>
+        </ModalActions>
 
         <DownloadWrapper>
           <DownloadButton onClick={handleDownloadPPT}>
@@ -409,5 +417,27 @@ const DownloadButton = styled.button`
 
   &:active {
     transform: translateY(0);
+  }
+`;
+
+const ModalActions = styled.div`
+  margin-top: 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+`;
+
+const MiniBtn = styled.button`
+  width: 80px;
+  height: 36px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+
+  &:hover {
+    background: #f9fafb;
   }
 `;

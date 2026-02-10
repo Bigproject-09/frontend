@@ -135,6 +135,12 @@ const NoticeNewPageResult: React.FC = () => {
     return step1Result?.fastapi?.data?.analysis ?? storedRaw.analysis ?? null;
   }, [step1Result, storedRaw]);
 
+  const handleClose = (id: number) => {
+    navigate("/process", {
+      state: { noticeId: id },
+    });
+  };
+
   useEffect(() => {
     if (!noticeId) {
       setError("noticeId가 없습니다. /process에서 다시 들어오세요.");
@@ -163,6 +169,11 @@ const NoticeNewPageResult: React.FC = () => {
     const normalized = normalizeAnalysisData(rawChecklist, rawAnalysis);
     setAnalysisData(normalized);
   }, [rawChecklist, rawAnalysis]);
+
+  const handleExitToProcess = () => {
+    if (!noticeId) return;
+    navigate("/process", { state: { noticeId } });
+  };
 
   const handleBack = (id: number) => {
     navigate("/process/analysis", { state: { noticeId: id } });
@@ -420,16 +431,27 @@ const NoticeNewPageResult: React.FC = () => {
           <Text style={{ whiteSpace: "pre-wrap" }}>{analysisData?.evaluationItems ?? "데이터 없음"}</Text>
         </Section>
 
-        <RightActionRow>
-          <button
+        <ModalActions>
+          <MiniBtn
             type="button"
-            className="button_center"
-            style={{ width: 120 }}
-            onClick={() => noticeId && handleBack(noticeId)}
+            onClick={() => {
+              if (!noticeId) return;
+              handleBack(noticeId);
+            }}
           >
             재추출
-          </button>
-        </RightActionRow>
+          </MiniBtn>
+
+          <MiniBtn
+            type="button"
+            onClick={() => {
+              if (!noticeId) return;
+              handleClose(noticeId);
+            }}
+          >
+            닫기
+          </MiniBtn>
+        </ModalActions>
 
         {/* (옵션) HEAD 기능: DB에 저장된 요약 체크리스트/참고자료도 같이 보여주기 */}
         <br />
@@ -725,4 +747,26 @@ const Tag = styled.span`
 const Code = styled.span`
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12px;
+`;
+
+const ModalActions = styled.div`
+  margin-top: 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+`;
+
+const MiniBtn = styled.button`
+  width: 80px;
+  height: 36px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+
+  &:hover {
+    background: #f9fafb;
+  }
 `;
