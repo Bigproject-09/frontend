@@ -50,55 +50,35 @@ const AnnounceCreatePageResult: React.FC = () => {
   };
 
   const handleDownloadPPT = async () => {
-    if (!pptResult) return;
+    if (!pptResult || !noticeId) return;
 
-    // 1) 서버가 내려준 download_url 우선 사용
-    let downloadUrl: string | null = null;
-
-    if (pptResult.download_url) {
-        // download_url이 "/download/xxx.pptx" 형태라면 베이스만 붙이면 됨
-        downloadUrl = `http://localhost:8000${pptResult.download_url}`;
-    } else if (pptResult.pptx_filename) {
-        downloadUrl = `http://localhost:8000/download/${encodeURIComponent(
-        pptResult.pptx_filename
-        )}`;
-    } else if (pptResult.pptx_path) {
-        // (하위호환) 절대경로 기반은 권장 X. 가능하면 위 2개로 가세요.
-        alert("다운로드 정보(pptx_filename)가 없습니다. 서버 응답을 확인하세요.");
-        return;
-    } else {
-        alert("다운로드할 PPT 파일이 없습니다.");
-        return;
-    }
+    const downloadUrl = `http://localhost:8080/api/notices/${noticeId}/pptx`;
 
     try {
-        setLoading(true);
+      setLoading(true);
 
-        const res = await fetch(downloadUrl, { method: "GET" });
-        if (!res.ok) {
-        throw new Error(`다운로드 실패: ${res.status}`);
-        }
+      const res = await fetch(downloadUrl, { method: "GET" });
+      if (!res.ok) throw new Error(`다운로드 실패: ${res.status}`);
 
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
 
-        const a = document.createElement("a");
-        a.href = url;
+      const a = document.createElement("a");
+      a.href = url;
 
-        // 파일명: 서버 filename 헤더가 있어도, 여기서 지정해주면 안정적
-        const safeTitle =
+      const safeTitle =
         (pptResult.deck_title || "발표자료").replace(/[\\/:*?"<>|]/g, "").trim() || "발표자료";
-        a.download = `${safeTitle}.pptx`;
+      a.download = `${safeTitle}.pptx`;
 
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
 
-        window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(url);
     } catch (e: any) {
-        alert(e?.message || "다운로드 중 오류가 발생했습니다.");
+      alert(e?.message || "다운로드 중 오류가 발생했습니다.");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -131,7 +111,7 @@ const AnnounceCreatePageResult: React.FC = () => {
             <InfoRow>
               <InfoLabel>DB 저장:</InfoLabel>
               <InfoValue>
-                <StatusBadge success={pptResult.db_saved}>
+                <StatusBadge $success={pptResult.db_saved}>
                   {pptResult.db_saved ? "✓ 성공" : "✗ 실패"}
                 </StatusBadge>
               </InfoValue>
@@ -226,14 +206,14 @@ const InfoValue = styled.div`
   flex: 1;
 `;
 
-const StatusBadge = styled.span<{ success: boolean }>`
+const StatusBadge = styled.span<{ $success: boolean }>`
   display: inline-block;
   padding: 4px 12px;
   border-radius: 12px;
   font-size: 13px;
   font-weight: 600;
-  background: ${(props) => (props.success ? "#d4edda" : "#f8d7da")};
-  color: ${(props) => (props.success ? "#155724" : "#721c24")};
+  background: ${(props) => (props.$success ? "#d4edda" : "#f8d7da")};
+  color: ${(props) => (props.$success ? "#155724" : "#721c24")};
 `;
 
 const DownloadWrapper = styled.div`
