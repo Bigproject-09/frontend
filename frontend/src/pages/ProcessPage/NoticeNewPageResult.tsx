@@ -48,13 +48,25 @@ type NoticeAnalysisAggregatedResponse = {
   mandatory_requirements: string[];
 };
 
+/** 섹션 타이틀 + 섹션 카드 공통 블록 */
+const SectionBlock: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
+  const id = title.replace(/\s+/g, "-");
+  return (
+    <SectionWrap id={id}>
+      <SectionTitleRow>
+        <SectionTitle>{title}</SectionTitle>
+      </SectionTitleRow>
+      <SectionCard>{children}</SectionCard>
+    </SectionWrap>
+  );
+};
+
 const NoticeNewPageResult: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const noticeId = location.state?.noticeId as number | undefined;
 
-  // HEAD 로직 유지(조회 + 에러/로딩)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -311,94 +323,81 @@ const NoticeNewPageResult: React.FC = () => {
           <div style={{ padding: 20 }}>로딩 중...</div>
         </Card>
       </Container>
-
     );
   }
 
-  // ====== UI는 frontend 스타일 ======
   return (
     <Container>
       <Card>
-        <div className="title" style={{ marginLeft: 0, marginBottom: 50 }}>
+        <div className="title" style={{ marginLeft: 0, marginBottom: 18 }}>
           공고문 분석
         </div>
 
-        <ChecklistHeader>
-          <div className="title" style={{ fontSize: 15 }}>
-            자격 요건 체크리스트
-          </div>
-          <PDFDownloadButton onClick={handleDownloadPDF}>PDF로 다운로드</PDFDownloadButton>
-        </ChecklistHeader>
+        {/* 1. 자격 요건 체크리스트 */}
+        <SectionBlock title="자격 요건 체크리스트">
+          <ScrollBox>
+            {aggregated?.eligibility && (
+              <div style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
+                <Text>{aggregated.eligibility.summary}</Text>
+              </div>
+            )}
 
-        <ScrollSection>
-          {aggregated?.eligibility && (
-            <div style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
-              <StatusBadge status={aggregated.eligibility.status}>{aggregated.eligibility.status}</StatusBadge>
-              <Text>{aggregated.eligibility.summary}</Text>
-            </div>
-          )}
+            {aggregated?.eligibility?.judgments && aggregated.eligibility.judgments.length > 0 ? (
+              <RequirementList>
+                {aggregated.eligibility.judgments.map((req) => (
+                  <RequirementItem key={req.id}>
+                    <RequirementHeader>
+                      <HeaderLeft>
+                        <RequirementTitle>{req.category}</RequirementTitle>
+                      </HeaderLeft>
+                      <StatusBadge status={req.judgment}>{req.judgment}</StatusBadge>
+                    </RequirementHeader>
 
-          {aggregated?.eligibility?.judgments && aggregated.eligibility.judgments.length > 0 ? (
-            <RequirementList>
-              {aggregated.eligibility.judgments.map((req) => (
-                <RequirementItem key={req.id}>
-                  <RequirementHeader>
-                    <HeaderLeft>
-                      <RequirementTitle>{req.category}</RequirementTitle>
-                    </HeaderLeft>
-                    <StatusBadge status={req.judgment}>{req.judgment}</StatusBadge>
-                  </RequirementHeader>
+                    <ExpandableText text={req.requirement_text} />
 
-                  <ExpandableText text={req.requirement_text} />
+                    {(req.reason || req.quote_from_announcement || req.additional_action) && <ArrowWrapper />}
 
-                  {(req.reason || req.quote_from_announcement || req.additional_action) && (
-                    <ArrowWrapper>{/* 여기서 토글 넣고 싶으면 넣어 */}</ArrowWrapper>
-                  )}
+                    {(req.reason || req.quote_from_announcement || req.additional_action) && (
+                      <>
+                        {req.reason && <ExpandableText text={req.reason} />}
 
-                  {(req.reason || req.quote_from_announcement || req.additional_action) && (
-                    <>
-                      {req.reason && <ExpandableText text={req.reason} />}
+                        {req.quote_from_announcement && (
+                          <>
+                            <Label style={{ marginTop: 12, color: "#0984e3" }}>관련 법령</Label>
+                            <div
+                              style={{
+                                marginTop: 10,
+                                padding: 14,
+                                background: "#f1f3f5",
+                                borderRadius: 8,
+                                fontSize: 13,
+                                lineHeight: 1.6,
+                              }}
+                            >
+                              <div style={{ marginBottom: 8 }}>{req.quote_from_announcement}</div>
+                            </div>
+                          </>
+                        )}
 
-                      {req.quote_from_announcement && (
-                        <>
-                          <Label style={{ marginTop: 12, color: "#0984e3" }}>관련 법령</Label>
-                          <div
-                            style={{
-                              marginTop: 10,
-                              padding: 14,
-                              background: "#f1f3f5",
-                              borderRadius: 8,
-                              fontSize: 13,
-                              lineHeight: 1.6,
-                            }}
-                          >
-                            <div style={{ marginBottom: 8 }}>{req.quote_from_announcement}</div>
-                          </div>
-                        </>
-                      )}
+                        {req.additional_action && (
+                          <ConfirmationBox>
+                            <Label>추가 조치</Label>
+                            <Text>{req.additional_action}</Text>
+                          </ConfirmationBox>
+                        )}
+                      </>
+                    )}
+                  </RequirementItem>
+                ))}
+              </RequirementList>
+            ) : (
+              <EmptyMessage>자격 요건 데이터가 없습니다.</EmptyMessage>
+            )}
+          </ScrollBox>
+        </SectionBlock>
 
-                      {req.additional_action && (
-                        <ConfirmationBox>
-                          <Label>추가 조치</Label>
-                          <Text>{req.additional_action}</Text>
-                        </ConfirmationBox>
-                      )}
-                    </>
-                  )}
-                </RequirementItem>
-              ))}
-            </RequirementList>
-          ) : (
-            <EmptyMessage>자격 요건 데이터가 없습니다.</EmptyMessage>
-          )}
-        </ScrollSection>
-
-        <br />
-
-        <div className="title" style={{ fontSize: 15 }}>
-          과제 의도 및 목적
-        </div>
-        <Section>
+        {/* 2. 과제 의도 및 목적 */}
+        <SectionBlock title="과제 의도 및 목적">
           <Text>{aggregated?.research_intent?.policy_background ?? "데이터 없음"}</Text>
           {aggregated?.research_intent?.target_issues && aggregated.research_intent.target_issues.length > 0 && (
             <ul style={{ margin: "12px 0 0 0", paddingLeft: 18 }}>
@@ -409,16 +408,14 @@ const NoticeNewPageResult: React.FC = () => {
               ))}
             </ul>
           )}
-        </Section>
+        </SectionBlock>
 
-        <br />
-
-        <div className="title" style={{ fontSize: 15 }}>
-          평가지표 분석
-        </div>
-        <Section>
-          {aggregated?.evaluation_weight_analysis?.summary && (
+        {/* 3. 평가지표 분석 */}
+        <SectionBlock title="평가지표 분석">
+          {aggregated?.evaluation_weight_analysis?.summary ? (
             <Text style={{ marginBottom: 12 }}>{aggregated.evaluation_weight_analysis.summary}</Text>
+          ) : (
+            <Text>데이터 없음</Text>
           )}
 
           {aggregated?.evaluation_weight_analysis?.high_weight_items &&
@@ -436,13 +433,10 @@ const NoticeNewPageResult: React.FC = () => {
           ) : (
             <Text>데이터 없음</Text>
           )}
-        </Section>
+        </SectionBlock>
 
-        <br />
-        <div className="title" style={{ fontSize: 15 }}>
-          제출 문서 리스트
-        </div>
-        <Section>
+        {/* 4. 제출 문서 리스트 */}
+        <SectionBlock title="필수 제출 문서 리스트">
           {aggregated?.deliverables && aggregated.deliverables.length > 0 ? (
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {aggregated.deliverables.map((c, idx) => (
@@ -454,13 +448,10 @@ const NoticeNewPageResult: React.FC = () => {
           ) : (
             <EmptyMessage>데이터 없음</EmptyMessage>
           )}
-        </Section>
+        </SectionBlock>
 
-        <br />
-        <div className="title" style={{ fontSize: 15 }}>
-          필수 준수사항
-        </div>
-        <Section>
+        {/* 5. 필수 준수사항 */}
+        <SectionBlock title="필수 준수사항">
           {aggregated?.mandatory_requirements && aggregated.mandatory_requirements.length > 0 ? (
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {aggregated.mandatory_requirements.map((c, idx) => (
@@ -472,24 +463,34 @@ const NoticeNewPageResult: React.FC = () => {
           ) : (
             <EmptyMessage>데이터 없음</EmptyMessage>
           )}
-        </Section>
+        </SectionBlock>
 
-        <RightActionRow>
-          <button
-            type="button"
-            className="button_center"
-            style={{ width: 120 }}
-            onClick={() => noticeId && handleBack(noticeId)}
-          >
+        <ModalActions>
+          <MiniBtn type="button" onClick={() => noticeId && handleBack(noticeId)}>
             재추출
-          </button>
-        </RightActionRow>
+          </MiniBtn>
+          <MiniBtn
+            type="button"
+            onClick={() => {
+              if (!noticeId) return;
+              handleClose(noticeId);
+            }}
+          >
+            닫기
+          </MiniBtn>
+        </ModalActions>
+
+        <DownloadWrapper>
+          <DownloadButton type="button" onClick={handleDownloadPDF}>
+            분석 리포트 다운로드 (PDF)
+          </DownloadButton>
+        </DownloadWrapper>
       </Card>
     </Container>
   );
 };
 
-// ====== ExpandableText (frontend UI 컴포) ======
+// ====== ExpandableText ======
 const ExpandableText: React.FC<{ text: string }> = ({ text }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -531,7 +532,8 @@ const ExpandableText: React.FC<{ text: string }> = ({ text }) => {
 
 export default NoticeNewPageResult;
 
-// ====== styled (frontend 스타일 우선 + 필요한 것만 추가) ======
+/* ================= styled-components ================= */
+
 const Container = styled.div`
   padding: 60px;
 `;
@@ -567,16 +569,37 @@ const Text = styled.div`
   line-height: 1.6;
 `;
 
-const Section = styled.div`
+const SectionWrap = styled.section`
+  margin-top: 28px;
+`;
+
+const SectionTitleRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+`;
+
+const SectionTitle = styled.h2`
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0;
+  color: #111827;
+  padding-left: 12px;
+  border-left: 6px solid #00b894;
+`;
+
+const SectionCard = styled.div`
   width: 100%;
   background: #f8f9fa;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 28px;
   box-sizing: border-box;
   position: relative;
+  border: 1px solid #e5e7eb;
 `;
 
-const ScrollSection = styled(Section)`
+const ScrollBox = styled.div`
   height: clamp(420px, 60vh, 760px);
   overflow-y: auto;
 
@@ -643,37 +666,6 @@ const HeaderLeft = styled.div`
   gap: 12px;
 `;
 
-const ChecklistHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-`;
-
-const PDFDownloadButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-
-  &:hover {
-    background-color: #45a049;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  }
-  &:active {
-    transform: translateY(0);
-  }
-`;
-
 const MoreButton = styled.button`
   background: none;
   border: none;
@@ -733,11 +725,6 @@ const Tag = styled.span`
   background: #fff;
   margin-right: 6px;
 `;
-            
-const Code = styled.span`
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 12px;
-`;
 
 const ModalActions = styled.div`
   margin-top: 22px;
@@ -758,5 +745,26 @@ const MiniBtn = styled.button`
 
   &:hover {
     background: #f9fafb;
+  }
+`;
+
+const DownloadWrapper = styled.div`
+  margin-top: 40px;
+  display: flex;
+  justify-content: center;
+`;
+
+const DownloadButton = styled.button`
+  padding: 14px 28px;
+  background-color: #00b894;
+  color: white;
+  border-radius: 8px;
+  font-size: 16px;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+
+  &:hover {
+    background-color: #009c7a;
   }
 `;

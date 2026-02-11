@@ -479,35 +479,3 @@ const Spinner = styled.div`
     }
   }
 `;
-
-const ResultBox = styled.div`
-  margin-top: 20px;
-  padding: 20px;
-  border: 2px solid #10b981;
-  border-radius: 12px;
-  background: #f0fdf4;
-`;
-
-const ResultTitle = styled.div`
-  font-size: 16px;
-  font-weight: 700;
-  color: #059669;
-  margin-bottom: 16px;
-`;
-
-const ResultItem = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 14px;
-`;
-
-const ResultLabel = styled.span`
-  font-weight: 600;
-  color: #374151;
-  min-width: 100px;
-`;
-
-const ResultValue = styled.span`
-  color: #1f2937;
-`;

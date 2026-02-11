@@ -444,7 +444,7 @@ const RFPSearchPageResult: React.FC = () => {
 
         <DownloadWrapper>
           <DownloadButton type="button" onClick={handleDownload}>
-            📥 분석 리포트 다운로드 (PDF)
+            분석 리포트 다운로드 (PDF)
           </DownloadButton>
         </DownloadWrapper>
       </Card>
@@ -645,28 +645,23 @@ const ActionButton = styled.button<{ variant?: "primary" | "secondary" }>`
 `;
 
 const DownloadWrapper = styled.div`
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 1px solid #e5e7eb;
+  margin-top: 40px;
   display: flex;
   justify-content: center;
 `;
 
 const DownloadButton = styled.button`
-  padding: 14px 32px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 14px 28px;
+  background-color: #00b894;
   color: white;
   border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  text-decoration: none;
   cursor: pointer;
   border: none;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-  transition: all 0.3s;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    background-color: #009c7a;
   }
 `;
 

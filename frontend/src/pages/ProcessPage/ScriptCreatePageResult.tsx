@@ -3,117 +3,264 @@ import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/Global.css";
 
+import { jsPDF } from "jspdf";
+import { NotoSansKR } from "../../utils/NotoSansKR";
+
 const ScriptCreatePageResult: React.FC = () => {
-    const navigate = useNavigate();
-    const location = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    const noticeId = location.state?.noticeId as number | undefined;
-    const scriptData = location.state?.scriptData as any; // API에서 받은 데이터
+  const noticeId = location.state?.noticeId as number | undefined;
+  const scriptData = location.state?.scriptData as any; // API에서 받은 데이터
 
-    const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (!scriptData) {
-            alert("스크립트 데이터가 없습니다.");
-            navigate("/process");
-        }
-    }, [scriptData, navigate]);
+  useEffect(() => {
+    if (!scriptData) {
+      alert("스크립트 데이터가 없습니다.");
+      navigate("/process");
+    }
+  }, [scriptData, navigate]);
 
-    const handleBack = (id: number) => {
-        navigate("/process/script", {
-            state: { noticeId: id },
-        });
+  const handleBack = (id: number) => {
+    navigate("/process/script", {
+      state: { noticeId: id },
+    });
+  };
+
+  const handleClose = (id: number) => {
+    navigate("/process", {
+      state: { noticeId: id },
+    });
+  };
+
+  const handleDownloadPDF = () => {
+    if (!scriptData) {
+      alert("다운로드할 데이터가 없습니다.");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+    // 한글 폰트 등록
+    doc.addFileToVFS("NotoSansKR-Regular.ttf", NotoSansKR);
+    doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "normal");
+    doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "bold");
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+
+    const today = new Date().toLocaleDateString("ko-KR");
+    let y = 20;
+
+    const addPageIfNeeded = (minSpace: number) => {
+      if (y + minSpace <= pageHeight - margin) return;
+      doc.addPage();
+      y = 20;
     };
-    const handleClose = (id: number) => {
-      navigate("/process", {
-        state: { noticeId: id },
+
+    const writeParagraph = (text: string, opts?: { indent?: number; fontSize?: number; bold?: boolean }) => {
+      const indent = opts?.indent ?? 0;
+      const fontSize = opts?.fontSize ?? 10;
+      const bold = opts?.bold ?? false;
+
+      doc.setFont("NotoSansKR", bold ? "bold" : "normal");
+      doc.setFontSize(fontSize);
+
+      const safeText = (text ?? "").toString();
+      const lines = doc.splitTextToSize(safeText, contentWidth - indent);
+
+      lines.forEach((line: string) => {
+        addPageIfNeeded(8);
+        doc.text(line, margin + indent, y);
+        y += 5;
       });
     };
 
-    if (!scriptData) {
-        return <Container>로딩 중...</Container>;
+    const writeSectionTitle = (title: string) => {
+      addPageIfNeeded(18);
+      doc.setFont("NotoSansKR", "bold");
+      doc.setFontSize(14);
+      doc.text(title, margin, y);
+      y += 8;
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.4);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+      doc.setFont("NotoSansKR", "normal");
+    };
+
+    // ===== Header =====
+    doc.setFont("NotoSansKR", "bold");
+    doc.setFontSize(18);
+    doc.text("발표 스크립트 생성 결과", margin, y);
+    y += 12;
+
+    doc.setFont("NotoSansKR", "normal");
+    doc.setFontSize(10);
+    doc.text(`작성일: ${today}`, margin, y);
+    y += 7;
+
+    if (noticeId) {
+      doc.text(`noticeId: ${noticeId}`, margin, y);
+      y += 7;
     }
 
-    return (
-        <Container>
-            <Card>
-                <div className="title" style={{ marginLeft: 0, marginBottom: 50 }}>
-                    스크립트 생성 결과
-                </div>
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 12;
 
-                {/* 스크립트 섹션 */}
-                <div className="title" style={{ fontSize: 15, marginBottom: 10 }}>
-                    발표 스크립트
-                </div>
-                <Section>
-                    {scriptData.slides && scriptData.slides.length > 0 ? (
-                        <ScriptList>
-                            {scriptData.slides.map((slide: any, index: number) => (
-                                <ScriptItem key={index}>
-                                    <ScriptHeader>
-                                        <SlideNumber>슬라이드 {slide.page}</SlideNumber>
-                                        <SlideTitle>{slide.title}</SlideTitle>
-                                    </ScriptHeader>
-                                    <ScriptContent>{slide.script}</ScriptContent>
-                                </ScriptItem>
-                            ))}
-                        </ScriptList>
-                    ) : (
-                        <EmptyMessage>스크립트 데이터가 없습니다.</EmptyMessage>
-                    )}
-                </Section>
-                <br />
+    // ===== 1. 발표 스크립트 =====
+    writeSectionTitle("1. 발표 스크립트");
 
-                {/* 예상 질문 섹션 */}
-                <div className="title" style={{ fontSize: 15, marginBottom: 10 }}>
-                    예상 질문 및 답변
-                </div>
-                <Section>
-                    {scriptData.qna && scriptData.qna.length > 0 ? (
-                        <QnaList>
-                            {scriptData.qna.map((item: any, index: number) => (
-                                <QnaItem key={index}>
-                                    <Question>Q{index + 1}. {item.question}</Question>
-                                    <Answer>A. {item.answer}</Answer>
-                                    {item.tips && <Tips>💡 Tip: {item.tips}</Tips>}
-                                </QnaItem>
-                            ))}
-                        </QnaList>
-                    ) : (
-                        <EmptyMessage>예상 질문 데이터가 없습니다.</EmptyMessage>
-                    )}
-                </Section>
+    const slides = Array.isArray(scriptData.slides) ? scriptData.slides : [];
+    if (slides.length === 0) {
+      writeParagraph("스크립트 데이터가 없습니다.");
+    } else {
+      slides.forEach((slide: any, idx: number) => {
+        addPageIfNeeded(18);
 
-                <ModalActions>
-                  <MiniBtn
-                    type="button"
-                    onClick={() => {
-                      if (!noticeId) return;
-                      handleBack(noticeId);
-                    }}
-                  >
-                    재생성
-                  </MiniBtn>
+        const pageNo = slide?.page ?? idx + 1;
+        const title = slide?.title ?? "";
 
-                  <MiniBtn
-                    type="button"
-                    onClick={() => {
-                      if (!noticeId) return;
-                      handleClose(noticeId);
-                    }}
-                  >
-                    닫기
-                  </MiniBtn>
-                </ModalActions>
+        writeParagraph(`슬라이드 ${pageNo} ${title ? `- ${title}` : ""}`, { fontSize: 12, bold: true });
+        y += 1;
 
-                <DownloadWrapper>
-                    <DownloadButton onClick={() => alert("PPT 다운로드 기능 준비 중")}>
-                        PPT 초안 다운로드
-                    </DownloadButton>
-                </DownloadWrapper>
-            </Card>
-        </Container>
-    );
+        const scriptText = slide?.script ?? "";
+        if (scriptText) {
+          writeParagraph(scriptText, { indent: 2, fontSize: 10 });
+        } else {
+          writeParagraph("(스크립트 없음)", { indent: 2, fontSize: 10 });
+        }
+
+        y += 4;
+
+        if (idx < slides.length - 1) {
+          addPageIfNeeded(10);
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.3);
+          doc.line(margin, y, pageWidth - margin, y);
+          y += 8;
+        }
+      });
+    }
+
+    // ===== 2. 예상 질문 및 답변 =====
+    y += 4;
+    writeSectionTitle("2. 예상 질문 및 답변");
+
+    const qna = Array.isArray(scriptData.qna) ? scriptData.qna : [];
+    if (qna.length === 0) {
+      writeParagraph("예상 질문 데이터가 없습니다.");
+    } else {
+      qna.forEach((item: any, idx: number) => {
+        addPageIfNeeded(18);
+
+        const q = item?.question ?? "";
+        const a = item?.answer ?? "";
+        const tips = item?.tips ?? "";
+
+        writeParagraph(`Q${idx + 1}. ${q}`, { fontSize: 11, bold: true });
+        writeParagraph(`A. ${a}`, { indent: 2, fontSize: 10 });
+
+        if (tips) {
+          writeParagraph(`Tip: ${tips}`, { indent: 2, fontSize: 10 });
+        }
+
+        y += 6;
+      });
+    }
+
+    const filename = `스크립트_결과_${today}.pdf`;
+    doc.save(filename);
+  };
+
+  if (!scriptData) {
+    return <Container>로딩 중...</Container>;
+  }
+
+  return (
+    <Container>
+      <Card>
+        <div className="title" style={{ marginLeft: 0, marginBottom: 50 }}>
+          스크립트 생성 결과
+        </div>
+
+        {/* 스크립트 섹션 */}
+        <div className="title" style={{ fontSize: 15, marginBottom: 10 }}>
+          발표 스크립트
+        </div>
+        <Section>
+          {scriptData.slides && scriptData.slides.length > 0 ? (
+            <ScriptList>
+              {scriptData.slides.map((slide: any, index: number) => (
+                <ScriptItem key={index}>
+                  <ScriptHeader>
+                    <SlideNumber>슬라이드 {slide.page}</SlideNumber>
+                    <SlideTitle>{slide.title}</SlideTitle>
+                  </ScriptHeader>
+                  <ScriptContent>{slide.script}</ScriptContent>
+                </ScriptItem>
+              ))}
+            </ScriptList>
+          ) : (
+            <EmptyMessage>스크립트 데이터가 없습니다.</EmptyMessage>
+          )}
+        </Section>
+        <br />
+
+        {/* 예상 질문 섹션 */}
+        <div className="title" style={{ fontSize: 15, marginBottom: 10 }}>
+          예상 질문 및 답변
+        </div>
+        <Section>
+          {scriptData.qna && scriptData.qna.length > 0 ? (
+            <QnaList>
+              {scriptData.qna.map((item: any, index: number) => (
+                <QnaItem key={index}>
+                  <Question>Q{index + 1}. {item.question}</Question>
+                  <Answer>A. {item.answer}</Answer>
+                  {item.tips && <Tips>💡 Tip: {item.tips}</Tips>}
+                </QnaItem>
+              ))}
+            </QnaList>
+          ) : (
+            <EmptyMessage>예상 질문 데이터가 없습니다.</EmptyMessage>
+          )}
+        </Section>
+
+        <ModalActions>
+          <MiniBtn
+            type="button"
+            onClick={() => {
+              if (!noticeId) return;
+              handleBack(noticeId);
+            }}
+          >
+            재생성
+          </MiniBtn>
+
+          <MiniBtn
+            type="button"
+            onClick={() => {
+              if (!noticeId) return;
+              handleClose(noticeId);
+            }}
+          >
+            닫기
+          </MiniBtn>
+        </ModalActions>
+
+        <DownloadWrapper>
+          <DownloadButton type="button" onClick={handleDownloadPDF} disabled={loading}>
+            스크립트 다운로드 (PDF)
+          </DownloadButton>
+        </DownloadWrapper>
+      </Card>
+    </Container>
+  );
 };
 
 export default ScriptCreatePageResult;
@@ -137,12 +284,6 @@ const Card = styled.div`
   box-sizing: border-box;
 `;
 
-const RightActionRow = styled.div`
-  margin-top: 32px;
-  display: flex;
-  justify-content: flex-end;
-`;
-
 const Section = styled.div`
   width: 100%;
   max-height: 400px;
@@ -153,21 +294,17 @@ const Section = styled.div`
   position: relative;
   overflow-y: auto;
 
-  /* 스크롤바 스타일링 */
   &::-webkit-scrollbar {
     width: 8px;
   }
-
   &::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 10px;
   }
-
   &::-webkit-scrollbar-thumb {
     background: #888;
     border-radius: 10px;
   }
-
   &::-webkit-scrollbar-thumb:hover {
     background: #555;
   }
@@ -185,22 +322,21 @@ const DownloadWrapper = styled.div`
   justify-content: center;
 `;
 
-const DownloadButton = styled.button`
+const DownloadButton = styled.button<{ disabled?: boolean }>`
   padding: 14px 28px;
-  background-color: #00b894;
+  background-color: ${(p) => (p.disabled ? "#9aa0a6" : "#00b894")};
   color: white;
   border-radius: 8px;
   font-size: 16px;
   text-decoration: none;
-  cursor: pointer;
+  cursor: ${(p) => (p.disabled ? "not-allowed" : "pointer")};
   border: none;
 
   &:hover {
-    background-color: #009c7a;
+    background-color: ${(p) => (p.disabled ? "#9aa0a6" : "#009c7a")};
   }
 `;
 
-/* 스크립트 관련 스타일 */
 const ScriptList = styled.div`
   display: flex;
   flex-direction: column;
@@ -266,7 +402,6 @@ const MiniBtn = styled.button`
   }
 `;
 
-/* Q&A 관련 스타일 */
 const QnaList = styled.div`
   display: flex;
   flex-direction: column;

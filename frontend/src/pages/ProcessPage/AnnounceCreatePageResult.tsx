@@ -164,7 +164,7 @@ const AnnounceCreatePageResult: React.FC = () => {
 
         <DownloadWrapper>
           <DownloadButton onClick={handleDownloadPPT}>
-            📥 PPT 다운로드
+            PPT 다운로드 (pptx)
           </DownloadButton>
         </DownloadWrapper>
       </Card>
@@ -236,182 +236,26 @@ const StatusBadge = styled.span<{ success: boolean }>`
   color: ${(props) => (props.success ? "#155724" : "#721c24")};
 `;
 
-const SectionTitle = styled.div`
-  font-size: 16px;
-  font-weight: 700;
-  color: #212529;
-  margin-bottom: 12px;
-`;
-
-const Section = styled.div`
-  width: 100%;
-  max-height: 400px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 20px;
-  box-sizing: border-box;
-  margin-bottom: 30px;
-  overflow-y: auto;
-
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 10px;
-  }
-
-  &::-webkit-scrollbar-thumb:hover {
-    background: #555;
-  }
-`;
-
-const SectionList = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-`;
-
-const SectionItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
-`;
-
-const SectionNumber = styled.div`
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #007bff;
-  color: white;
-  border-radius: 50%;
-  font-size: 13px;
-  font-weight: 600;
-  flex-shrink: 0;
-`;
-
-const SectionName = styled.div`
-  font-size: 14px;
-  color: #212529;
-  font-weight: 500;
-`;
-
-const SlideList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-`;
-
-const SlideItem = styled.div`
-  background: white;
-  border-radius: 10px;
-  padding: 16px;
-  border: 1px solid #dee2e6;
-`;
-
-const SlideHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-`;
-
-const SlideNumber = styled.div`
-  font-size: 12px;
-  font-weight: 600;
-  color: #6c757d;
-`;
-
-const SectionBadge = styled.div`
-  padding: 4px 10px;
-  background: #e7f3ff;
-  color: #0056b3;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-`;
-
-const SlideTitle = styled.div`
-  font-size: 15px;
-  font-weight: 700;
-  color: #212529;
-  margin-bottom: 8px;
-`;
-
-const KeyMessage = styled.div`
-  font-size: 13px;
-  color: #495057;
-  background: #fff3cd;
-  padding: 8px 12px;
-  border-radius: 6px;
-  margin-bottom: 8px;
-`;
-
-const BulletList = styled.ul`
-  margin: 0;
-  padding-left: 20px;
-`;
-
-const BulletItem = styled.li`
-  font-size: 13px;
-  color: #495057;
-  line-height: 1.6;
-  margin-bottom: 4px;
-`;
-
-const EmptyMessage = styled.div`
-  text-align: center;
-  color: #636e72;
-  padding: 40px;
-`;
-
 const DownloadWrapper = styled.div`
-  margin-top: 30px;
+  margin-top: 40px;
   display: flex;
   justify-content: center;
 `;
 
-const DownloadButton = styled.button<{ disabled?: boolean }>`
-  padding: 14px 32px;
+const DownloadButton = styled.button`
+  padding: 14px 28px;
   background-color: #00b894;
   color: white;
-  border: none;
   border-radius: 8px;
   font-size: 16px;
-  font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
-  transition: all 0.3s ease;
+  border: none;
 
   &:hover {
     background-color: #009c7a;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 184, 148, 0.3);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
   }
 `;
-
 
 const ModalActions = styled.div`
   margin-top: 22px;
