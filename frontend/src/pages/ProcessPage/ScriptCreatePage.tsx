@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/Global.css";
+import http from "../../api/http";
 
 type ScriptStep =
   | "UPLOAD_CHECK"
@@ -122,29 +123,14 @@ const ScriptCreatePage: React.FC = () => {
 
       const formData = new FormData();
       formData.append("file", files[0]);
-      formData.append("notice_id", id.toString());  // ✅ notice_id 추가
-
-      // ✅ JWT 토큰 가져오기
-      const token = localStorage.getItem("accessToken");
-      if (token) {
-        formData.append("token", token);  // ✅ token 추가
-      }
-
       setStep("CHECKLIST_CREATE");
       setProgress(30);
 
-      const response = await fetch("http://localhost:8000/api/analyze/step4", {
-        method: "POST",
-        body: formData,
-      });
-
+      const { data: result } = await http.post(
+        `/api/notices/${id}/generate-script`,
+        formData
+      );
       setProgress(60);
-
-      if (!response.ok) {
-        throw new Error("스크립트 생성 실패");
-      }
-
-      const result = await response.json();
 
       setStep("PURPOSE_SUMMARY");
       setProgress(80);
@@ -164,9 +150,10 @@ const ScriptCreatePage: React.FC = () => {
       } else {
         throw new Error(result.message || "스크립트 생성 실패");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("스크립트 생성 오류:", e);
-      alert("스크립트 생성 중 오류가 발생했습니다.");
+      const errorMsg = e.response?.data?.message || "스크립트 생성 중 오류가 발생했습니다.";
+      alert(errorMsg);
       setIsLoading(false);
       setProgress(0);
     }

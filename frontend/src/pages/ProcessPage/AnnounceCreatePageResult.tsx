@@ -3,11 +3,6 @@ import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/Global.css";
 
-// 타입 정의
-interface Section {
-  title: string;
-}
-
 interface Slide {
   section: string;
   slide_title: string;
@@ -21,6 +16,7 @@ interface PPTResult {
   pptx_path: string;
   pptx_filename?: string;   // ✅ 추가
   download_url?: string;    // ✅ 추가(선택)
+  downloadPath?: string;
   sections: string[];
   slides?: Slide[];
   db_saved?: boolean;
@@ -52,53 +48,57 @@ const AnnounceCreatePageResult: React.FC = () => {
   const handleDownloadPPT = async () => {
     if (!pptResult) return;
 
-    // 1) 서버가 내려준 download_url 우선 사용
+    // 1) 서버가 내려준 Spring 프록시 downloadPath 우선 사용
     let downloadUrl: string | null = null;
 
-    if (pptResult.download_url) {
-        // download_url이 "/download/xxx.pptx" 형태라면 베이스만 붙이면 됨
-        downloadUrl = `http://localhost:8000${pptResult.download_url}`;
-    } else if (pptResult.pptx_filename) {
-        downloadUrl = `http://localhost:8000/download/${encodeURIComponent(
+    if (pptResult.downloadPath) {
+      downloadUrl = pptResult.downloadPath;
+    } else if (noticeId && pptResult.pptx_filename) {
+      downloadUrl = `/api/notices/${noticeId}/generated-ppt/download?filename=${encodeURIComponent(
         pptResult.pptx_filename
-        )}`;
+      )}`;
+    } else if (pptResult.download_url) {
+      // 하위호환: FastAPI가 반환한 상대 경로
+      downloadUrl = pptResult.download_url;
+    } else if (pptResult.pptx_filename) {
+      alert("다운로드 경로가 없습니다. generate-ppt 응답의 downloadPath를 확인하세요.");
+      return;
     } else if (pptResult.pptx_path) {
-        // (하위호환) 절대경로 기반은 권장 X. 가능하면 위 2개로 가세요.
-        alert("다운로드 정보(pptx_filename)가 없습니다. 서버 응답을 확인하세요.");
-        return;
+      alert("다운로드 정보(pptx_filename)가 없습니다. 서버 응답을 확인하세요.");
+      return;
     } else {
-        alert("다운로드할 PPT 파일이 없습니다.");
-        return;
+      alert("다운로드할 PPT 파일이 없습니다.");
+      return;
     }
 
     try {
-        setLoading(true);
+      setLoading(true);
 
-        const res = await fetch(downloadUrl, { method: "GET" });
-        if (!res.ok) {
+      const res = await fetch(downloadUrl, { method: "GET" });
+      if (!res.ok) {
         throw new Error(`다운로드 실패: ${res.status}`);
-        }
+      }
 
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
 
-        const a = document.createElement("a");
-        a.href = url;
+      const a = document.createElement("a");
+      a.href = url;
 
-        // 파일명: 서버 filename 헤더가 있어도, 여기서 지정해주면 안정적
-        const safeTitle =
+      // 파일명: 서버 filename 헤더가 있어도, 여기서 지정해주면 안정적
+      const safeTitle =
         (pptResult.deck_title || "발표자료").replace(/[\\/:*?"<>|]/g, "").trim() || "발표자료";
-        a.download = `${safeTitle}.pptx`;
+      a.download = `${safeTitle}.pptx`;
 
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
 
-        window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(url);
     } catch (e: any) {
-        alert(e?.message || "다운로드 중 오류가 발생했습니다.");
+      alert(e?.message || "다운로드 중 오류가 발생했습니다.");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -163,8 +163,8 @@ const AnnounceCreatePageResult: React.FC = () => {
         </ModalActions>
 
         <DownloadWrapper>
-          <DownloadButton onClick={handleDownloadPPT}>
-            PPT 다운로드 (pptx)
+          <DownloadButton onClick={handleDownloadPPT} disabled={loading}>
+            {loading ? "다운로드 중..." : "PPT 다운로드 (pptx)"}
           </DownloadButton>
         </DownloadWrapper>
       </Card>
@@ -254,6 +254,11 @@ const DownloadButton = styled.button`
 
   &:hover {
     background-color: #009c7a;
+  }
+
+  &:disabled {
+    background-color: #a0a0a0;
+    cursor: not-allowed;
   }
 `;
 

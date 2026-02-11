@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/Global.css";
@@ -28,6 +28,7 @@ type PPTResult = {
   db_saved?: boolean;
   pptx_filename?: string;   // 서버가 주면 사용
   download_url?: string;    // 서버가 주면 사용
+  downloadPath?: string;
 };
 
 const STEP_TEXT: Record<AnnounceStep, string> = {
@@ -44,13 +45,11 @@ const AnnounceCreatePage: React.FC = () => {
 
   const [title, setTitle] = useState("-");
   const [org, setOrg] = useState("-");
-  const [budget, setBudget] = useState("-");
   const [period, setPeriod] = useState("-");
   const [url, setUrl] = useState("-");
   const [summary, setSummary] = useState("-");
 
   const [isLoading, setIsLoading] = useState(false);
-  const [pptResult, setPptResult] = useState<PPTResult | null>(null);
   const [step, setStep] = useState<AnnounceStep>("UPLOAD_CHECK");
   const [progress, setProgress] = useState(0);
 
@@ -78,12 +77,10 @@ const AnnounceCreatePage: React.FC = () => {
         setPeriod(data.reqstDt || "-");
         setUrl(data.link || "-");
         setSummary(stripHtml(data.description));
-        setBudget("-");
       } catch (err) {
         console.error("공고 조회 오류:", err);
         setTitle("-");
         setOrg("-");
-        setBudget("-");
         setPeriod("-");
         setUrl("-");
         setSummary("-");
@@ -110,16 +107,18 @@ const AnnounceCreatePage: React.FC = () => {
     });
   };
 
-  // ✅ PPT 생성 핸들러 (FastAPI Step 3 호출)
+  // ✅ PPT 생성 핸들러 (Spring Step 3 호출)
   const handleGeneratePPT = async () => {
     if (files.length === 0) {
       alert("제안서 파일을 업로드해주세요.");
       return;
     }
+    if (!noticeId) {
+      alert("공고 ID를 찾을 수 없습니다.");
+      return;
+    }
 
     setIsLoading(true);
-    setPptResult(null);
-
     try {
       // 1) 파일 확인
       await runStep("UPLOAD_CHECK", 500);
@@ -127,11 +126,7 @@ const AnnounceCreatePage: React.FC = () => {
       // 2) FormData 생성
       const formData = new FormData();
       formData.append("file", files[0]); // 첫 번째 파일 사용
-      if (noticeId) {
-        formData.append("notice_id", noticeId.toString());
-      }
-
-      // 3) FastAPI Step 3 호출 (각 단계별 progress 시뮬레이션)
+      // 3) Spring Step 3 호출 (각 단계별 progress 시뮬레이션)
       const steps: AnnounceStep[] = [
         "TEXT_EXTRACT",
         "SECTION_SPLIT",
@@ -141,15 +136,14 @@ const AnnounceCreatePage: React.FC = () => {
       ];
 
       // 병렬: API 호출 + 진행률 시뮬레이션
-      const apiPromise = http.post(
-        "http://localhost:8000/api/analyze/step3",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const params = new URLSearchParams();
+      if (location.state?.companyId) {
+        params.set("companyId", String(location.state.companyId));
+      }
+      const endpoint = params.toString()
+        ? `/api/notices/${noticeId}/generate-ppt?${params.toString()}`
+        : `/api/notices/${noticeId}/generate-ppt`;
+      const apiPromise = http.post(endpoint, formData);
 
       // 진행률 시뮬레이션 (총 60초 가정: 텍스트 5초, 섹션 5초, 슬라이드 30초, 병합 5초, PPTX 15초)
       const durations = [5000, 5000, 30000, 5000, 15000];
@@ -161,9 +155,12 @@ const AnnounceCreatePage: React.FC = () => {
       // API 응답 대기
       const { data } = await apiPromise;
 
-      const result: PPTResult = data.data;
-      setPptResult(result);
-
+      const fastapiData = data?.data ?? {};
+      const result: PPTResult = {
+        ...fastapiData,
+        pptx_filename: data?.pptxFilename ?? fastapiData.pptx_filename,
+        downloadPath: data?.downloadPath ?? fastapiData.downloadPath,
+      };
       // 성공하면 결과 페이지로 이동
       navigate("/process/announce/result", {
         state: {
