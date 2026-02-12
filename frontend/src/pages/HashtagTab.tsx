@@ -15,12 +15,75 @@ type NoticeItem = {
 type Props = {
   items: NoticeItem[];
   onApply: (id: number) => void;
-  onViewNotice: (item: NoticeItem) => void;  // ✅ 추가
+  onViewNotice: (item: NoticeItem) => void; // ✅ 유지
 };
 
 const POPULAR_LIMIT = 12;
 
-const HashtagTab: React.FC<Props> = ({ items, onApply, onViewNotice }) => {  // ✅ 추가
+/* =========================
+   초성 추출 & 그룹화 (위 코드 기능 살림)
+========================= */
+
+// 한글 초성 추출 함수
+const getKoreanConsonant = (text: string): string => {
+  const consonants = [
+    "ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ",
+    "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"
+  ];
+
+  const firstChar = text.charAt(0);
+  const code = firstChar.charCodeAt(0);
+
+  // 한글 유니코드 범위: 0xAC00(가) ~ 0xD7A3(힣)
+  if (code >= 0xAC00 && code <= 0xD7A3) {
+    const index = Math.floor((code - 0xAC00) / 588);
+    return consonants[index];
+  }
+
+  // 영어는 대문자로
+  if (/[a-zA-Z]/.test(firstChar)) return firstChar.toUpperCase();
+
+  // 숫자
+  if (/[0-9]/.test(firstChar)) return "0-9";
+
+  return "기타";
+};
+
+// 초성별로 그룹화
+const groupByConsonant = (tagEntries: [string, number][]) => {
+  const grouped = new Map<string, [string, number][]>();
+
+  tagEntries.forEach((entry) => {
+    const consonant = getKoreanConsonant(entry[0]);
+    if (!grouped.has(consonant)) grouped.set(consonant, []);
+    grouped.get(consonant)!.push(entry);
+  });
+
+  // 각 그룹 내에서 태그명으로 정렬
+  grouped.forEach((entries, key) => {
+    grouped.set(key, entries.sort((a, b) => a[0].localeCompare(b[0])));
+  });
+
+  // 초성 순서대로 정렬
+  const sortedGroups = Array.from(grouped.entries()).sort((a, b) => {
+    const order = ["ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
+    const aIndex = order.indexOf(a[0]);
+    const bIndex = order.indexOf(b[0]);
+
+    // 둘 다 한글 초성인 경우
+    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+    // a만 한글 초성인 경우
+    if (aIndex !== -1) return -1;
+    // b만 한글 초성인 경우
+    if (bIndex !== -1) return 1;
+    // 둘 다 아닌 경우 (영어, 숫자, 기타)
+    return a[0].localeCompare(b[0]);
+  });
+
+  return sortedGroups;
+};
+
+const HashtagTab: React.FC<Props> = ({ items, onApply, onViewNotice }) => {
   /* =========================
      해시태그 빈도 계산
   ========================= */
@@ -36,6 +99,11 @@ const HashtagTab: React.FC<Props> = ({ items, onApply, onViewNotice }) => {  // 
 
   const popularTagEntries = tagStats.slice(0, POPULAR_LIMIT); // [tag, count]
   const allTagEntries = tagStats; // [tag, count]
+
+  // ✅ 전체 해시태그를 초성별로 그룹화 (위 코드 기능)
+  const groupedTags = useMemo(() => {
+    return groupByConsonant(allTagEntries);
+  }, [allTagEntries]);
 
   /* =========================
      선택 상태
@@ -96,19 +164,26 @@ const HashtagTab: React.FC<Props> = ({ items, onApply, onViewNotice }) => {  // 
               <>
                 <Divider />
                 <SubTitle>전체 해시태그</SubTitle>
-                <HashtagList>
-                  {allTagEntries.map(([tag, count]) => (
-                    <HashtagBtn
-                      key={`all-${tag}`}
-                      data-active={selectedTags.includes(tag)}
-                      onClick={() => toggleTag(tag)}
-                      title={`총 ${count}건`}
-                    >
-                      #{tag}
-                      <TagCount>{count}</TagCount>
-                    </HashtagBtn>
-                  ))}
-                </HashtagList>
+
+                {/* ✅ 초성 그룹 렌더링 */}
+                {groupedTags.map(([consonant, entries]) => (
+                  <ConsonantGroup key={consonant}>
+                    <ConsonantHeader>{consonant}</ConsonantHeader>
+                    <HashtagList>
+                      {entries.map(([tag, count]) => (
+                        <HashtagBtn
+                          key={`all-${tag}`}
+                          data-active={selectedTags.includes(tag)}
+                          onClick={() => toggleTag(tag)}
+                          title={`총 ${count}건`}
+                        >
+                          #{tag}
+                          <TagCount>{count}</TagCount>
+                        </HashtagBtn>
+                      ))}
+                    </HashtagList>
+                  </ConsonantGroup>
+                ))}
               </>
             )}
 
@@ -139,7 +214,6 @@ const HashtagTab: React.FC<Props> = ({ items, onApply, onViewNotice }) => {  // 
           filteredNotices.map((it) => (
             <ResultRow key={it.id}>
               <div>
-                {/* ✅ 클릭 가능하게 수정 */}
                 <ResultTitle onClick={() => onViewNotice(it)}>
                   {it.title}
                 </ResultTitle>
@@ -193,6 +267,25 @@ const SubTitle = styled.div`
   font-weight: 700;
   color: #374151;
   margin: 10px 0 10px;
+`;
+
+const ConsonantGroup = styled.div`
+  margin-bottom: 24px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const ConsonantHeader = styled.div`
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-accent);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--color-accent);
+  display: inline-block;
+  min-width: 40px;
 `;
 
 const HashtagList = styled.div`
@@ -309,7 +402,7 @@ const ResultTitle = styled.div`
   font-weight: 700;
   color: #111827;
   margin-bottom: 6px;
-  cursor: pointer;  // ✅ 추가
+  cursor: pointer;
 
   &:hover {
     color: var(--color-accent);

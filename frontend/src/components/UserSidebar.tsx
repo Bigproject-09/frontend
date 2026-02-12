@@ -4,7 +4,7 @@ import "../styles/UserSidebar.css";
 import logo from "../assets/logo.jpg";
 import { useAuth } from "../auth/AuthProvider";
 import { META_KEY, NOTICE_FAV_CHANGED_EVENT } from "../common/constants";
-import personImg from "../assets/person.jpg";
+import personImg from "../assets/person.png";
 
 type Props = {
   collapsed: boolean;
@@ -121,7 +121,7 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
           <span className="logo-text">RanDi</span>
         </div>
         <button className="collapse-btn" onClick={onToggle}>
-          ‹
+          <span className="collapse-icon">‹</span>
         </button>
       </div>
 
@@ -169,10 +169,10 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
             <div className="stat-label">전체 공고</div>
             <div className="stat-value">{stats.totalNotices}</div>
           </div>
-          <div className="stat-card">
+          {/* <div className="stat-card">
             <div className="stat-label">신청</div>
             <div className="stat-value">{stats.appliedNotices}</div>
-          </div>
+          </div> */}
           <div className="stat-card" onClick={() => navigate("/notice?tab=fav")} style={{ cursor: "pointer" }}>
             <div className="stat-label">찜</div>
             <div className="stat-value">{favCount}</div>
@@ -241,10 +241,9 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
           </NavLink>
         )}
       </nav>
-
-
     </aside >
   );
 };
 
 export default UserSidebar;
+
