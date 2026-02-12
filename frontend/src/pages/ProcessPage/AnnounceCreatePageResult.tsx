@@ -4,10 +4,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import "../../styles/Global.css";
 
 // 타입 정의
-interface Section {
-  title: string;
-}
-
 interface Slide {
   section: string;
   slide_title: string;
@@ -19,11 +15,13 @@ interface PPTResult {
   deck_title: string;
   total_slides: number;
   pptx_path: string;
-  pptx_filename?: string;   // ✅ 추가
-  download_url?: string;    // ✅ 추가(선택)
   sections: string[];
   slides?: Slide[];
   db_saved?: boolean;
+
+  // ✅ FastAPI가 내려주는 다운로드 정보
+  pptx_filename?: string;
+  download_url?: string;
 }
 
 const AnnounceCreatePageResult: React.FC = () => {
@@ -36,7 +34,6 @@ const AnnounceCreatePageResult: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // 결과가 없으면 이전 페이지로 이동
     if (!pptResult) {
       alert("PPT 생성 결과가 없습니다.");
       navigate("/process/announce", { state: { noticeId } });
@@ -50,9 +47,24 @@ const AnnounceCreatePageResult: React.FC = () => {
   };
 
   const handleDownloadPPT = async () => {
-    if (!pptResult || !noticeId) return;
+    if (!pptResult) return;
 
-    const downloadUrl = `http://localhost:8080/api/notices/${noticeId}/pptx`;
+    // ✅ FastAPI 다운로드 URL 우선
+    let downloadUrl = "";
+    if (pptResult.download_url) {
+      downloadUrl = `http://localhost:8000${pptResult.download_url}`;
+    } else {
+      // fallback: pptx_path에서 filename 추출
+      const filename =
+        pptResult.pptx_filename ??
+        (pptResult.pptx_path ? pptResult.pptx_path.split(/[/\\]/).pop() : null);
+
+      if (!filename) {
+        alert("다운로드할 파일명을 찾지 못했습니다.");
+        return;
+      }
+      downloadUrl = `http://localhost:8000/download/pptx/${filename}`;
+    }
 
     try {
       setLoading(true);
@@ -82,9 +94,7 @@ const AnnounceCreatePageResult: React.FC = () => {
     }
   };
 
-  if (!pptResult) {
-    return null;
-  }
+  if (!pptResult) return null;
 
   return (
     <Container>
@@ -93,7 +103,6 @@ const AnnounceCreatePageResult: React.FC = () => {
           발표 자료 제작 결과
         </div>
 
-        {/* PPT 정보 */}
         <InfoSection>
           <InfoRow>
             <InfoLabel>발표 제목:</InfoLabel>
@@ -107,44 +116,33 @@ const AnnounceCreatePageResult: React.FC = () => {
             <InfoLabel>파일 경로:</InfoLabel>
             <InfoValue>{pptResult.pptx_path}</InfoValue>
           </InfoRow>
-          {pptResult.db_saved !== undefined && (
-            <InfoRow>
-              <InfoLabel>DB 저장:</InfoLabel>
-              <InfoValue>
-                <StatusBadge $success={pptResult.db_saved}>
-                  {pptResult.db_saved ? "✓ 성공" : "✗ 실패"}
-                </StatusBadge>
-              </InfoValue>
-            </InfoRow>
-          )}
         </InfoSection>
 
-        {/* 액션 버튼 */}
         <ModalActions>
-            <MiniBtn
-                type="button"
-                onClick={() => {
-                if (!noticeId) return;
-                handleBack(noticeId);
-                }}
-            >
-                재생성
-            </MiniBtn>
+          <MiniBtn
+            type="button"
+            onClick={() => {
+              if (!noticeId) return;
+              handleBack(noticeId);
+            }}
+          >
+            재생성
+          </MiniBtn>
 
-            <MiniBtn
-                type="button"
-                onClick={() => {
-                if (!noticeId) return;
-                navigate("/process", { state: { noticeId } });
-                }}
-            >
-                닫기
-            </MiniBtn>
+          <MiniBtn
+            type="button"
+            onClick={() => {
+              if (!noticeId) return;
+              navigate("/process", { state: { noticeId } });
+            }}
+          >
+            닫기
+          </MiniBtn>
         </ModalActions>
 
         <DownloadWrapper>
-          <DownloadButton onClick={handleDownloadPPT}>
-            PPT 다운로드 (pptx)
+          <DownloadButton onClick={handleDownloadPPT} disabled={loading}>
+            {loading ? "다운로드 중..." : "PPT 다운로드 (pptx)"}
           </DownloadButton>
         </DownloadWrapper>
       </Card>
@@ -206,16 +204,6 @@ const InfoValue = styled.div`
   flex: 1;
 `;
 
-const StatusBadge = styled.span<{ $success: boolean }>`
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  background: ${(props) => (props.$success ? "#d4edda" : "#f8d7da")};
-  color: ${(props) => (props.$success ? "#155724" : "#721c24")};
-`;
-
 const DownloadWrapper = styled.div`
   margin-top: 40px;
   display: flex;
@@ -234,6 +222,11 @@ const DownloadButton = styled.button`
 
   &:hover {
     background-color: #009c7a;
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
   }
 `;
 
