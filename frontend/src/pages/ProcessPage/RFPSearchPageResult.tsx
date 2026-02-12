@@ -347,7 +347,7 @@ const RFPSearchPageResult: React.FC = () => {
         <Divider />
 
         <SectionTitle>
-          Track A: 동일 주관 기관 유사 전략
+          Track A: 동일 발주처 유사 RFP
           <Badge color="#3b82f6">중복성 집중 검토</Badge>
         </SectionTitle>
         <Section>
@@ -369,14 +369,14 @@ const RFPSearchPageResult: React.FC = () => {
               ))}
             </List>
           ) : (
-            <EmptyMessage>동일 주관 기관 유사 결과가 없습니다.</EmptyMessage>
+            <EmptyMessage>동일 발주처 유사 결과가 없습니다.</EmptyMessage>
           )}
         </Section>
 
         <Divider />
 
         <SectionTitle>
-          Track B: 타 부처 유사 전략
+          Track B: 타 발주처 유사 RFP
           <Badge color="#10b981">차별성 집중 검토</Badge>
         </SectionTitle>
         <Section>
@@ -398,7 +398,7 @@ const RFPSearchPageResult: React.FC = () => {
               ))}
             </List>
           ) : (
-            <EmptyMessage>타 부처 유사 전략이 없습니다.</EmptyMessage>
+            <EmptyMessage>타 발주처 유사 전략이 없습니다.</EmptyMessage>
           )}
         </Section>
 

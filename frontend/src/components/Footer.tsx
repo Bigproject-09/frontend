@@ -16,7 +16,7 @@ const Footer: React.FC = () => {
       {/* 시스템 정보 */}
       <div className="footer-section">
         <div className="footer-system-name">
-          국가 사업 발표 PPT 지원 시스템
+          AI 기반 국가 R&D 제안 지원 플랫폼
         </div>
       </div>
 
@@ -34,7 +34,7 @@ const Footer: React.FC = () => {
         <div className="footer-menu">
             <button onClick={() => navigate("/")}>홈</button>
             <button onClick={() => navigate("/faq")}>FAQ</button>
-            <button onClick={() => navigate("/notice")}>공지사항</button>
+            {/* <button onClick={() => navigate("/notice")}>공지사항</button> */}
 
             {/* 👉 여기서 버튼 계속 추가하면 오른쪽으로 생성됨 */}
             {/* <button onClick={() => navigate("/about")}>소개</button> */}

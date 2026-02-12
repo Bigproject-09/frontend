@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import "../styles/UserSidebar.css";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.jpg";
 import { useAuth } from "../auth/AuthProvider";
-import { META_KEY } from "../common/constants";
+import { META_KEY, NOTICE_FAV_CHANGED_EVENT } from "../common/constants";
+import personImg from "../assets/person.jpg";
 
 type Props = {
   collapsed: boolean;
@@ -24,7 +25,7 @@ const loadMetaMap = (): NoticeMetaMap => {
   } catch {
     return {};
   }
-};0
+}; 0
 
 
 const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
@@ -35,8 +36,20 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
   const [metaMap, setMetaMap] = useState<NoticeMetaMap>(loadMetaMap);
 
   const favCount = useMemo(() => {
-  return Object.values(metaMap).filter(meta => meta.fav).length;
+    return Object.values(metaMap).filter(meta => meta.fav).length;
   }, [metaMap]);
+
+  useEffect(() => {
+    const handler = () => {
+      setMetaMap(loadMetaMap());
+    };
+    window.addEventListener(NOTICE_FAV_CHANGED_EVENT, handler);
+    return () => {
+      window.removeEventListener(NOTICE_FAV_CHANGED_EVENT, handler);
+    };
+  }, []);
+
+
 
   async function handleLogout() {
     await logout();
@@ -53,45 +66,49 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
 
   // 간단한 통계 데이터 로딩 (실제 구현 시 API 호출)
   useEffect(() => {
-    // 여기에 실제 통계 API 호출을 추가할 수 있습니다
-    setStats({
-      totalNotices: 120,
+    // 초기 로딩 시 전체 공고 개수 가져오기
+    fetch("/api/notices?size=1&sort=noticeId,asc")
+      .then(res => res.json())
+      .then(data => {
+        // totalElements가 있으면 그것을 사용, 없으면 content 길이 등 확인
+        // 백엔드 응답 구조에 따라 다르지만 보통 Page 객체면 totalElements가 있음
+        const total = data.totalElements ?? (data.content?.length || 0);
+        setStats(prev => ({ ...prev, totalNotices: total }));
+      })
+      .catch(err => {
+        console.error("Failed to fetch total notices count:", err);
+      });
+
+    setStats(prev => ({
+      ...prev,
+      // totalNotices: 0, // fetch에서 업데이트하므로 여기선 덮어쓰지 않음 (useState 초기값 0 유지)
       appliedNotices: 8,
       favNotices: favCount,
-    });
+    }));
   }, []);
 
   if (collapsed) {
     return (
-      <aside className="user-sidebar collapsed">
+      <aside className="user-sidebar collapsed" onClick={onToggle} style={{ cursor: 'pointer' }}>
         <div className="sidebar-brand">
-          <div className="logo-icon" onClick={() => navigate("/")}>
+          <div className="logo-icon" onClick={(e) => { e.stopPropagation(); navigate("/"); }}>
             <img src={logo} alt="RanDi" />
           </div>
-          <button className="collapse-btn collapsed" onClick={onToggle} title="펼치기">
-            ›
-          </button>
         </div>
 
-        <div className="sidebar-header">
+        <div className="sidebar-header" style={{ borderBottom: 'none' }}>
           <div className="profile-compact">
             <div className="avatar-compact">
-              {/* me?.name이 값이 생기면 주석 해제 */}
-              {/* {me?.name?.[0] || "U"} */}
+              {me ? (
+                <img src={personImg} alt="User" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                /* me?.name이 값이 생기면 주석 해제 */
+                /* {me?.name?.[0] || "U"} */
+                null
+              )}
             </div>
           </div>
         </div>
-
-        <nav className="sidebar-nav">
-          <NavLink to="/notice" title="공고">
-            <span className="nav-icon">📋</span>
-          </NavLink>
-          <div className="nav-group">
-            <span className="nav-icon">⚙️</span>
-          </div>
-        </nav>
-
-
       </aside >
     );
   }
@@ -111,13 +128,29 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
       <div className="sidebar-header">
         <div className="profile-section">
           <div className="avatar">
-            {/* me?.name이 값이 생기면 주석 해제 */}
-            {/* {me?.name?.[0] || "U"} */}
+            {me ? (
+              <img src={personImg} alt="User" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              /* me?.name이 값이 생기면 주석 해제 */
+              /* {me?.name?.[0] || "U"} */
+              null
+            )}
           </div>
-          <div className="profile-info">
+          <div className="profile-info" style={{ marginBottom: "16px" }}>
             {/* me?.name이 값이 생기면 주석 해제 */}
             {/* <div className="user-name">{me?.name || "사용자"}</div> */}
-            <div className="user-email">{me?.email || "user@example.com"}</div>
+            {me ? (
+              <>
+                <div className="user-name">{"성건모"}</div>
+                <div className="user-email">{me?.email || ""}</div>
+                <div style={{ marginTop: "12px", color: "#6B7280", fontSize: "14px" }}>
+                  <div>부서 : 개발팀</div>
+                  <div>직책 : 사원</div>
+                </div>
+              </>
+            ) : (
+              null
+            )}
           </div>
           {me ? (
             <button onClick={handleLogout} className="login-btn">
@@ -131,8 +164,8 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
         </div>
 
         {/* 통계 카드 */}
-        <div className="stats-cards">
-          <div className="stat-card">
+        <div className="stats-cards" style={{ visibility: me ? "visible" : "hidden" }}>
+          <div className="stat-card" onClick={() => navigate("/notice?view=notice")} style={{ cursor: "pointer" }}>
             <div className="stat-label">전체 공고</div>
             <div className="stat-value">{stats.totalNotices}</div>
           </div>
@@ -140,9 +173,9 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
             <div className="stat-label">신청</div>
             <div className="stat-value">{stats.appliedNotices}</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card" onClick={() => navigate("/notice?tab=fav")} style={{ cursor: "pointer" }}>
             <div className="stat-label">찜</div>
-            <div className="stat-value">{stats.favNotices}</div>
+            <div className="stat-value">{favCount}</div>
           </div>
         </div>
       </div>

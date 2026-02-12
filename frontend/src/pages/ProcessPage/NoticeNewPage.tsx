@@ -261,7 +261,7 @@ const NoticeNewPage: React.FC = () => {
               <div style={{ fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>권장 업로드 파일</div>
               <ul style={{ fontSize: '14px', color: '#4b5563', margin: '0 0 16px 0', paddingLeft: '0', listStyle: 'none' }}>
                 <li style={{ marginBottom: '4px' }}><span style={{ color: '#22c55e', marginRight: '6px' }}>✔</span>사업 계획서 초안 또는 이전 제출분</li>
-                <li><span style={{ color: '#22c55e', marginRight: '6px' }}>✔</span>기업 소개서(IR)</li>
+                {/* <li><span style={{ color: '#22c55e', marginRight: '6px' }}>✔</span>기업 소개서(IR)</li> */}
               </ul>
 
               <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px' }}>* 업로드한 파일을 기반으로</div>

@@ -123,175 +123,290 @@ const NoticeNewPageResult: React.FC = () => {
 
     let y = 20;
 
+    // --- Colors ---
+    const PRIMARY_COLOR = [0, 184, 148]; // #00b894
+    const TEXT_COLOR = [45, 52, 54]; // #2d3436
+    const SUBTEXT_COLOR = [99, 110, 114]; // #636e72
+    const BORDER_COLOR = [223, 230, 233]; // #dfe6e9
+    const BG_COLOR = [241, 243, 245]; // #f1f3f5
+
     const addPageIfNeeded = (minSpace: number) => {
       if (y + minSpace <= pageHeight - margin) return;
       doc.addPage();
       y = 20;
     };
 
-    const writeParagraph = (text: string, opts?: { indent?: number; fontSize?: number }) => {
+    const writeParagraph = (text: string, opts?: { indent?: number; fontSize?: number; color?: number[] }) => {
       const indent = opts?.indent ?? 0;
       const fontSize = opts?.fontSize ?? 10;
+      const color = opts?.color ?? TEXT_COLOR;
+
       doc.setFontSize(fontSize);
+      doc.setTextColor(color[0], color[1], color[2]);
 
       const lines = doc.splitTextToSize(text ?? "", contentWidth - indent);
       lines.forEach((line: string) => {
-        addPageIfNeeded(8);
+        addPageIfNeeded(6);
         doc.text(line, margin + indent, y);
         y += 5;
       });
     };
 
     const writeSectionTitle = (title: string) => {
-      addPageIfNeeded(18);
+      addPageIfNeeded(20);
+      y += 5;
+
+      // Left accents
+      doc.setFillColor(PRIMARY_COLOR[0], PRIMARY_COLOR[1], PRIMARY_COLOR[2]);
+      doc.rect(margin, y - 4, 5, 8, "F");
+
       doc.setFont("NotoSansKR", "bold");
       doc.setFontSize(14);
-      doc.text(title, margin, y);
-      y += 8;
+      doc.setTextColor(TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2]);
+      doc.text(title, margin + 8, y + 2);
+
+      y += 10;
+
+      // Divider line
       doc.setDrawColor(220, 220, 220);
-      doc.setLineWidth(0.4);
+      doc.setLineWidth(0.5);
       doc.line(margin, y, pageWidth - margin, y);
       y += 8;
       doc.setFont("NotoSansKR", "normal");
     };
 
     // ====== Header ======
-    doc.setFont("NotoSansKR", "bold");
-    doc.setFontSize(18);
-    doc.text("공고문 분석 결과", margin, y);
-    y += 12;
+    // Header Background
+    doc.setFillColor(BG_COLOR[0], BG_COLOR[1], BG_COLOR[2]);
+    doc.rect(0, 0, pageWidth, 40, "F");
 
+    y = 25;
+    doc.setFont("NotoSansKR", "bold");
+    doc.setFontSize(22);
+    doc.setTextColor(PRIMARY_COLOR[0], PRIMARY_COLOR[1], PRIMARY_COLOR[2]);
+    doc.text("공고문 분석 결과 리포트", margin, y);
+
+    y += 8;
     doc.setFont("NotoSansKR", "normal");
     doc.setFontSize(10);
-    doc.text(`작성일: ${today}`, margin, y);
-    y += 7;
+    doc.setTextColor(SUBTEXT_COLOR[0], SUBTEXT_COLOR[1], SUBTEXT_COLOR[2]);
+    doc.text(`작성일: ${today}  |  Notice ID: ${noticeId ?? "-"}`, margin, y);
 
-    if (noticeId) {
-      doc.text(`noticeId: ${noticeId}`, margin, y);
-      y += 7;
-    }
-
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 12;
+    y = 50; // Reset Y after header
 
     // ====== 1. 자격요건 체크리스트 ======
     writeSectionTitle("1. 자격요건 체크리스트");
+
+    // Summary Box
     doc.setFont("NotoSansKR", "normal");
-    writeParagraph(`전체 판정: ${aggregated.eligibility?.status ?? "보류"}`);
-    writeParagraph(aggregated.eligibility?.summary ?? "데이터 없음");
-    y += 4;
+    doc.setFontSize(10);
+    const summaryLines = doc.splitTextToSize(aggregated.eligibility?.summary ?? "데이터 없음", contentWidth - 10);
+    const textHeight = summaryLines.length * 5; // Approx 5mm line height
+    const boxHeight = Math.max(24, 16 + textHeight + 6); // 16 top padding + text + 6 bottom padding
+
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(PRIMARY_COLOR[0], PRIMARY_COLOR[1], PRIMARY_COLOR[2]);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(margin, y, contentWidth, boxHeight, 3, 3, "S"); // Box outline
+
+    doc.setFont("NotoSansKR", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2]);
+    doc.text("종합 판정 결과:", margin + 5, y + 8);
+
+    const status = aggregated.eligibility?.status ?? "보류";
+    let statusColor = [253, 203, 110]; // Orange (default)
+    if (status === "가능") statusColor = [0, 184, 148]; // Green
+    if (status === "불가") statusColor = [214, 48, 49]; // Red
+
+    doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.text(status, margin + 40, y + 8);
+
+    doc.setFont("NotoSansKR", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2]);
+    doc.text(summaryLines, margin + 5, y + 16);
+
+    y += boxHeight + 8;
 
     const judgments = aggregated.eligibility?.judgments ?? [];
     if (judgments.length === 0) {
       writeParagraph("판정 항목이 없습니다.");
     } else {
       judgments.forEach((req, idx) => {
-        addPageIfNeeded(16);
-        doc.setFont("NotoSansKR", "bold");
-        doc.setFontSize(12);
-        doc.text(`${idx + 1}. ${req.category} (${req.judgment})`, margin, y);
-        y += 8;
+        // Calculate height estimation for box
+        // This is tricky in jsPDF, so we'll just check page break generously
+        addPageIfNeeded(40);
 
+        // Item Status Badge
+        let badgeColor = [178, 190, 195]; // Grey
+        if (req.judgment === "가능") badgeColor = [0, 184, 148];
+        if (req.judgment === "불가") badgeColor = [214, 48, 49];
+        if (req.judgment === "보류") badgeColor = [253, 203, 110];
+
+        doc.setFillColor(badgeColor[0], badgeColor[1], badgeColor[2]);
+        doc.roundedRect(margin, y, 16, 6, 2, 2, "F");
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8);
+        doc.setFont("NotoSansKR", "bold");
+        doc.text(req.judgment, margin + 8, y + 4.2, { align: "center" });
+
+        // Category Title
+        doc.setTextColor(TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2]);
+        doc.setFontSize(11);
+        doc.text(req.category, margin + 20, y + 4.5);
+
+        y += 10;
+
+        // Content
         doc.setFont("NotoSansKR", "normal");
         writeParagraph(`요구사항: ${req.requirement_text}`, { indent: 4 });
-        if (req.reason) writeParagraph(`근거: ${req.reason}`, { indent: 4 });
-        if (req.quote_from_announcement) writeParagraph(`관련 법령/인용: ${req.quote_from_announcement}`, { indent: 4 });
-        if (req.additional_action) writeParagraph(`추가 조치: ${req.additional_action}`, { indent: 4 });
 
-        y += 4;
+        if (req.reason) {
+          // Gray box for reason
+          doc.setTextColor(SUBTEXT_COLOR[0], SUBTEXT_COLOR[1], SUBTEXT_COLOR[2]);
+          writeParagraph(`→ ${req.reason}`, { indent: 8, fontSize: 9 });
+        }
+        if (req.quote_from_announcement) {
+          doc.setTextColor(PRIMARY_COLOR[0], PRIMARY_COLOR[1], PRIMARY_COLOR[2]);
+          writeParagraph(`[관련 근거]: ${req.quote_from_announcement}`, { indent: 8, fontSize: 9 });
+        }
+        if (req.additional_action) {
+          doc.setTextColor(211, 84, 0); // Orange-Red
+          writeParagraph(`※ 추가 조치: ${req.additional_action}`, { indent: 8, fontSize: 9 });
+        }
+
+        y += 6;
+        // Dotted Separator
         if (idx < judgments.length - 1) {
-          addPageIfNeeded(10);
-          doc.setDrawColor(200, 200, 200);
-          doc.setLineWidth(0.3);
-          doc.line(margin, y, pageWidth - margin, y);
-          y += 8;
+          doc.setDrawColor(BORDER_COLOR[0], BORDER_COLOR[1], BORDER_COLOR[2]);
+          doc.setLineDashPattern([1, 1], 0);
+          doc.line(margin + 4, y, pageWidth - margin - 4, y);
+          doc.setLineDashPattern([], 0); // Reset
+          y += 6;
         }
       });
     }
 
-    const missingInfo = aggregated.eligibility?.missing_info ?? [];
-    const warningItems = aggregated.eligibility?.warning_items ?? [];
-    const recommendations = aggregated.eligibility?.recommendations ?? [];
+    // Additional Info Sections
+    const additionalInfo = [
+      { title: "확인 필요한 정보", items: aggregated.eligibility?.missing_info, color: [230, 126, 34] },
+      { title: "주의 사항", items: aggregated.eligibility?.warning_items, color: [192, 57, 43] },
+      { title: "추천 사항", items: aggregated.eligibility?.recommendations, color: [41, 128, 185] },
+    ];
 
-    if (missingInfo.length > 0) {
-      y += 2;
-      doc.setFont("NotoSansKR", "bold");
-      writeParagraph("확인 필요한 정보", { fontSize: 11 });
-      doc.setFont("NotoSansKR", "normal");
-      missingInfo.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
-    }
-
-    if (warningItems.length > 0) {
-      y += 2;
-      doc.setFont("NotoSansKR", "bold");
-      writeParagraph("주의 사항", { fontSize: 11 });
-      doc.setFont("NotoSansKR", "normal");
-      warningItems.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
-    }
-
-    if (recommendations.length > 0) {
-      y += 2;
-      doc.setFont("NotoSansKR", "bold");
-      writeParagraph("추천 사항", { fontSize: 11 });
-      doc.setFont("NotoSansKR", "normal");
-      recommendations.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
-    }
+    additionalInfo.forEach((info) => {
+      if (info.items && info.items.length > 0) {
+        addPageIfNeeded(20);
+        y += 4;
+        doc.setFont("NotoSansKR", "bold");
+        doc.setTextColor(info.color[0], info.color[1], info.color[2]);
+        doc.setFontSize(11);
+        doc.text(`■ ${info.title}`, margin, y);
+        y += 6;
+        doc.setFont("NotoSansKR", "normal");
+        doc.setTextColor(TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2]);
+        info.items.forEach((v) => writeParagraph(`- ${v}`, { indent: 6 }));
+      }
+    });
 
     // ====== 2. 과제 의도 및 목적 ======
-    y += 6;
     writeSectionTitle("2. 과제 의도 및 목적");
-    writeParagraph(aggregated.research_intent?.policy_background ?? "데이터 없음");
+
+    // Background text
+    // doc.setFillColor(BG_COLOR[0], BG_COLOR[1], BG_COLOR[2]);
+    // doc.rect(margin, y, contentWidth, 15, "F"); // Simple background for context
+    // doc.setTextColor(TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2]);
+    doc.text("정책 배경 및 의도", margin + 4, y + 6);
+    y += 16;
+
+    writeParagraph(aggregated.research_intent?.policy_background ?? "데이터 없음", { indent: 4 });
+    y += 4;
+
     const targetIssues = aggregated.research_intent?.target_issues ?? [];
     if (targetIssues.length > 0) {
-      y += 2;
+      addPageIfNeeded(20);
+      y += 4;
       doc.setFont("NotoSansKR", "bold");
-      writeParagraph("해결하려는 이슈", { fontSize: 11 });
+      doc.text("해결하려는 주요 이슈", margin, y);
+      y += 6;
       doc.setFont("NotoSansKR", "normal");
-      targetIssues.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
+      targetIssues.forEach((v) => writeParagraph(`• ${v}`, { indent: 4 }));
     }
 
     // ====== 3. 평가지표 분석 ======
-    y += 6;
     writeSectionTitle("3. 평가지표 분석");
     writeParagraph(aggregated.evaluation_weight_analysis?.summary ?? "데이터 없음");
+
     const highWeightItems = aggregated.evaluation_weight_analysis?.high_weight_items ?? [];
     if (highWeightItems.length > 0) {
-      y += 2;
+      y += 6;
       doc.setFont("NotoSansKR", "bold");
-      writeParagraph("고배점 항목 및 대응 전략", { fontSize: 11 });
-      doc.setFont("NotoSansKR", "normal");
+      doc.setFontSize(11);
+      doc.text("고배점 항목 및 전략", margin, y);
+      y += 6;
 
       highWeightItems.forEach((it) => {
-        y += 2;
+        addPageIfNeeded(25);
+        // Box for each strategy
+        doc.setDrawColor(BORDER_COLOR[0], BORDER_COLOR[1], BORDER_COLOR[2]);
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(margin, y, contentWidth, 18, 2, 2, "S");
+
         doc.setFont("NotoSansKR", "bold");
-        writeParagraph(`- (${it.points}점) ${it.item}`, { indent: 4 });
+        doc.setTextColor(PRIMARY_COLOR[0], PRIMARY_COLOR[1], PRIMARY_COLOR[2]);
+        doc.text(`[${it.points}점]`, margin + 4, y + 6);
+
+        doc.setTextColor(TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2]);
+        doc.text(it.item, margin + 20, y + 6);
+
         doc.setFont("NotoSansKR", "normal");
-        if (it.strategy) writeParagraph(it.strategy, { indent: 8 });
+        doc.setFontSize(9);
+        doc.setTextColor(SUBTEXT_COLOR[0], SUBTEXT_COLOR[1], SUBTEXT_COLOR[2]);
+        const strategyLines = doc.splitTextToSize(`전략: ${it.strategy}`, contentWidth - 10);
+        doc.text(strategyLines, margin + 4, y + 12);
+
+        y += 22;
       });
     }
 
     // ====== 4. 제출 문서 리스트 ======
-    y += 6;
-    writeSectionTitle("4. 제출 문서 리스트");
+    writeSectionTitle("4. 필수 제출 문서");
     const deliverables = aggregated.deliverables ?? [];
     if (deliverables.length === 0) {
       writeParagraph("데이터 없음");
     } else {
-      deliverables.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
+      deliverables.forEach((v) => {
+        // Checkbox style
+        doc.setDrawColor(SUBTEXT_COLOR[0], SUBTEXT_COLOR[1], SUBTEXT_COLOR[2]);
+        doc.rect(margin + 2, y - 2.5, 3, 3);
+        writeParagraph(v, { indent: 8 });
+      });
     }
 
     // ====== 5. 필수 준수사항 ======
-    y += 6;
     writeSectionTitle("5. 필수 준수사항");
     const mandatory = aggregated.mandatory_requirements ?? [];
     if (mandatory.length === 0) {
       writeParagraph("데이터 없음");
     } else {
-      mandatory.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
+      mandatory.forEach((v) => {
+        doc.setTextColor(211, 84, 0); // Warning color
+        writeParagraph(`! ${v}`, { indent: 4 });
+      });
     }
 
-    doc.save(`공고문_분석_결과_${today}.pdf`);
+    // Footer Page Numbers
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(9);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`${i} / ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: "right" });
+    }
+
+    doc.save(`공고문_분석_리포트_${today}.pdf`);
   };
 
   // ====== 에러/로딩 ======
@@ -419,7 +534,7 @@ const NoticeNewPageResult: React.FC = () => {
           )}
 
           {aggregated?.evaluation_weight_analysis?.high_weight_items &&
-          aggregated.evaluation_weight_analysis.high_weight_items.length > 0 ? (
+            aggregated.evaluation_weight_analysis.high_weight_items.length > 0 ? (
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {aggregated.evaluation_weight_analysis.high_weight_items.map((it, idx) => (
                 <li key={idx} style={{ margin: "10px 0", lineHeight: 1.5 }}>
@@ -511,12 +626,12 @@ const ExpandableText: React.FC<{ text: string }> = ({ text }) => {
           isExpanded
             ? {}
             : {
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                flex: 1,
-                minWidth: 0,
-              }
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              flex: 1,
+              minWidth: 0,
+            }
         }
       >
         {text}
