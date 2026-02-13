@@ -241,10 +241,16 @@ const NoticeNewPage: React.FC = () => {
                   <span style={{ color: '#22c55e' }}>✔</span> 자격요건 체크리스트
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 'bold' }}>
-                  <span style={{ color: '#22c55e' }}>✔</span> 사업 목적 요약
+                  <span style={{ color: '#22c55e' }}>✔</span> 과제 의도 및 목적
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 'bold' }}>
-                  <span style={{ color: '#22c55e' }}>✔</span> 평가 항목 요약
+                  <span style={{ color: '#22c55e' }}>✔</span> 평가 지표 분석
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 'bold' }}>
+                  <span style={{ color: '#22c55e' }}>✔</span> 필수 제출 문서 리스트
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 'bold' }}>
+                  <span style={{ color: '#22c55e' }}>✔</span> 필수 준수 사항
                 </div>
               </div>
             </div>

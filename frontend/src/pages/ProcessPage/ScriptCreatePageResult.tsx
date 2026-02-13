@@ -42,7 +42,6 @@ const ScriptCreatePageResult: React.FC = () => {
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-    // 한글 폰트 등록
     doc.addFileToVFS("NotoSansKR-Regular.ttf", NotoSansKR);
     doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "normal");
     doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "bold");
@@ -51,9 +50,16 @@ const ScriptCreatePageResult: React.FC = () => {
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 20;
     const contentWidth = pageWidth - margin * 2;
-
     const today = new Date().toLocaleDateString("ko-KR");
+
     let y = 20;
+
+    // --- Colors ---
+    const PRIMARY_COLOR = [0, 184, 148]; // #00b894
+    const TEXT_COLOR = [45, 52, 54]; // #2d3436
+    const SUBTEXT_COLOR = [99, 110, 114]; // #636e72
+    const BORDER_COLOR = [223, 230, 233]; // #dfe6e9
+    const BG_COLOR = [241, 243, 245]; // #f1f3f5
 
     const addPageIfNeeded = (minSpace: number) => {
       if (y + minSpace <= pageHeight - margin) return;
@@ -61,58 +67,65 @@ const ScriptCreatePageResult: React.FC = () => {
       y = 20;
     };
 
-    const writeParagraph = (text: string, opts?: { indent?: number; fontSize?: number; bold?: boolean }) => {
+    const writeParagraph = (text: string, opts?: { indent?: number; fontSize?: number; color?: number[] }) => {
       const indent = opts?.indent ?? 0;
       const fontSize = opts?.fontSize ?? 10;
-      const bold = opts?.bold ?? false;
+      const color = opts?.color ?? TEXT_COLOR;
 
-      doc.setFont("NotoSansKR", bold ? "bold" : "normal");
       doc.setFontSize(fontSize);
+      doc.setTextColor(color[0], color[1], color[2]);
 
-      const safeText = (text ?? "").toString();
-      const lines = doc.splitTextToSize(safeText, contentWidth - indent);
-
+      const lines = doc.splitTextToSize(text ?? "", contentWidth - indent);
       lines.forEach((line: string) => {
-        addPageIfNeeded(8);
+        addPageIfNeeded(6);
         doc.text(line, margin + indent, y);
         y += 5;
       });
     };
 
     const writeSectionTitle = (title: string) => {
-      addPageIfNeeded(18);
+      addPageIfNeeded(20);
+      y += 5;
+
+      // Left accents
+      doc.setFillColor(PRIMARY_COLOR[0], PRIMARY_COLOR[1], PRIMARY_COLOR[2]);
+      doc.rect(margin, y - 4, 5, 8, "F");
+
       doc.setFont("NotoSansKR", "bold");
       doc.setFontSize(14);
-      doc.text(title, margin, y);
-      y += 8;
+      doc.setTextColor(TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2]);
+      doc.text(title, margin + 8, y + 2);
+
+      y += 10;
+
+      // Divider line
       doc.setDrawColor(220, 220, 220);
-      doc.setLineWidth(0.4);
+      doc.setLineWidth(0.5);
       doc.line(margin, y, pageWidth - margin, y);
       y += 8;
       doc.setFont("NotoSansKR", "normal");
     };
 
-    // ===== Header =====
-    doc.setFont("NotoSansKR", "bold");
-    doc.setFontSize(18);
-    doc.text("발표 스크립트 생성 결과", margin, y);
-    y += 12;
+    // ====== Header ======
+    // Header Background
+    doc.setFillColor(BG_COLOR[0], BG_COLOR[1], BG_COLOR[2]);
+    doc.rect(0, 0, pageWidth, 40, "F");
 
+    y = 25;
+    doc.setFont("NotoSansKR", "bold");
+    doc.setFontSize(22);
+    doc.setTextColor(PRIMARY_COLOR[0], PRIMARY_COLOR[1], PRIMARY_COLOR[2]);
+    doc.text("발표 스크립트 생성 결과", margin, y);
+
+    y += 8;
     doc.setFont("NotoSansKR", "normal");
     doc.setFontSize(10);
-    doc.text(`작성일: ${today}`, margin, y);
-    y += 7;
+    doc.setTextColor(SUBTEXT_COLOR[0], SUBTEXT_COLOR[1], SUBTEXT_COLOR[2]);
+    doc.text(`작성일: ${today}  |  Notice ID: ${noticeId ?? "-"}`, margin, y);
 
-    if (noticeId) {
-      doc.text(`noticeId: ${noticeId}`, margin, y);
-      y += 7;
-    }
+    y = 50; // Reset Y after header
 
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 12;
-
-    // ===== 1. 발표 스크립트 =====
+    // ====== 1. 발표 스크립트 ======
     writeSectionTitle("1. 발표 스크립트");
 
     const slides = Array.isArray(scriptData.slides) ? scriptData.slides : [];
@@ -120,35 +133,45 @@ const ScriptCreatePageResult: React.FC = () => {
       writeParagraph("스크립트 데이터가 없습니다.");
     } else {
       slides.forEach((slide: any, idx: number) => {
-        addPageIfNeeded(18);
+        addPageIfNeeded(30);
 
+        // Slide Box
         const pageNo = slide?.page ?? idx + 1;
         const title = slide?.title ?? "";
 
-        writeParagraph(`슬라이드 ${pageNo} ${title ? `- ${title}` : ""}`, { fontSize: 12, bold: true });
-        y += 1;
+        // Slide Header
+        doc.setFont("NotoSansKR", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(PRIMARY_COLOR[0], PRIMARY_COLOR[1], PRIMARY_COLOR[2]);
+        doc.text(`Slide ${pageNo}`, margin, y);
 
-        const scriptText = slide?.script ?? "";
-        if (scriptText) {
-          writeParagraph(scriptText, { indent: 2, fontSize: 10 });
-        } else {
-          writeParagraph("(스크립트 없음)", { indent: 2, fontSize: 10 });
+        doc.setTextColor(TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2]);
+        if (title) {
+          doc.text(` : ${title}`, margin + 20, y);
         }
+        y += 8;
 
-        y += 4;
+        // Content
+        const scriptText = slide?.script ?? "(스크립트 없음)";
+        doc.setFont("NotoSansKR", "normal");
 
+        // Indented text
+        writeParagraph(scriptText, { indent: 4, fontSize: 10 });
+
+        y += 6;
+
+        // Dotted Separator
         if (idx < slides.length - 1) {
-          addPageIfNeeded(10);
-          doc.setDrawColor(200, 200, 200);
-          doc.setLineWidth(0.3);
-          doc.line(margin, y, pageWidth - margin, y);
+          doc.setDrawColor(BORDER_COLOR[0], BORDER_COLOR[1], BORDER_COLOR[2]);
+          doc.setLineDashPattern([1, 1], 0);
+          doc.line(margin + 4, y, pageWidth - margin - 4, y);
+          doc.setLineDashPattern([], 0); // Reset
           y += 8;
         }
       });
     }
 
-    // ===== 2. 예상 질문 및 답변 =====
-    y += 4;
+    // ====== 2. 예상 질문 및 답변 ======
     writeSectionTitle("2. 예상 질문 및 답변");
 
     const qna = Array.isArray(scriptData.qna) ? scriptData.qna : [];
@@ -156,21 +179,86 @@ const ScriptCreatePageResult: React.FC = () => {
       writeParagraph("예상 질문 데이터가 없습니다.");
     } else {
       qna.forEach((item: any, idx: number) => {
-        addPageIfNeeded(18);
+        addPageIfNeeded(30);
 
         const q = item?.question ?? "";
         const a = item?.answer ?? "";
         const tips = item?.tips ?? "";
 
-        writeParagraph(`Q${idx + 1}. ${q}`, { fontSize: 11, bold: true });
-        writeParagraph(`A. ${a}`, { indent: 2, fontSize: 10 });
+        // Question
+        doc.setFont("NotoSansKR", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(46, 111, 219); // Blue for Question
 
-        if (tips) {
-          writeParagraph(`Tip: ${tips}`, { indent: 2, fontSize: 10 });
+        const qLines = doc.splitTextToSize(`Q${idx + 1}. ${q}`, contentWidth);
+        qLines.forEach((line: string) => {
+          addPageIfNeeded(6);
+          doc.text(line, margin, y);
+          y += 6;
+        });
+
+        // Answer
+        doc.setFont("NotoSansKR", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2]);
+
+        // A. prefix
+        const aPrefix = "A. ";
+        const aLines = doc.splitTextToSize(a, contentWidth - 10); // indent for answer body
+
+        if (aLines.length > 0) {
+          addPageIfNeeded(6);
+          doc.text(aPrefix + aLines[0], margin + 2, y);
+          y += 5;
+          for (let i = 1; i < aLines.length; i++) {
+            addPageIfNeeded(6);
+            doc.text(aLines[i], margin + 7, y); // align with text after "A. "
+            y += 5;
+          }
         }
 
-        y += 6;
+        // Tip
+        if (tips) {
+          y += 2;
+          // Estimate height? roughly
+          const tipLines = doc.splitTextToSize(`Tip: ${tips}`, contentWidth - 14);
+          const tipH = tipLines.length * 5 + 6;
+
+          addPageIfNeeded(tipH);
+          doc.setFillColor(BG_COLOR[0], BG_COLOR[1], BG_COLOR[2]);
+          doc.rect(margin + 2, y, contentWidth - 4, tipH, "F");
+
+          doc.setTextColor(SUBTEXT_COLOR[0], SUBTEXT_COLOR[1], SUBTEXT_COLOR[2]);
+          doc.setFontSize(9);
+
+          let tipY = y + 5;
+          tipLines.forEach((l: string) => {
+            doc.text(l, margin + 5, tipY);
+            tipY += 5;
+          });
+          y += tipH + 4;
+        } else {
+          y += 6;
+        }
+
+        // Separator
+        if (idx < qna.length - 1) {
+          doc.setDrawColor(BORDER_COLOR[0], BORDER_COLOR[1], BORDER_COLOR[2]);
+          doc.setLineDashPattern([1, 1], 0);
+          doc.line(margin, y, pageWidth - margin, y);
+          doc.setLineDashPattern([], 0);
+          y += 8;
+        }
       });
+    }
+
+    // Footer Page Numbers
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(9);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`${i} / ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: "right" });
     }
 
     const filename = `스크립트_결과_${today}.pdf`;
