@@ -41,6 +41,7 @@ const ScriptCreatePageResult: React.FC = () => {
     }
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLineHeightFactor(1.6);
 
     doc.addFileToVFS("NotoSansKR-Regular.ttf", NotoSansKR);
     doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "normal");
@@ -48,18 +49,24 @@ const ScriptCreatePageResult: React.FC = () => {
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
+    const margin = 15;
     const contentWidth = pageWidth - margin * 2;
     const today = new Date().toLocaleDateString("ko-KR");
 
-    let y = 20;
+    let y = 15;
 
-    // --- Colors ---
-    const PRIMARY_COLOR = [0, 184, 148]; // #00b894
-    const TEXT_COLOR = [45, 52, 54]; // #2d3436
-    const SUBTEXT_COLOR = [99, 110, 114]; // #636e72
-    const BORDER_COLOR = [223, 230, 233]; // #dfe6e9
-    const BG_COLOR = [241, 243, 245]; // #f1f3f5
+    // --- Colors & Styles ---
+    const COLORS = {
+      primary: [0, 184, 148],     // #00b894 (Green)
+      secondary: [9, 132, 227],   // #0984e3 (Blue)
+      danger: [214, 48, 49],      // #d63031 (Red)
+      warning: [253, 203, 110],   // #fdcb6e (Yellow)
+      dark: [45, 52, 54],         // #2d3436
+      gray: [99, 110, 114],       // #636e72
+      lightGray: [241, 243, 245], // #f1f3f5
+      white: [255, 255, 255],
+      headerBg: [30, 39, 46]      // Dark background for header
+    };
 
     const addPageIfNeeded = (minSpace: number) => {
       if (y + minSpace <= pageHeight - margin) return;
@@ -67,188 +74,234 @@ const ScriptCreatePageResult: React.FC = () => {
       y = 20;
     };
 
-    const writeParagraph = (text: string, opts?: { indent?: number; fontSize?: number; color?: number[] }) => {
-      const indent = opts?.indent ?? 0;
+    // Helper: Draw defined text with auto-wrap
+    const writeText = (text: string, x: number, yPos: number, opts?: { width?: number; fontSize?: number; color?: number[]; font?: string; align?: "left" | "center" | "right" }) => {
+      const width = opts?.width ?? contentWidth;
       const fontSize = opts?.fontSize ?? 10;
-      const color = opts?.color ?? TEXT_COLOR;
+      const color = opts?.color ?? COLORS.dark;
+      const font = opts?.font ?? "normal";
+      const align = opts?.align ?? "left";
 
+      doc.setFont("NotoSansKR", font);
       doc.setFontSize(fontSize);
       doc.setTextColor(color[0], color[1], color[2]);
 
-      const lines = doc.splitTextToSize(text ?? "", contentWidth - indent);
-      lines.forEach((line: string) => {
-        addPageIfNeeded(6);
-        doc.text(line, margin + indent, y);
-        y += 5;
-      });
+      const lines = doc.splitTextToSize(text, width);
+      doc.text(lines, x, yPos, { align });
+      // Approx height calculation: fontSize * 0.3527 (pt to mm) * 1.6 (line height) * lines
+      return lines.length * (fontSize * 0.3527 * 1.6);
     };
 
-    const writeSectionTitle = (title: string) => {
+    const drawSectionHeader = (title: string, iconChar: string = "■") => {
       addPageIfNeeded(20);
       y += 5;
 
-      // Left accents
-      doc.setFillColor(PRIMARY_COLOR[0], PRIMARY_COLOR[1], PRIMARY_COLOR[2]);
-      doc.rect(margin, y - 4, 5, 8, "F");
+      doc.setFillColor(COLORS.lightGray[0], COLORS.lightGray[1], COLORS.lightGray[2]);
+      doc.roundedRect(margin, y, contentWidth, 10, 2, 2, "F");
+
+      doc.setFont("NotoSansKR", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+      doc.text(`${iconChar}  ${title}`, margin + 4, y + 7);
+
+      y += 15;
+    };
+
+    // ================= HEADER =================
+    doc.setFillColor(COLORS.headerBg[0], COLORS.headerBg[1], COLORS.headerBg[2]);
+    doc.rect(0, 0, pageWidth, 50, "F");
+
+    doc.setFont("NotoSansKR", "bold");
+    doc.setFontSize(24);
+    doc.setTextColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
+    doc.text("발표 스크립트 생성 결과", margin, 32);
+
+    doc.setFont("NotoSansKR", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(200, 200, 200);
+    doc.text(`Generated on ${today}  |  Notice ID: ${noticeId ?? "N/A"}`, margin, 42);
+
+    y = 60;
+
+    // ================= DASHBOARD SUMMARY =================
+    // Counts
+    const slides = Array.isArray(scriptData.slides) ? scriptData.slides : [];
+    const qna = Array.isArray(scriptData.qna) ? scriptData.qna : [];
+    const totalSlides = slides.length;
+    const totalQna = qna.length;
+
+    // 1. Overall Status Card
+    const status = "생성 완료"; // Assuming successful generation
+    const statusColor = COLORS.primary;
+
+    // Card Background
+    doc.setDrawColor(200, 200, 200);
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(margin, y, contentWidth, 35, 3, 3, "FD");
+
+    // Status Circle/Box
+    doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.roundedRect(margin + 5, y + 5, 25, 25, 2, 2, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("NotoSansKR", "bold");
+    doc.setFontSize(12);
+    doc.text(status, margin + 17.5, y + 17, { align: "center", baseline: "middle" });
+
+    // Summary Text next to status
+    const summaryX = margin + 35;
+    const summaryW = contentWidth - 40;
+
+    doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+    doc.setFont("NotoSansKR", "bold");
+    doc.setFontSize(12);
+    doc.text("종합 요약", summaryX, y + 10);
+
+    doc.setFont("NotoSansKR", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(COLORS.gray[0], COLORS.gray[1], COLORS.gray[2]);
+    doc.text(`총 ${totalSlides}장의 발표용 슬라이드 스크립트와 ${totalQna}개의 예상 질문이 성공적으로 생성되었습니다.`, summaryX, y + 18);
+
+    y += 45;
+
+    // 2. Metrics Row
+    const boxGap = 5;
+    const boxW = (contentWidth - boxGap) / 2;
+    const boxH = 20;
+
+    const drawStatBox = (label: string, value: number | string, color: number[], xPos: number) => {
+      doc.setFillColor(color[0], color[1], color[2]);
+      doc.rect(xPos, y, 2, boxH, "F"); // Left colored strip
+
+      doc.setFillColor(250, 250, 250);
+      doc.rect(xPos + 2, y, boxW - 2, boxH, "F"); // Grey bg
+
+      doc.setFont("NotoSansKR", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(COLORS.gray[0], COLORS.gray[1], COLORS.gray[2]);
+      doc.text(label, xPos + 8, y + 8);
 
       doc.setFont("NotoSansKR", "bold");
       doc.setFontSize(14);
-      doc.setTextColor(TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2]);
-      doc.text(title, margin + 8, y + 2);
-
-      y += 10;
-
-      // Divider line
-      doc.setDrawColor(220, 220, 220);
-      doc.setLineWidth(0.5);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 8;
-      doc.setFont("NotoSansKR", "normal");
+      doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+      doc.text(String(value), xPos + 8, y + 16);
     };
 
-    // ====== Header ======
-    // Header Background
-    doc.setFillColor(BG_COLOR[0], BG_COLOR[1], BG_COLOR[2]);
-    doc.rect(0, 0, pageWidth, 40, "F");
+    drawStatBox("총 슬라이드", `${totalSlides} 장`, COLORS.secondary, margin);
+    drawStatBox("예상 질문 수", `${totalQna} 개`, COLORS.warning, margin + boxW + boxGap);
 
-    y = 25;
-    doc.setFont("NotoSansKR", "bold");
-    doc.setFontSize(22);
-    doc.setTextColor(PRIMARY_COLOR[0], PRIMARY_COLOR[1], PRIMARY_COLOR[2]);
-    doc.text("발표 스크립트 생성 결과", margin, y);
+    y += 30;
 
-    y += 8;
-    doc.setFont("NotoSansKR", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(SUBTEXT_COLOR[0], SUBTEXT_COLOR[1], SUBTEXT_COLOR[2]);
-    doc.text(`작성일: ${today}  |  Notice ID: ${noticeId ?? "-"}`, margin, y);
+    // ================= SECTIONS =================
 
-    y = 50; // Reset Y after header
+    // 1. 발표 스크립트
+    drawSectionHeader("발표 스크립트", "🎤");
 
-    // ====== 1. 발표 스크립트 ======
-    writeSectionTitle("1. 발표 스크립트");
-
-    const slides = Array.isArray(scriptData.slides) ? scriptData.slides : [];
     if (slides.length === 0) {
-      writeParagraph("스크립트 데이터가 없습니다.");
+      writeText("데이터가 없습니다.", margin, y);
+      y += 10;
     } else {
       slides.forEach((slide: any, idx: number) => {
-        addPageIfNeeded(30);
+        addPageIfNeeded(40);
 
-        // Slide Box
         const pageNo = slide?.page ?? idx + 1;
         const title = slide?.title ?? "";
+        const scriptText = slide?.script ?? "(스크립트 없음)";
 
-        // Slide Header
+        // Slide Box Header
+        doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        doc.roundedRect(margin, y, contentWidth, 8, 2, 2, "F"); // Top bar
+
         doc.setFont("NotoSansKR", "bold");
-        doc.setFontSize(12);
-        doc.setTextColor(PRIMARY_COLOR[0], PRIMARY_COLOR[1], PRIMARY_COLOR[2]);
-        doc.text(`Slide ${pageNo}`, margin, y);
+        doc.setFontSize(10);
+        doc.setTextColor(255, 255, 255);
+        doc.text(`Slide ${pageNo}`, margin + 4, y + 5.5);
 
-        doc.setTextColor(TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2]);
         if (title) {
-          doc.text(` : ${title}`, margin + 20, y);
+          doc.setFont("NotoSansKR", "normal");
+          doc.text(` : ${title}`, margin + 25, y + 5.5);
         }
-        y += 8;
+
+        y += 16; // Increased gap to prevent overlap
 
         // Content
-        const scriptText = slide?.script ?? "(스크립트 없음)";
-        doc.setFont("NotoSansKR", "normal");
+        const addedH = writeText(scriptText, margin + 2, y, { width: contentWidth - 4, color: COLORS.dark });
 
-        // Indented text
-        writeParagraph(scriptText, { indent: 4, fontSize: 10 });
+        // Light separator line below content if needed, or just standard spacing
+        y += addedH + 10;
 
-        y += 6;
-
-        // Dotted Separator
-        if (idx < slides.length - 1) {
-          doc.setDrawColor(BORDER_COLOR[0], BORDER_COLOR[1], BORDER_COLOR[2]);
-          doc.setLineDashPattern([1, 1], 0);
-          doc.line(margin + 4, y, pageWidth - margin - 4, y);
-          doc.setLineDashPattern([], 0); // Reset
-          y += 8;
-        }
+        // Draw bottom border or separator? Let's use a subtle line
+        doc.setDrawColor(230, 230, 230);
+        doc.setLineWidth(0.5);
+        doc.line(margin, y - 5, pageWidth - margin, y - 5);
       });
     }
 
-    // ====== 2. 예상 질문 및 답변 ======
-    writeSectionTitle("2. 예상 질문 및 답변");
+    addPageIfNeeded(60);
 
-    const qna = Array.isArray(scriptData.qna) ? scriptData.qna : [];
+    // 2. 예상 질문 및 답변
+    drawSectionHeader("예상 질문 및 답변", "💬");
+
     if (qna.length === 0) {
-      writeParagraph("예상 질문 데이터가 없습니다.");
+      writeText("데이터가 없습니다.", margin, y);
+      y += 10;
     } else {
       qna.forEach((item: any, idx: number) => {
-        addPageIfNeeded(30);
+        addPageIfNeeded(40);
 
         const q = item?.question ?? "";
         const a = item?.answer ?? "";
         const tips = item?.tips ?? "";
 
-        // Question
-        doc.setFont("NotoSansKR", "bold");
-        doc.setFontSize(11);
-        doc.setTextColor(46, 111, 219); // Blue for Question
-
-        const qLines = doc.splitTextToSize(`Q${idx + 1}. ${q}`, contentWidth);
-        qLines.forEach((line: string) => {
-          addPageIfNeeded(6);
-          doc.text(line, margin, y);
-          y += 6;
+        // Q
+        const qPrefix = `Q${idx + 1}. `;
+        // Use Secondary Color (Blue) for Question
+        const qH = writeText(qPrefix + q, margin, y, {
+          width: contentWidth,
+          color: COLORS.secondary,
+          font: "bold",
+          fontSize: 11
         });
+        y += qH + 6;
 
-        // Answer
-        doc.setFont("NotoSansKR", "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2]);
-
-        // A. prefix
-        const aPrefix = "A. ";
-        const aLines = doc.splitTextToSize(a, contentWidth - 10); // indent for answer body
-
-        if (aLines.length > 0) {
-          addPageIfNeeded(6);
-          doc.text(aPrefix + aLines[0], margin + 2, y);
-          y += 5;
-          for (let i = 1; i < aLines.length; i++) {
-            addPageIfNeeded(6);
-            doc.text(aLines[i], margin + 7, y); // align with text after "A. "
-            y += 5;
-          }
-        }
+        // A
+        // Use Primary Color (Green) for Answer
+        const aH = writeText(`A. ${a}`, margin + 4, y, {
+          width: contentWidth - 4,
+          color: COLORS.primary,
+          font: "normal",
+          fontSize: 10
+        });
+        y += aH + 6;
 
         // Tip
         if (tips) {
-          y += 2;
-          // Estimate height? roughly
-          const tipLines = doc.splitTextToSize(`Tip: ${tips}`, contentWidth - 14);
-          const tipH = tipLines.length * 5 + 6;
+          // Box for tip
+          doc.setFont("NotoSansKR", "normal");
+          doc.setFontSize(9);
+          const tipText = `💡 Tip: ${tips}`;
+          const tipLines = doc.splitTextToSize(tipText, contentWidth - 10);
+          const tipH = tipLines.length * 5 + 6; // Height with padding
 
           addPageIfNeeded(tipH);
-          doc.setFillColor(BG_COLOR[0], BG_COLOR[1], BG_COLOR[2]);
-          doc.rect(margin + 2, y, contentWidth - 4, tipH, "F");
 
-          doc.setTextColor(SUBTEXT_COLOR[0], SUBTEXT_COLOR[1], SUBTEXT_COLOR[2]);
-          doc.setFontSize(9);
+          // Yellow Border for Tip Box
+          doc.setDrawColor(COLORS.warning[0], COLORS.warning[1], COLORS.warning[2]);
+          doc.setFillColor(COLORS.lightGray[0], COLORS.lightGray[1], COLORS.lightGray[2]);
+          doc.roundedRect(margin + 4, y, contentWidth - 4, tipH, 2, 2, "FD");
 
-          let tipY = y + 5;
-          tipLines.forEach((l: string) => {
-            doc.text(l, margin + 5, tipY);
-            tipY += 5;
-          });
-          y += tipH + 4;
+          doc.setTextColor(COLORS.gray[0], COLORS.gray[1], COLORS.gray[2]);
+          doc.text(tipLines, margin + 8, y + 5);
+
+          y += tipH + 8;
         } else {
-          y += 6;
+          y += 4;
         }
 
         // Separator
-        if (idx < qna.length - 1) {
-          doc.setDrawColor(BORDER_COLOR[0], BORDER_COLOR[1], BORDER_COLOR[2]);
-          doc.setLineDashPattern([1, 1], 0);
-          doc.line(margin, y, pageWidth - margin, y);
-          doc.setLineDashPattern([], 0);
-          y += 8;
-        }
+        doc.setDrawColor(230, 230, 230);
+        doc.setLineWidth(0.5);
+        doc.line(margin, y - 4, pageWidth - margin, y - 4);
       });
     }
 
