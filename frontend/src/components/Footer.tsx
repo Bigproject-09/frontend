@@ -1,5 +1,5 @@
 import React, {useState} from "react";
-import "../styles/footer.css";
+import "../styles/Footer.css";
 import { useNavigate } from "react-router-dom";
 import PolicyModal from "../pages/PolicyModal";
 import ServiceTermContent from "../pages/ServiceTermContent";

@@ -369,7 +369,7 @@ const RFPSearchPageResult: React.FC = () => {
               ))}
             </List>
           ) : (
-            <EmptyMessage>동일 발주처 유사 결과가 없습니다.</EmptyMessage>
+            <EmptyMessage>동일 발주처 유사 RFP가 없습니다.</EmptyMessage>
           )}
         </Section>
 
@@ -398,7 +398,7 @@ const RFPSearchPageResult: React.FC = () => {
               ))}
             </List>
           ) : (
-            <EmptyMessage>타 발주처 유사 전략이 없습니다.</EmptyMessage>
+            <EmptyMessage>타 발주처 유사 RFP가 없습니다.</EmptyMessage>
           )}
         </Section>
 
