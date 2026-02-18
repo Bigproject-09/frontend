@@ -142,7 +142,7 @@ const AnnounceCreatePage: React.FC = () => {
 
       // 병렬: API 호출 + 진행률 시뮬레이션
       const apiPromise = http.post(
-        "http://localhost:8000/api/analyze/step3",
+        "/api/analyze/step3",
         formData,
         {
           headers: {

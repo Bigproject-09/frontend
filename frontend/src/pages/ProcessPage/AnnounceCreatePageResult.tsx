@@ -52,7 +52,7 @@ const AnnounceCreatePageResult: React.FC = () => {
     // ✅ FastAPI 다운로드 URL 우선
     let downloadUrl = "";
     if (pptResult.download_url) {
-      downloadUrl = `http://localhost:8000${pptResult.download_url}`;
+      downloadUrl = `${pptResult.download_url}`;
     } else {
       // fallback: pptx_path에서 filename 추출
       const filename =
@@ -63,7 +63,7 @@ const AnnounceCreatePageResult: React.FC = () => {
         alert("다운로드할 파일명을 찾지 못했습니다.");
         return;
       }
-      downloadUrl = `http://localhost:8000/download/pptx/${filename}`;
+      downloadUrl = `/download/pptx/${filename}`;
     }
 
     try {

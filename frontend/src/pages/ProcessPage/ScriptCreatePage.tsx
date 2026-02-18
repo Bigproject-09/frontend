@@ -133,7 +133,7 @@ const ScriptCreatePage: React.FC = () => {
       setStep("CHECKLIST_CREATE");
       setProgress(30);
 
-      const response = await fetch("http://localhost:8000/api/analyze/step4", {
+      const response = await fetch("/api/analyze/step4", {
         method: "POST",
         body: formData,
       });
