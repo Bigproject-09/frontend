@@ -181,33 +181,36 @@ const ProcessPage: React.FC = () => {
           <h3>공고문 분석</h3>
           <ul>
             <li>자격요건 체크리스트 제공</li>
-            <li>사업 목적 요약</li>
-            <li>평가항목 요약</li>
+            <li>과제 의도 및 목적 분석</li>
+            <li>평가지표 분석 사항</li>
+            <li>제출 문서 리스트 제공</li>
+            <li>필수 준수 사항</li>
           </ul>
         </ProcessBtn>
 
         <ProcessBtn type="button" onClick={goRfp}>
           <h3>유관 RFP 검색</h3>
           <ul>
-            <li>동일 주관 기관 내 유사 RFP 추천</li>
-            <li>사내 유사 RFP 추천</li>
+            <li>동일 발주처 유사 RFP 추천</li>
+            <li>타 발주처 유사 RFP 추천</li>
+            <li>권장 차별화 전략 제안</li>
           </ul>
         </ProcessBtn>
 
         <ProcessBtn type="button" onClick={goAnnounce}>
           <h3>발표자료 제작</h3>
           <ul>
-            <li>스토리라인 구성</li>
-            <li>키워드 추출</li>
-            <li>구조도/그림 생성</li>
+            <li>발표 제목</li>
+            <li>슬라이드 수</li>
+            <li>파일 경로</li>
           </ul>
         </ProcessBtn>
 
         <ProcessBtn type="button" onClick={goScript}>
           <h3>스크립트 생성</h3>
           <ul>
-            <li>스크립트 생성</li>
-            <li>예상질문 생성</li>
+            <li>발표 스크립트 생성</li>
+            <li>예상 질문 생성</li>
           </ul>
         </ProcessBtn>
       </ButtonGroup>

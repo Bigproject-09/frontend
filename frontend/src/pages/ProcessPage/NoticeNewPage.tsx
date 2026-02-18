@@ -241,10 +241,16 @@ const NoticeNewPage: React.FC = () => {
                   <span style={{ color: '#22c55e' }}>✔</span> 자격요건 체크리스트
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 'bold' }}>
-                  <span style={{ color: '#22c55e' }}>✔</span> 사업 목적 요약
+                  <span style={{ color: '#22c55e' }}>✔</span> 과제 의도 및 목적
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 'bold' }}>
-                  <span style={{ color: '#22c55e' }}>✔</span> 평가 항목 요약
+                  <span style={{ color: '#22c55e' }}>✔</span> 평가 지표 분석
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 'bold' }}>
+                  <span style={{ color: '#22c55e' }}>✔</span> 필수 제출 문서 리스트
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 'bold' }}>
+                  <span style={{ color: '#22c55e' }}>✔</span> 필수 준수 사항
                 </div>
               </div>
             </div>
@@ -261,7 +267,7 @@ const NoticeNewPage: React.FC = () => {
               <div style={{ fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>권장 업로드 파일</div>
               <ul style={{ fontSize: '14px', color: '#4b5563', margin: '0 0 16px 0', paddingLeft: '0', listStyle: 'none' }}>
                 <li style={{ marginBottom: '4px' }}><span style={{ color: '#22c55e', marginRight: '6px' }}>✔</span>사업 계획서 초안 또는 이전 제출분</li>
-                <li><span style={{ color: '#22c55e', marginRight: '6px' }}>✔</span>기업 소개서(IR)</li>
+                {/* <li><span style={{ color: '#22c55e', marginRight: '6px' }}>✔</span>기업 소개서(IR)</li> */}
               </ul>
 
               <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px' }}>* 업로드한 파일을 기반으로</div>

@@ -110,6 +110,7 @@ const NoticeNewPageResult: React.FC = () => {
     }
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setLineHeightFactor(1.6); // Increase line spacing for better readability
 
     doc.addFileToVFS("NotoSansKR-Regular.ttf", NotoSansKR);
     doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "normal");
@@ -117,11 +118,24 @@ const NoticeNewPageResult: React.FC = () => {
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
+    const margin = 15;
     const contentWidth = pageWidth - margin * 2;
     const today = new Date().toLocaleDateString("ko-KR");
 
-    let y = 20;
+    let y = 15;
+
+    // --- Colors & Styles ---
+    const COLORS = {
+      primary: [0, 184, 148],     // #00b894 (Green)
+      secondary: [9, 132, 227],   // #0984e3 (Blue)
+      danger: [214, 48, 49],      // #d63031 (Red)
+      warning: [253, 203, 110],   // #fdcb6e (Yellow)
+      dark: [45, 52, 54],         // #2d3436
+      gray: [99, 110, 114],       // #636e72
+      lightGray: [241, 243, 245], // #f1f3f5
+      white: [255, 255, 255],
+      headerBg: [30, 39, 46]      // Dark background for header
+    };
 
     const addPageIfNeeded = (minSpace: number) => {
       if (y + minSpace <= pageHeight - margin) return;
@@ -129,169 +143,393 @@ const NoticeNewPageResult: React.FC = () => {
       y = 20;
     };
 
-    const writeParagraph = (text: string, opts?: { indent?: number; fontSize?: number }) => {
-      const indent = opts?.indent ?? 0;
+    // Helper: Draw defined text with auto-wrap
+    const writeText = (text: string, x: number, yPos: number, opts?: { width?: number; fontSize?: number; color?: number[]; font?: string; align?: "left" | "center" | "right" }) => {
+      const width = opts?.width ?? contentWidth;
       const fontSize = opts?.fontSize ?? 10;
+      const color = opts?.color ?? COLORS.dark;
+      const font = opts?.font ?? "normal";
+      const align = opts?.align ?? "left";
+
+      doc.setFont("NotoSansKR", font);
       doc.setFontSize(fontSize);
+      doc.setTextColor(color[0], color[1], color[2]);
 
-      const lines = doc.splitTextToSize(text ?? "", contentWidth - indent);
-      lines.forEach((line: string) => {
-        addPageIfNeeded(8);
-        doc.text(line, margin + indent, y);
-        y += 5;
-      });
+      const lines = doc.splitTextToSize(text, width);
+      doc.text(lines, x, yPos, { align });
+      // Approx height calculation: fontSize * 0.3527 (pt to mm) * 1.6 (line height) * lines
+      return lines.length * (fontSize * 0.3527 * 1.6);
     };
 
-    const writeSectionTitle = (title: string) => {
-      addPageIfNeeded(18);
+    const drawSectionHeader = (title: string, iconChar: string = "■") => {
+      addPageIfNeeded(20);
+      y += 5;
+
+      doc.setFillColor(COLORS.lightGray[0], COLORS.lightGray[1], COLORS.lightGray[2]);
+      doc.roundedRect(margin, y, contentWidth, 10, 2, 2, "F");
+
       doc.setFont("NotoSansKR", "bold");
-      doc.setFontSize(14);
-      doc.text(title, margin, y);
-      y += 8;
-      doc.setDrawColor(220, 220, 220);
-      doc.setLineWidth(0.4);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 8;
-      doc.setFont("NotoSansKR", "normal");
+      doc.setFontSize(12);
+      doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+      doc.text(`${iconChar}  ${title}`, margin + 4, y + 7);
+
+      y += 15;
     };
 
-    // ====== Header ======
+    // ================= HEADER =================
+    // Dark dashboard header
+    doc.setFillColor(COLORS.headerBg[0], COLORS.headerBg[1], COLORS.headerBg[2]);
+    doc.rect(0, 0, pageWidth, 50, "F");
+
     doc.setFont("NotoSansKR", "bold");
-    doc.setFontSize(18);
-    doc.text("공고문 분석 결과", margin, y);
-    y += 12;
+    doc.setFontSize(24);
+    doc.setTextColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
+    doc.text("공고문 분석 리포트", margin, 32);
 
     doc.setFont("NotoSansKR", "normal");
     doc.setFontSize(10);
-    doc.text(`작성일: ${today}`, margin, y);
-    y += 7;
+    doc.setTextColor(200, 200, 200);
+    doc.text(`Generated on ${today}  |  Notice ID: ${noticeId ?? "N/A"}`, margin, 42);
 
-    if (noticeId) {
-      doc.text(`noticeId: ${noticeId}`, margin, y);
-      y += 7;
-    }
+    y = 60;
 
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 12;
+    // ================= DASHBOARD SUMMARY =================
+    // 1. Overall Status Card
+    const status = aggregated.eligibility?.status ?? "보류";
+    let statusColor = COLORS.warning;
+    if (status === "가능") statusColor = COLORS.primary;
+    if (status === "불가") statusColor = COLORS.danger;
 
-    // ====== 1. 자격요건 체크리스트 ======
-    writeSectionTitle("1. 자격요건 체크리스트");
+    // Card Background
+    doc.setDrawColor(200, 200, 200);
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(margin, y, contentWidth, 35, 3, 3, "FD");
+
+    // Status Circle/Box
+    doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.roundedRect(margin + 5, y + 5, 25, 25, 2, 2, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("NotoSansKR", "bold");
+    doc.setFontSize(14);
+    doc.text(status, margin + 17.5, y + 17, { align: "center", baseline: "middle" });
+    doc.setFontSize(8);
+    doc.text("판정 결과", margin + 17.5, y + 23, { align: "center", baseline: "middle" });
+
+    // Summary Text next to status
+    const summaryX = margin + 35;
+    const summaryW = contentWidth - 40;
+
+    doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+    doc.setFont("NotoSansKR", "bold");
+    doc.setFontSize(12);
+    doc.text("종합 요약", summaryX, y + 10);
+
     doc.setFont("NotoSansKR", "normal");
-    writeParagraph(`전체 판정: ${aggregated.eligibility?.status ?? "보류"}`);
-    writeParagraph(aggregated.eligibility?.summary ?? "데이터 없음");
-    y += 4;
+    doc.setFontSize(10);
+    doc.setTextColor(COLORS.gray[0], COLORS.gray[1], COLORS.gray[2]);
+    const summaryLines = doc.splitTextToSize(aggregated.eligibility?.summary ?? "-", summaryW);
+    // Limit lines to 3 to fit
+    const displayLines = summaryLines.slice(0, 3);
+    doc.text(displayLines, summaryX, y + 18);
 
+    y += 45;
+
+    // 2. Metrics Row (Judgments Count)
     const judgments = aggregated.eligibility?.judgments ?? [];
-    if (judgments.length === 0) {
-      writeParagraph("판정 항목이 없습니다.");
-    } else {
-      judgments.forEach((req, idx) => {
-        addPageIfNeeded(16);
-        doc.setFont("NotoSansKR", "bold");
-        doc.setFontSize(12);
-        doc.text(`${idx + 1}. ${req.category} (${req.judgment})`, margin, y);
-        y += 8;
+    const countPass = judgments.filter(j => j.judgment === "가능").length;
+    const countFail = judgments.filter(j => j.judgment === "불가").length;
+    const countHold = judgments.filter(j => j.judgment === "보류").length;
+    const totalReqs = judgments.length;
+
+    const boxGap = 5;
+    const boxW = (contentWidth - (boxGap * 3)) / 4;
+    const boxH = 20;
+
+    const drawStatBox = (label: string, value: number | string, color: number[], xPos: number) => {
+      doc.setFillColor(color[0], color[1], color[2]);
+      doc.rect(xPos, y, 2, boxH, "F"); // Left colored strip
+
+      doc.setFillColor(250, 250, 250);
+      doc.rect(xPos + 2, y, boxW - 2, boxH, "F"); // Grey bg
+
+      doc.setFont("NotoSansKR", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(COLORS.gray[0], COLORS.gray[1], COLORS.gray[2]);
+      doc.text(label, xPos + 8, y + 8);
+
+      doc.setFont("NotoSansKR", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+      doc.text(String(value), xPos + 8, y + 16);
+    };
+
+    drawStatBox("총 항목", totalReqs, COLORS.secondary, margin);
+    drawStatBox("충족", countPass, COLORS.primary, margin + boxW + boxGap);
+    drawStatBox("미충족", countFail, COLORS.danger, margin + (boxW + boxGap) * 2);
+    drawStatBox("검토 필요", countHold, COLORS.warning, margin + (boxW + boxGap) * 3);
+
+    y += 30;
+
+    // ================= SECTIONS =================
+
+    // 1. 자격요건 상세
+    drawSectionHeader("자격요건 상세 체크리스트", "📋");
+
+    judgments.forEach((req) => {
+      addPageIfNeeded(25);
+
+      // Judgment Badge
+      let badgeColor = COLORS.gray;
+      if (req.judgment === "가능") badgeColor = COLORS.primary;
+      if (req.judgment === "불가") badgeColor = COLORS.danger;
+      if (req.judgment === "보류") badgeColor = COLORS.warning;
+
+      // Requirement Row
+      doc.setFillColor(badgeColor[0], badgeColor[1], badgeColor[2]);
+      doc.roundedRect(margin, y, 14, 6, 2, 2, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8);
+      doc.setFont("NotoSansKR", "bold");
+      doc.text(req.judgment, margin + 7, y + 4.2, { align: "center", baseline: "middle" });
+
+      doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+      doc.setFontSize(10);
+      const reqLines = doc.splitTextToSize(req.requirement_text, contentWidth - 20);
+      doc.text(reqLines, margin + 18, y + 4.5);
+
+      let rowH = Math.max(10, reqLines.length * 7);
+
+      // Sub-details (Reason, Logic, etc.)
+      const extraY = y + rowH + 2;
+      let addedH = 0;
+
+      if (req.reason || req.quote_from_announcement) {
+        doc.setFillColor(COLORS.lightGray[0], COLORS.lightGray[1], COLORS.lightGray[2]);
+        // pre-calculate height
+        let details = [];
+        if (req.reason) details.push(`• 판단 근거: ${req.reason}`);
+        if (req.quote_from_announcement) details.push(`• 관련 문구: ${req.quote_from_announcement}`);
+        if (req.additional_action) details.push(`• 추가 조치: ${req.additional_action}`);
+
+        const detailStr = details.join("\n");
+        const detailLines = doc.splitTextToSize(detailStr, contentWidth - 10);
+        const detailH = detailLines.length * 6 + 8;
+
+        addPageIfNeeded(detailH + rowH); // Check total height
+
+        // Draw gray box for details
+        doc.roundedRect(margin + 5, y + rowH, contentWidth - 5, detailH, 2, 2, "F");
 
         doc.setFont("NotoSansKR", "normal");
-        writeParagraph(`요구사항: ${req.requirement_text}`, { indent: 4 });
-        if (req.reason) writeParagraph(`근거: ${req.reason}`, { indent: 4 });
-        if (req.quote_from_announcement) writeParagraph(`관련 법령/인용: ${req.quote_from_announcement}`, { indent: 4 });
-        if (req.additional_action) writeParagraph(`추가 조치: ${req.additional_action}`, { indent: 4 });
+        doc.setFontSize(8);
+        doc.setTextColor(COLORS.gray[0], COLORS.gray[1], COLORS.gray[2]);
+        doc.text(detailLines, margin + 8, y + rowH + 6);
 
-        y += 4;
-        if (idx < judgments.length - 1) {
-          addPageIfNeeded(10);
-          doc.setDrawColor(200, 200, 200);
-          doc.setLineWidth(0.3);
-          doc.line(margin, y, pageWidth - margin, y);
-          y += 8;
-        }
+        addedH = detailH + 2;
+      }
+
+      y += rowH + addedH + 8;
+
+      // Light separator
+      doc.setDrawColor(240, 240, 240);
+      doc.setLineWidth(0.5);
+      doc.line(margin, y - 3, pageWidth - margin, y - 3);
+    });
+
+    // 2. 주요 확인 사항 (Missing, Warnings, Recommendations) Grid
+    addPageIfNeeded(60);
+    drawSectionHeader("주요 확인 및 조치 사항", "⚠️");
+
+    const infoBoxes = [
+      { title: "확인 필요 정보", items: aggregated.eligibility?.missing_info, color: COLORS.warning },
+      { title: "주의 사항", items: aggregated.eligibility?.warning_items, color: COLORS.danger },
+      { title: "추천 전략", items: aggregated.eligibility?.recommendations, color: COLORS.secondary },
+    ];
+
+    infoBoxes.forEach((box) => {
+      if (box.items && box.items.length > 0) {
+        addPageIfNeeded(40);
+
+        // Styled Box for each category
+        doc.setDrawColor(box.color[0], box.color[1], box.color[2]);
+        doc.setLineWidth(0.5);
+        doc.setFillColor(255, 255, 255);
+
+        // Use double newline for spacing between items
+        const itemLines = box.items.map(it => `• ${it}`);
+        const fullText = itemLines.join("\n\n");
+        const lines = doc.splitTextToSize(fullText, contentWidth - 10);
+
+        // Height calc: lines * 7mm + padding
+        const blockH = lines.length * 7 + 16;
+
+        doc.roundedRect(margin, y, contentWidth, blockH, 2, 2, "S");
+
+        // Header for box
+        doc.setFillColor(box.color[0], box.color[1], box.color[2]);
+        doc.rect(margin, y, contentWidth, 8, "F"); // Top bar
+
+        doc.setFont("NotoSansKR", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(255, 255, 255);
+        doc.text(box.title, margin + 4, y + 5.5);
+
+        doc.setFont("NotoSansKR", "normal");
+        doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+        doc.text(lines, margin + 5, y + 14);
+
+        y += blockH + 10;
+      }
+    });
+
+    // 3. 평가지표 분석 (Bar Charts)
+    addPageIfNeeded(60);
+    drawSectionHeader("평가 지표 및 배점 분석", "📊");
+
+    doc.setFont("NotoSansKR", "normal");
+    doc.setFontSize(10);
+    const summaryH = writeText(aggregated.evaluation_weight_analysis?.summary ?? "", margin, y);
+    y += summaryH + 10;
+
+    const highWeight = aggregated.evaluation_weight_analysis?.high_weight_items ?? [];
+    if (highWeight.length > 0) {
+      highWeight.forEach((item) => {
+        // Prepare Strategy Text (wrapped)
+        doc.setFont("NotoSansKR", "normal");
+        doc.setFontSize(8);
+        const strategyLines = doc.splitTextToSize(`└ 전략: ${item.strategy}`, contentWidth - 10);
+        const strategyHeight = strategyLines.length * 5;
+
+        // Calculate dynamic box height: Top(Header=10) + Gap(2) + Strategy(H) + Bottom(4)
+        const boxHeight = 16 + strategyHeight;
+
+        addPageIfNeeded(boxHeight + 5);
+
+        // Box background
+        doc.setDrawColor(200, 200, 200);
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(margin, y, contentWidth, boxHeight, 2, 2, "S");
+
+        // Label (Item Name)
+        doc.setFont("NotoSansKR", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+        doc.text(item.item, margin + 4, y + 6);
+
+        // Score Text (Right aligned or next to title)
+        doc.setTextColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+        const scoreText = `[${item.points}점]`;
+        const scoreW = doc.getTextWidth(scoreText);
+        doc.text(scoreText, margin + contentWidth - scoreW - 4, y + 6);
+
+        // Strategy Text
+        doc.setFont("NotoSansKR", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(COLORS.gray[0], COLORS.gray[1], COLORS.gray[2]);
+        doc.text(strategyLines, margin + 4, y + 12);
+
+        y += boxHeight + 8;
       });
     }
 
-    const missingInfo = aggregated.eligibility?.missing_info ?? [];
-    const warningItems = aggregated.eligibility?.warning_items ?? [];
-    const recommendations = aggregated.eligibility?.recommendations ?? [];
-
-    if (missingInfo.length > 0) {
-      y += 2;
+    // 4. 과제 의도 및 목적
+    drawSectionHeader("과제 배경 및 의도", "🎯");
+    const policyBg = aggregated.research_intent?.policy_background;
+    if (policyBg) {
       doc.setFont("NotoSansKR", "bold");
-      writeParagraph("확인 필요한 정보", { fontSize: 11 });
+      doc.setFontSize(10);
+      doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+      doc.text("정책 배경:", margin, y);
+      y += 6;
+
       doc.setFont("NotoSansKR", "normal");
-      missingInfo.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
+      const lines = doc.splitTextToSize(policyBg, contentWidth);
+      doc.text(lines, margin, y);
+      y += lines.length * 5 + 8;
     }
 
-    if (warningItems.length > 0) {
-      y += 2;
-      doc.setFont("NotoSansKR", "bold");
-      writeParagraph("주의 사항", { fontSize: 11 });
-      doc.setFont("NotoSansKR", "normal");
-      warningItems.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
-    }
-
-    if (recommendations.length > 0) {
-      y += 2;
-      doc.setFont("NotoSansKR", "bold");
-      writeParagraph("추천 사항", { fontSize: 11 });
-      doc.setFont("NotoSansKR", "normal");
-      recommendations.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
-    }
-
-    // ====== 2. 과제 의도 및 목적 ======
-    y += 6;
-    writeSectionTitle("2. 과제 의도 및 목적");
-    writeParagraph(aggregated.research_intent?.policy_background ?? "데이터 없음");
+    // Target Issues
     const targetIssues = aggregated.research_intent?.target_issues ?? [];
     if (targetIssues.length > 0) {
-      y += 2;
+      addPageIfNeeded(20);
+      y += 4;
       doc.setFont("NotoSansKR", "bold");
-      writeParagraph("해결하려는 이슈", { fontSize: 11 });
+      doc.setFontSize(10);
+      doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+      doc.text("해결하려는 주요 이슈", margin, y);
+      y += 6;
       doc.setFont("NotoSansKR", "normal");
-      targetIssues.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
+
+      targetIssues.forEach(v => {
+        const addedH = writeText(`• ${v}`, margin + 4, y, { width: contentWidth - 4 });
+        y += addedH + 3; // Spacing
+      });
+      y += 5;
     }
 
-    // ====== 3. 평가지표 분석 ======
-    y += 6;
-    writeSectionTitle("3. 평가지표 분석");
-    writeParagraph(aggregated.evaluation_weight_analysis?.summary ?? "데이터 없음");
-    const highWeightItems = aggregated.evaluation_weight_analysis?.high_weight_items ?? [];
-    if (highWeightItems.length > 0) {
-      y += 2;
-      doc.setFont("NotoSansKR", "bold");
-      writeParagraph("고배점 항목 및 대응 전략", { fontSize: 11 });
-      doc.setFont("NotoSansKR", "normal");
+    // 5. 제출 문서 & 필수 준수사항
+    drawSectionHeader("제출 문서 및 필수 준수사항", "📂");
 
-      highWeightItems.forEach((it) => {
-        y += 2;
-        doc.setFont("NotoSansKR", "bold");
-        writeParagraph(`- (${it.points}점) ${it.item}`, { indent: 4 });
-        doc.setFont("NotoSansKR", "normal");
-        if (it.strategy) writeParagraph(it.strategy, { indent: 8 });
+    // Deliverables
+    const deliverables = aggregated.deliverables ?? [];
+    if (deliverables.length > 0) {
+      addPageIfNeeded(20);
+      doc.setFont("NotoSansKR", "bold");
+      doc.setFontSize(10);
+      doc.text("필수 제출 문서", margin, y);
+      y += 6;
+
+      doc.setFont("NotoSansKR", "normal");
+      deliverables.forEach((v) => {
+        addPageIfNeeded(10);
+        // Checkbox
+        doc.setDrawColor(150, 150, 150);
+        doc.rect(margin, y - 2.5, 3, 3);
+        const addedH = writeText(v, margin + 5, y, { width: contentWidth - 5 });
+        y += addedH + 3;
+      });
+      y += 8;
+    }
+
+    // Mandatory
+    const mandatory = aggregated.mandatory_requirements ?? [];
+    if (mandatory.length > 0) {
+      addPageIfNeeded(20);
+      // Divider
+      if (deliverables.length > 0) y += 2;
+
+      doc.setFont("NotoSansKR", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(COLORS.danger[0], COLORS.danger[1], COLORS.danger[2]);
+      doc.text("필수 준수사항 (주의)", margin, y);
+      y += 6;
+
+      doc.setFont("NotoSansKR", "normal");
+      doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+      mandatory.forEach((v) => {
+        const estH = doc.splitTextToSize(v, contentWidth - 4).length * 5;
+        addPageIfNeeded(estH + 5);
+
+        doc.setTextColor(COLORS.danger[0], COLORS.danger[1], COLORS.danger[2]);
+        doc.text("!", margin, y);
+        doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+        const addedH = writeText(v, margin + 4, y, { width: contentWidth - 4 });
+        y += addedH + 3;
       });
     }
 
-    // ====== 4. 제출 문서 리스트 ======
-    y += 6;
-    writeSectionTitle("4. 제출 문서 리스트");
-    const deliverables = aggregated.deliverables ?? [];
-    if (deliverables.length === 0) {
-      writeParagraph("데이터 없음");
-    } else {
-      deliverables.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
+    // Footer Page Numbers
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`${i} / ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: "right" });
     }
 
-    // ====== 5. 필수 준수사항 ======
-    y += 6;
-    writeSectionTitle("5. 필수 준수사항");
-    const mandatory = aggregated.mandatory_requirements ?? [];
-    if (mandatory.length === 0) {
-      writeParagraph("데이터 없음");
-    } else {
-      mandatory.forEach((v) => writeParagraph(`- ${v}`, { indent: 4 }));
-    }
-
-    doc.save(`공고문_분석_결과_${today}.pdf`);
+    doc.save(`분석_리포트_${today}.pdf`);
   };
 
   // ====== 에러/로딩 ======
@@ -419,7 +657,7 @@ const NoticeNewPageResult: React.FC = () => {
           )}
 
           {aggregated?.evaluation_weight_analysis?.high_weight_items &&
-          aggregated.evaluation_weight_analysis.high_weight_items.length > 0 ? (
+            aggregated.evaluation_weight_analysis.high_weight_items.length > 0 ? (
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {aggregated.evaluation_weight_analysis.high_weight_items.map((it, idx) => (
                 <li key={idx} style={{ margin: "10px 0", lineHeight: 1.5 }}>
@@ -511,12 +749,12 @@ const ExpandableText: React.FC<{ text: string }> = ({ text }) => {
           isExpanded
             ? {}
             : {
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                flex: 1,
-                minWidth: 0,
-              }
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              flex: 1,
+              minWidth: 0,
+            }
         }
       >
         {text}

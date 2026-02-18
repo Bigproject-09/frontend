@@ -1,10 +1,11 @@
 import React from "react";
+import { useAuth } from "../auth/AuthProvider";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styled from "styled-components";
 
 const MainPage: React.FC = () => {
   const navigate = useNavigate();
-  const [serchParams] = useSearchParams();
+  const { me } = useAuth();
 
   const handleStartClick = () => {
     const token = localStorage.getItem('accessToken');
@@ -20,40 +21,48 @@ const MainPage: React.FC = () => {
     <PageWrapper>
       <ContentContainer>
         {/* Hero Section */}
-        <HeroSection>
-          <HeroContent>
-            <LogoTitle>RanDi</LogoTitle>
-            <Subtitle>
-              R&D 공고 분석부터 발표자료 제작까지
-              <br />
-              성공적인 과제 수주를 위한 가장 확실한 솔루션
-            </Subtitle>
-            <CTAButton onClick={handleStartClick}>
-              지금 시작하기
-              <ArrowIcon>→</ArrowIcon>
-            </CTAButton>
-          </HeroContent>
-        </HeroSection>
+        {!me && (
+          <HeroSection>
+            <HeroContent>
+              <LogoTitle>RanDi</LogoTitle>
+              <Subtitle>
+                R&D 공고 분석부터 발표자료 제작까지
+                <br />
+                성공적인 과제 수주를 위한 가장 확실한 솔루션
+              </Subtitle>
+              <CTAButton onClick={handleStartClick}>
+                지금 시작하기
+                <ArrowIcon>→</ArrowIcon>
+              </CTAButton>
+            </HeroContent>
+          </HeroSection>
+        )}
 
         {/* Features Section */}
         <FeaturesSection>
-          <SectionTitle>핵심 기능</SectionTitle>
-          <SectionSubtitle>
-            RanDi는 R&D 과제 수주의 모든 과정을 지원합니다
-          </SectionSubtitle>
-          
+          {!me && (
+            <>
+              <SectionTitle>핵심 기능</SectionTitle>
+              <SectionSubtitle>
+                RanDi는 R&D 과제 수주의 모든 과정을 지원합니다
+              </SectionSubtitle>
+            </>
+          )}
+
           <CardGrid>
             <FeatureCard onClick={() => navigate("/notice?view=main&type=analysis")}>
               <CardIcon>📋</CardIcon>
               <CardTitle>공고문 분석</CardTitle>
               <CardDescription>
-                AI 기반 자동 분석으로 자격요건, 사업 목적, 평가항목을 
+                AI 기반 자동 분석으로 자격요건, 사업 목적, 평가항목을
                 한눈에 파악할 수 있습니다
               </CardDescription>
               <FeatureList>
                 <FeatureItem>✓ 자격요건 체크리스트 제공</FeatureItem>
-                <FeatureItem>✓ 사업 목적 요약</FeatureItem>
-                <FeatureItem>✓ 평가항목 요약</FeatureItem>
+                <FeatureItem>✓ 과제 의도 및 목적 분석</FeatureItem>
+                <FeatureItem>✓ 평가지표 분석 사항</FeatureItem>
+                <FeatureItem>✓ 제출 문서 리스트 제공</FeatureItem>
+                <FeatureItem>✓ 필수 준수 사항</FeatureItem>
               </FeatureList>
             </FeatureCard>
 
@@ -61,12 +70,13 @@ const MainPage: React.FC = () => {
               <CardIcon>🔍</CardIcon>
               <CardTitle>유관 RFP 검색</CardTitle>
               <CardDescription>
-                과거 유사 RFP를 빠르게 찾아 성공 사례를 
+                과거 유사 RFP를 빠르게 찾아 성공 사례를
                 참고할 수 있습니다
               </CardDescription>
               <FeatureList>
-                <FeatureItem>✓ 동일 주관 기관 내 유사 RFP 추천</FeatureItem>
-                <FeatureItem>✓ 사내 유사 RFP 추천</FeatureItem>
+                <FeatureItem>✓ 동일 발주처 유사 RFP 추천</FeatureItem>
+                <FeatureItem>✓ 타 발주처 유사 RFP 추천</FeatureItem>
+                <FeatureItem>✓ 권장 차별화 전략 제안</FeatureItem>
               </FeatureList>
             </FeatureCard>
 
@@ -74,13 +84,13 @@ const MainPage: React.FC = () => {
               <CardIcon>📊</CardIcon>
               <CardTitle>발표자료 제작</CardTitle>
               <CardDescription>
-                전문적인 프레젠테이션 자료를 자동으로 
+                전문적인 프레젠테이션 자료를 자동으로
                 생성하여 시간을 절약합니다
               </CardDescription>
               <FeatureList>
-                <FeatureItem>✓ 스토리라인 구성</FeatureItem>
-                <FeatureItem>✓ 키워드 추출</FeatureItem>
-                <FeatureItem>✓ 구조도/그림 생성</FeatureItem>
+                <FeatureItem>✓ 발표 제목</FeatureItem>
+                <FeatureItem>✓ 슬라이드 수</FeatureItem>
+                <FeatureItem>✓ 파일 경로</FeatureItem>
               </FeatureList>
             </FeatureCard>
 
@@ -88,12 +98,12 @@ const MainPage: React.FC = () => {
               <CardIcon>📝</CardIcon>
               <CardTitle>스크립트 생성</CardTitle>
               <CardDescription>
-                발표 스크립트와 예상 질문을 자동으로 
+                발표 스크립트와 예상 질문을 자동으로
                 작성하여 완벽한 프레젠테이션을 준비합니다
               </CardDescription>
               <FeatureList>
                 <FeatureItem>✓ 발표 스크립트 생성</FeatureItem>
-                <FeatureItem>✓ 예상질문 생성</FeatureItem>
+                <FeatureItem>✓ 예상 질문 생성</FeatureItem>
               </FeatureList>
             </FeatureCard>
           </CardGrid>
@@ -120,7 +130,7 @@ export default MainPage;
 const PageWrapper = styled.div`
   width: 100%;
   min-height: 100vh;
-  background: linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%);
+  background-color: var(--color-bg-main);
   overflow-x: hidden;
 `;
 

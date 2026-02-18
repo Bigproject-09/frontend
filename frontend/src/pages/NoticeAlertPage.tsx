@@ -2,7 +2,7 @@
 import styled from "styled-components";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import "../styles/Global.css";
-import { META_KEY } from "../common/constants";
+import { META_KEY, NOTICE_FAV_CHANGED_EVENT } from "../common/constants";
 import React, { useEffect, useMemo, useState } from "react";
 import HashtagTab from "./HashtagTab";
 
@@ -73,6 +73,7 @@ const loadMetaMap = (): NoticeMetaMap => {
 const saveMetaMap = (map: NoticeMetaMap) => {
   try {
     localStorage.setItem(META_KEY, JSON.stringify(map));
+    window.dispatchEvent(new Event(NOTICE_FAV_CHANGED_EVENT));
   } catch { }
 };
 
@@ -368,6 +369,8 @@ const NoticeAlertPage: React.FC = () => {
       .filter(passDday)
   }, [baseByTab, filterText, readFilter, ddayFilter, scoreFilter]);
 
+
+
   const pagedItems = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
     return filtered.slice(start, start + PAGE_SIZE);
@@ -386,7 +389,7 @@ const NoticeAlertPage: React.FC = () => {
   // 신청 버튼 핸들러를 view/type에 따라 고르고,
   // view/type가 없으면 기본 handleApply로 보냄
   const getApplyHandler = () => {
-    if (!selected) return () => {};
+    if (!selected) return () => { };
 
     if (view === "main") {
       if (type === "analysis") return () => handleApply_main_analysis(selected.id);
@@ -634,7 +637,7 @@ export default NoticeAlertPage;
 const Shell = styled.div`
   width: 100%;
   min-height: 100vh;
-  background-color: #F5F7FA;
+  background-color: var(--color-bg-main);
 `;
 
 const Main = styled.main`
