@@ -4,6 +4,7 @@ import "../styles/UserSidebar.css";
 import logo from "../assets/logo.jpg";
 import { useAuth } from "../auth/AuthProvider";
 import { META_KEY, NOTICE_FAV_CHANGED_EVENT } from "../common/constants";
+import http from "../api/http";
 
 type Props = {
   collapsed: boolean;
@@ -62,10 +63,34 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
 
     setStats((prev) => ({
       ...prev,
-      appliedNotices: 8,
       favNotices: favCount,
     }));
-  }, [favCount]);
+
+    // 요청(프로젝트) 개수 가져오기
+    const fetchMyProjectsCount = async () => {
+      try {
+        // ManagerPage와 동일한 로직: my-audit-logs에서 특정 action 필터링
+        // page=0, size=100 (충분히 큰 수)
+        const targetActions = ["ANALYZE_STEP1", "SEARCH_STEP2", "PPT_STEP3", "SCRIPT_STEP4"];
+        const res = await http.get("/api/mypage/my-audit-logs?page=0&size=100");
+        const allLogs = res.data.content as any[];
+        const filtered = allLogs.filter((log) => targetActions.includes(log.action));
+
+        setStats((prev) => ({
+          ...prev,
+          appliedNotices: filtered.length,
+        }));
+      } catch (e) {
+        console.error("Failed to fetch project count", e);
+        // 에러 시 0으로 두거나 기존 값 유지
+      }
+    };
+
+    if (me) {
+      fetchMyProjectsCount();
+    }
+
+  }, [favCount, me]);
 
   const [openMenu, setOpenMenu] = useState<string | null>("notice");
 
@@ -148,7 +173,7 @@ const UserSidebar: React.FC<Props> = ({ collapsed, onToggle }) => {
             <div className="stat-label">전체 공고</div>
             <div className="stat-value">{stats.totalNotices}</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card" onClick={() => navigate("/mypage?tab=projects")} style={{ cursor: "pointer" }}>
             <div className="stat-label">요청</div>
             <div className="stat-value">{stats.appliedNotices}</div>
           </div>

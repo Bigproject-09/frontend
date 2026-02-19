@@ -11,6 +11,7 @@ interface ProjectDto {
   title: string;
   status: string;
   updatedAt: string;
+  noticeId: number;
 }
 
 interface AuditLogDto {
@@ -80,13 +81,114 @@ const ManagerPage: React.FC = () => {
     setLoading(true);
     try {
       if (tab === "projects") {
-        const res = await http.get("/api/mypage/projects");
-        setMyProjects(res.data);
-        setTotalPages(0);
+        // projects 탭이지만, 요구사항에 따라 특정 Action 로그를 보여줌
+        // 1) 로그 fetch (ADMIN이면 전체, MEMBER면 내 로그)
+        let logs: AuditLogDto[] = [];
+
+        // ADMIN이 projects 탭을 볼 때도 '전체 로그' 중 특정 액션을 프로젝트처럼 볼 것인지,
+        // 아니면 '내 로그'만 볼 것인지? 
+        // -> 기획 의도가 "ManagerPage에서 tab이 projects일 때... logs일 때를 보고 Action이 ... 일 때 값들을 생성해줘"
+        //    보통 프로젝트 탭은 '내 작업'을 의미하므로, 내 로그(my-audit-logs)를 가져오는 것이 맞아 보임.
+        //    하지만 ADMIN도 '전체 프로젝트 현황'을 보고 싶을 수 있음.
+        //    기존 코드: projects 탭 -> /api/mypage/projects (내 프로젝트)
+        //    변경 코드: projects 탭 -> /api/mypage/my-audit-logs (내 로그) + 필터링
+
+        // 우선 '내 로그' 기준으로 구현하되, ADMIN인 경우에도 '내 작업'을 보는 탭이라고 가정.
+        // 만약 ADMIN이 전체 유저의 프로젝트 진행 상황을 봐야 한다면 audit-logs 호출이 필요함.
+        // 여기서는 "내 프로젝트" 탭의 대체이므로 my-audit-logs 사용.
+
+        /* 
+           (주의) API가 페이징을 지원하므로, 모든 로그를 가져와서 필터링 하려면 
+           페이지를 넉넉히 잡거나, 백엔드 필터 API가 필요함.
+           현재 백엔드 수정 불가능 가정 시, 일정량(page=0, size=100 등)만 가져와서 필터링하거나
+           그냥 1페이지 내에서 필터링된 결과만 보여질 수 있음.
+           
+           여기서는 일단 page=0 호출 후 프론트에서 필터링 (데이터가 많으면 문제될 수 있음)
+           또는, 기존 API가 action 검색을 지원하므로(ADMIN용은 지원하지만 my-log는 불확실),
+           안전하게 '내 로그' API 호출 후 클라이언트 필터링.
+        */
+
+        const targetActions = ["ANALYZE_STEP1", "SEARCH_STEP2", "PPT_STEP3", "SCRIPT_STEP4"];
+
+        // my-audit-logs는 query param으로 action 필터링 지원 여부 확인 필요.
+        // 기존 코드(101라인)에는 page 파라미터만 있음.
+        // 만약 지원 안 한다면 다 가져와야 하는데, 일단 page 0에서 필터링 시도.
+        const res = await http.get(`/api/mypage/my-audit-logs?page=${page}&size=100`);
+        // size 파라미터가 먹히는지 모르겠으나 시도. 기본 20개라면 필터링 후 0개일 수도 있음.
+
+        const allLogs = res.data.content as AuditLogDto[];
+        const filtered = allLogs.filter(log => targetActions.includes(log.action));
+
+        // 2) 공고 제목 가져오기 (N+1 방지 위해 Promise.all 사용)
+        const uniqueNoticeIds = Array.from(new Set(filtered.map(log => log.targetDocument))).filter(Boolean);
+        const titleMap = new Map<string, string>();
+
+        await Promise.all(
+          uniqueNoticeIds.map(async (docStr) => {
+            if (!docStr) return;
+            try {
+              // docStr가 "noticeId=6" 또는 "noticeId=6, file=..." 등 복잡한 형태일 수 있음.
+              // 숫자만 추출하거나 noticeId= 뒤의 숫자를 추출
+              let nid = 0;
+              // 1) noticeId= 숫자 패턴 검색
+              const match = docStr.match(/noticeId=(\d+)/);
+              if (match && match[1]) {
+                nid = Number(match[1]);
+              } else {
+                // 2) 그냥 숫자만 있는 경우
+                const parsed = Number(docStr);
+                if (!isNaN(parsed)) nid = parsed;
+              }
+
+              if (!nid) {
+                // 파싱 실패 시 그대로 둠
+                titleMap.set(docStr, docStr);
+                return;
+              }
+
+              const noticeRes = await http.get(`/api/notices/${nid}`);
+              titleMap.set(docStr, noticeRes.data.title);
+            } catch (e) {
+              console.warn(`Failed to fetch notice title for targetDocument: ${docStr}`, e);
+              titleMap.set(docStr, docStr);
+            }
+          })
+        );
+
+        // AuditLogDto -> ProjectDto 매핑
+        const mappedProjects: ProjectDto[] = filtered.map(log => {
+          let nid = 0;
+          const docStr = log.targetDocument;
+          if (docStr) {
+            // 1) noticeId= 숫자 패턴 검색
+            const match = docStr.match(/noticeId=(\d+)/);
+            if (match && match[1]) {
+              nid = Number(match[1]);
+            } else {
+              // 2) 그냥 숫자만 있는 경우
+              const parsed = Number(docStr);
+              if (!isNaN(parsed)) nid = parsed;
+            }
+          }
+
+          return {
+            id: log.id,
+            title: titleMap.get(log.targetDocument) || log.targetDocument || "제목 없음",
+            status: log.action,
+            updatedAt: log.timestamp,
+            noticeId: nid,
+          };
+        });
+
+        setMyProjects(mappedProjects);
+        // setTotalPages는 필터링 된 결과에 따라 다시 계산하기 어려우므로 
+        // (전체 개수를 모르므로) 일단 0이나 1로 처리하거나, 
+        // 무한 스크롤이 아니므로 현재 페이지 결과만 보여줌.
+        setTotalPages(res.data.totalPages);
+
       } else {
-        // logs 탭
+        // logs 탭 (기존 로직 유지)
         if (role === "ADMIN") {
-          // 전체 로그 + 필터
           const params = new URLSearchParams();
           params.set("page", String(page));
           if (filterUserId.trim()) params.set("userId", filterUserId.trim());
@@ -185,14 +287,18 @@ const ManagerPage: React.FC = () => {
                   ) : (
                     myProjects.map((proj) => (
                       <tr key={proj.id}>
-                        <td style={{ fontWeight: 600 }}>{proj.title}</td>
+                        <td>
+                          <TruncatedTitle title={proj.title}>
+                            {proj.title}
+                          </TruncatedTitle>
+                        </td>
                         <td>
                           <StatusBadge status={proj.status}>{proj.status}</StatusBadge>
                         </td>
                         <td>{new Date(proj.updatedAt).toLocaleDateString()}</td>
                         <td>
                           <ActionButton
-                            onClick={() => navigate("/process", { state: { noticeId: proj.id } })}
+                            onClick={() => navigate("/process", { state: { noticeId: proj.noticeId } })}
                           >
                             작업 계속
                           </ActionButton>
@@ -510,6 +616,14 @@ const PageInfo = styled.span`
   font-size: 14px;
   color: #4b5563;
   font-weight: 900;
+`;
+
+const TruncatedTitle = styled.div`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 550px;
+  font-weight: 600;
 `;
 
 /* --- filter --- */

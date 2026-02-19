@@ -219,11 +219,10 @@ const ScriptCreatePage: React.FC = () => {
       )}
 
       <Card>
-        <div className="title" style={{ marginLeft: 0, marginBottom: 18 }}>
-          스크립트 생성
-        </div>
-
         <Section>
+          <div className="title" style={{ marginLeft: 0, marginBottom: 18 }}>
+            스크립트 생성
+          </div>
           <ModalGrid>
             <div className="label">제목</div>
             <div className="text">{title}</div>
@@ -249,49 +248,118 @@ const ScriptCreatePage: React.FC = () => {
           <ModalSummary>
             <div className="label">요약</div>
             <div className="text">{summary}</div>
+            <div className="summary-footer-text" style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e5e7eb', lineHeight: '1.8', fontSize: '14px', color: '#374151' }}>
+              <p style={{ marginBottom: '12px' }}>이 공고를 기준으로</p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 'bold' }}>
+                  <span style={{ color: '#22c55e' }}>✔</span> 발표 스크립트
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 'bold' }}>
+                  <span style={{ color: '#22c55e' }}>✔</span> 예상 질문
+                </div>
+              </div>
+            </div>
           </ModalSummary>
-
-          <UploadArea>
-            <UploadLabel htmlFor="file">pptx 파일 업로드</UploadLabel>
-            <HiddenInput
-              id="file"
-              type="file"
-              accept=".pptx"
-              onChange={(e) => {
-                const selectedFiles = Array.from(e.target.files ?? []);
-                setFiles(selectedFiles);
-              }}
-            />
-            {files.length > 0 && (
-              <FileList>
-                {files.map((file, idx) => (
-                  <li key={idx}>{file.name}</li>
-                ))}
-              </FileList>
-            )}
-          </UploadArea>
-
-          <ModalActions>
-            <MiniBtn
-              type="button"
-              onClick={() => {
-                if (!noticeId) return;
-                handleSubmit(noticeId);
-              }}
-            >
-              생성
-            </MiniBtn>
-            <MiniBtn
-              type="button"
-              onClick={() => {
-                if (!noticeId) return;
-                handleBackToProcess(noticeId);
-              }}
-            >
-              닫기
-            </MiniBtn>
-          </ModalActions>
         </Section>
+        <Section>
+          <div style={{ marginBottom: '12px', fontSize: '14px', color: '#6b7280' }}>
+            발표 스크립트 생성을 위해 아래 파일을 업로드 해주세요
+          </div>
+
+          <Row>
+            <Section style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontWeight: 'bold', color: '#374151', marginBottom: '8px' }}>필수 업로드 파일</div>
+              <ul style={{ fontSize: '14px', color: '#4b5563', margin: '0 0 16px 0', paddingLeft: '0', listStyle: 'none' }}>
+                <li style={{ marginBottom: '4px' }}><span style={{ color: '#22c55e', marginRight: '6px' }}>✔</span>발표 자료 (PPT)</li>
+              </ul>
+
+              <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px' }}>* 업로드한 파일을 기반으로</div>
+              <ul style={{ fontSize: '14px', color: '#4b5563', margin: '0 0 20px 0', paddingLeft: '20px' }}>
+                <li>슬라이드 흐름 파악</li>
+                <li>발표 대본 및 Q&A 생성</li>
+              </ul>
+            </Section>
+
+            <Section style={{ flex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: '40px' }}>
+              <div style={{ marginBottom: '10px', fontSize: '14px', color: '#6b7280' }}>
+                PPT 선택 버튼을 클릭해 첨부해주세요.
+              </div>
+              <UploadArea>
+                <UploadLabel htmlFor="file">📤 PPT 선택</UploadLabel>
+                <HiddenInput
+                  id="file"
+                  type="file"
+                  accept=".pptx"
+                  onChange={(e) => {
+                    const selectedFiles = Array.from(e.target.files ?? []);
+                    setFiles(selectedFiles);
+                    e.target.value = '';
+                  }}
+                />
+                {files.length > 0 && (
+                  <FileList>
+                    {files.map((file, idx) => {
+                      const lastDot = file.name.lastIndexOf(".");
+                      const name = lastDot > -1 ? file.name.substring(0, lastDot) : file.name;
+                      const ext = lastDot > -1 ? file.name.substring(lastDot) : "";
+                      return (
+                        <li
+                          key={idx}
+                          onClick={() => {
+                            const fileUrl = URL.createObjectURL(file);
+                            window.open(fileUrl, '_blank');
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+                            <span style={{ flex: '0 1 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {name}
+                            </span>
+                            <span style={{ flexShrink: 0 }}>{ext}</span>
+                            <span style={{ color: '#9ca3af', fontSize: '12px', marginLeft: '6px' }}>
+                              ({(file.size / 1024).toFixed(1)} KB)
+                            </span>
+                          </div>
+                          <button
+                            className="delete-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFiles(files.filter((_, i) => i !== idx));
+                            }}
+                          >
+                            ×
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </FileList>
+                )}
+              </UploadArea>
+            </Section>
+          </Row>
+        </Section>
+
+        <ModalActions>
+          <ActionBtn
+            type="button"
+            onClick={() => {
+              if (!noticeId) return;
+              handleSubmit(noticeId);
+            }}
+            disabled={files.length === 0 || isLoading}
+          >
+            생성
+          </ActionBtn>
+          <MiniBtn
+            type="button"
+            onClick={() => {
+              if (!noticeId) return;
+              handleBackToProcess(noticeId);
+            }}
+          >
+            닫기
+          </MiniBtn>
+        </ModalActions>
       </Card>
     </Page>
   );
@@ -328,6 +396,11 @@ const Section = styled.div`
   box-sizing: border-box;
   margin-bottom: 16px;
   border: 1px solid #e5e7eb;
+`;
+
+const Row = styled.div`
+  display: flex;
+  gap: 16px;
 `;
 
 const ModalGrid = styled.div`
@@ -413,9 +486,11 @@ const HiddenInput = styled.input`
 const UploadArea = styled.div`
   margin: 24px 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 20px;
+  width: 100%;
+  justify-content: center;
 `;
 
 const ModalActions = styled.div`
@@ -423,6 +498,28 @@ const ModalActions = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+`;
+
+const ActionBtn = styled.button`
+  padding: 0 24px;
+  height: 36px;
+  background: var(--color-accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: var(--color-accent-hover);
+  }
+
+  &:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+  }
 `;
 
 const MiniBtn = styled.button`
@@ -441,18 +538,47 @@ const MiniBtn = styled.button`
 `;
 
 const FileList = styled.ul`
-  margin-top: 12px;
   padding: 12px 16px;
-  width: 100%;
-  max-width: 420px;
+  width: 420px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
+  max-height: 150px;
+  overflow-y: auto;
 
   li {
     font-size: 13px;
     color: #374151;
     line-height: 1.6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+
+    &:hover {
+      background-color: #f3f4f6;
+    }
+
+    .delete-btn {
+        display: none;
+        background: none;
+        border: none;
+        color: #ef4444;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 0 4px;
+        margin-left: 8px;
+
+        &:hover {
+            color: #dc2626;
+        }
+    }
+
+    &:hover .delete-btn {
+        display: block;
+    }
   }
 `;
 
