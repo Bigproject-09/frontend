@@ -66,163 +66,268 @@ const RFPSearchPageResult: React.FC = () => {
 
     try {
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      doc.setLineHeightFactor(1.6);
 
-      // 한글 폰트 추가
       doc.addFileToVFS("NotoSansKR-Regular.ttf", NotoSansKR);
       doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "normal");
       doc.addFont("NotoSansKR-Regular.ttf", "NotoSansKR", "bold");
 
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 20;
-      let y = 20;
+      const margin = 15;
+      const contentWidth = pageWidth - margin * 2;
+      const today = new Date().toLocaleDateString("ko-KR");
+      let y = 15;
 
-      // 제목
+      const COLORS = {
+        primary: [0, 184, 148],
+        secondary: [9, 132, 227],
+        danger: [214, 48, 49],
+        warning: [253, 203, 110],
+        dark: [45, 52, 54],
+        gray: [99, 110, 114],
+        lightGray: [241, 243, 245],
+        white: [255, 255, 255],
+        headerBg: [30, 39, 46],
+      };
+
+      const trackAItems = report.track_a_comparison ?? [];
+      const trackBItems = report.track_b_comparison ?? [];
+      const strategyItems = report.strategies ?? [];
+
+      const addPageIfNeeded = (minSpace: number) => {
+        if (y + minSpace <= pageHeight - margin) return;
+        doc.addPage();
+        y = 20;
+      };
+
+      const writeText = (
+        text: string,
+        x: number,
+        yPos: number,
+        opts?: {
+          width?: number;
+          fontSize?: number;
+          color?: number[];
+          font?: "normal" | "bold";
+          align?: "left" | "center" | "right";
+        }
+      ) => {
+        const width = opts?.width ?? contentWidth;
+        const fontSize = opts?.fontSize ?? 10;
+        const color = opts?.color ?? COLORS.dark;
+        const font = opts?.font ?? "normal";
+        const align = opts?.align ?? "left";
+
+        doc.setFont("NotoSansKR", font);
+        doc.setFontSize(fontSize);
+        doc.setTextColor(color[0], color[1], color[2]);
+
+        const lines = doc.splitTextToSize(text, width);
+        doc.text(lines, x, yPos, { align });
+        return lines.length * (fontSize * 0.3527 * 1.6);
+      };
+
+      const drawSectionHeader = (title: string, iconChar: string = "■") => {
+        addPageIfNeeded(20);
+        y += 5;
+
+        doc.setFillColor(COLORS.lightGray[0], COLORS.lightGray[1], COLORS.lightGray[2]);
+        doc.roundedRect(margin, y, contentWidth, 10, 2, 2, "F");
+
+        doc.setFont("NotoSansKR", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+        doc.text(`${iconChar}  ${title}`, margin + 4, y + 7);
+        y += 15;
+      };
+
+      const similarityColor = (value?: string) => {
+        const v = (value || "").toLowerCase();
+        if (v.includes("high") || v.includes("상")) return COLORS.danger;
+        if (v.includes("mid") || v.includes("중")) return COLORS.warning;
+        if (v.includes("low") || v.includes("하")) return COLORS.primary;
+        return COLORS.gray;
+      };
+
+      doc.setFillColor(COLORS.headerBg[0], COLORS.headerBg[1], COLORS.headerBg[2]);
+      doc.rect(0, 0, pageWidth, 50, "F");
+
       doc.setFont("NotoSansKR", "bold");
-      doc.setFontSize(18);
-      doc.text("유관 RFP 검색 결과", margin, y);
-      y += 15;
+      doc.setFontSize(24);
+      doc.setTextColor(COLORS.white[0], COLORS.white[1], COLORS.white[2]);
+      doc.text("유사 RFP 분석 결과", margin, 32);
 
-      // 날짜
       doc.setFont("NotoSansKR", "normal");
       doc.setFontSize(10);
-      const today = new Date().toLocaleDateString("ko-KR");
-      doc.text(`작성일: ${today}`, margin, y);
-      y += 10;
+      doc.setTextColor(200, 200, 200);
+      doc.text(`Generated on ${today}  |  Notice ID: ${noticeId ?? "N/A"}`, margin, 42);
 
-      // 구분선
-      doc.setLineWidth(0.5);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 10;
+      y = 60;
 
-      // 1. 분석 요약
-      if (report.summary_opinion) {
-        doc.setFont("NotoSansKR", "bold");
-        doc.setFontSize(12);
-        doc.text("1. 분석 요약", margin, y);
-        y += 8;
+      doc.setDrawColor(200, 200, 200);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(margin, y, contentWidth, 35, 3, 3, "FD");
 
-        doc.setFont("NotoSansKR", "normal");
-        doc.setFontSize(10);
-        const lines = doc.splitTextToSize(report.summary_opinion, pageWidth - margin * 2);
-        lines.forEach((line: string) => {
-          if (y > pageHeight - margin) {
-            doc.addPage();
-            y = 20;
-          }
-          doc.text(line, margin, y);
-          y += 5;
-        });
-        y += 10;
-      }
+      doc.setFillColor(COLORS.secondary[0], COLORS.secondary[1], COLORS.secondary[2]);
+      doc.roundedRect(margin + 5, y + 5, 25, 25, 2, 2, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("NotoSansKR", "bold");
+      doc.setFontSize(10);
+      doc.text("RFP", margin + 17.5, y + 17, { align: "center", baseline: "middle" });
+      doc.setFontSize(8);
+      doc.text("분석", margin + 17.5, y + 23, { align: "center", baseline: "middle" });
 
-      // 2. Track A
-      if (report.track_a_comparison && report.track_a_comparison.length > 0) {
-        if (y > pageHeight - margin) {
-          doc.addPage();
-          y = 20;
-        }
-        doc.setFont("NotoSansKR", "bold");
-        doc.setFontSize(12);
-        doc.text("2. Track A: 동일 주관 기관 유사 전략 (중복성 집중 검토)", margin, y);
-        y += 8;
+      const summaryX = margin + 35;
+      const summaryW = contentWidth - 40;
+      doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+      doc.setFont("NotoSansKR", "bold");
+      doc.setFontSize(12);
+      doc.text("요약", summaryX, y + 10);
+      doc.setFont("NotoSansKR", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(COLORS.gray[0], COLORS.gray[1], COLORS.gray[2]);
+      const summaryLines = doc.splitTextToSize(
+        report.summary_opinion ?? "요약 데이터가 없습니다.",
+        summaryW
+      );
+      doc.text(summaryLines.slice(0, 3), summaryX, y + 18);
+      y += 45;
 
-        report.track_a_comparison.forEach((item, idx) => {
-          if (y > pageHeight - margin) {
-            doc.addPage();
-            y = 20;
-          }
-          doc.setFont("NotoSansKR", "bold");
-          doc.setFontSize(10);
-          doc.text(`[${idx + 1}] ${item.title ?? "제목 없음"}`, margin, y);
-          y += 5;
+      const boxGap = 5;
+      const boxW = (contentWidth - boxGap * 2) / 3;
+      const boxH = 20;
 
-          doc.setFont("NotoSansKR", "normal");
-          doc.setFontSize(9);
-          const meta = `(${item.year ?? "연도미상"}, ${item.ministry ?? "부처미상"}) / 유사도: ${item.similarity ?? "-"}`;
-          doc.text(meta, margin + 5, y);
-          y += 5;
-
-          const diffLines = doc.splitTextToSize(`차이점: ${item.difference ?? "-"}`, pageWidth - margin * 2 - 5);
-          diffLines.forEach((line: string) => {
-            if (y > pageHeight - margin) {
-              doc.addPage();
-              y = 20;
-            }
-            doc.text(line, margin + 5, y);
-            y += 4;
-          });
-          y += 4;
-        });
-        y += 6;
-      }
-
-      // 3. Track B
-      if (report.track_b_comparison && report.track_b_comparison.length > 0) {
-        if (y > pageHeight - margin) {
-          doc.addPage();
-          y = 20;
-        }
-        doc.setFont("NotoSansKR", "bold");
-        doc.setFontSize(12);
-        doc.text("3. Track B: 타 부처 유사 전략 (차별성 집중 검토)", margin, y);
-        y += 8;
-
-        report.track_b_comparison.forEach((item, idx) => {
-          if (y > pageHeight - margin) {
-            doc.addPage();
-            y = 20;
-          }
-          doc.setFont("NotoSansKR", "bold");
-          doc.setFontSize(10);
-          doc.text(`[${idx + 1}] ${item.title ?? "제목 없음"}`, margin, y);
-          y += 5;
-
-          doc.setFont("NotoSansKR", "normal");
-          doc.setFontSize(9);
-          const meta = `(${item.year ?? "연도미상"}, ${item.ministry ?? "부처미상"}) / 유사도: ${item.similarity ?? "-"}`;
-          doc.text(meta, margin + 5, y);
-          y += 5;
-
-          const diffLines = doc.splitTextToSize(`차이점: ${item.difference ?? "-"}`, pageWidth - margin * 2 - 5);
-          diffLines.forEach((line: string) => {
-            if (y > pageHeight - margin) {
-              doc.addPage();
-              y = 20;
-            }
-            doc.text(line, margin + 5, y);
-            y += 4;
-          });
-          y += 4;
-        });
-        y += 6;
-      }
-
-      // 4. 권장 차별화 전략
-      if (report.strategies && report.strategies.length > 0) {
-        if (y > pageHeight - margin) {
-          doc.addPage();
-          y = 20;
-        }
-        doc.setFont("NotoSansKR", "bold");
-        doc.setFontSize(12);
-        doc.text("4. 권장 차별화 전략", margin, y);
-        y += 8;
+      const drawStatBox = (
+        label: string,
+        value: number | string,
+        color: number[],
+        xPos: number
+      ) => {
+        doc.setFillColor(color[0], color[1], color[2]);
+        doc.rect(xPos, y, 2, boxH, "F");
+        doc.setFillColor(250, 250, 250);
+        doc.rect(xPos + 2, y, boxW - 2, boxH, "F");
 
         doc.setFont("NotoSansKR", "normal");
-        doc.setFontSize(10);
-        report.strategies.forEach((st, idx) => {
-          const stLines = doc.splitTextToSize(`${idx + 1}. ${st}`, pageWidth - margin * 2);
-          stLines.forEach((line: string) => {
-            if (y > pageHeight - margin) {
-              doc.addPage();
-              y = 20;
-            }
-            doc.text(line, margin, y);
-            y += 5;
-          });
-          y += 2;
+        doc.setFontSize(9);
+        doc.setTextColor(COLORS.gray[0], COLORS.gray[1], COLORS.gray[2]);
+        doc.text(label, xPos + 8, y + 8);
+
+        doc.setFont("NotoSansKR", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+        doc.text(String(value), xPos + 8, y + 16);
+      };
+
+      drawStatBox("Track A", trackAItems.length, COLORS.secondary, margin);
+      drawStatBox("Track B", trackBItems.length, COLORS.primary, margin + boxW + boxGap);
+      drawStatBox("전략", strategyItems.length, COLORS.warning, margin + (boxW + boxGap) * 2);
+      y += 30;
+
+      drawSectionHeader("Track A: 동일 발주처 유사 RFP", "A");
+      if (trackAItems.length === 0) {
+        y += writeText("동일 발주처 기준 유사 RFP가 없습니다.", margin, y) + 6;
+      } else {
+        trackAItems.forEach((item, idx) => {
+          addPageIfNeeded(36);
+
+          const level = item.similarity ?? "-";
+          const badge = similarityColor(level);
+          const title = item.title ?? "제목 없음";
+          const meta = `(${item.year ?? "연도 미상"}, ${item.ministry ?? "부처 미상"})`;
+          const diff = item.difference ?? "-";
+
+          doc.setDrawColor(220, 220, 220);
+          doc.setFillColor(255, 255, 255);
+          doc.roundedRect(margin, y, contentWidth, 28, 2, 2, "FD");
+
+          doc.setFillColor(COLORS.secondary[0], COLORS.secondary[1], COLORS.secondary[2]);
+          doc.roundedRect(margin, y, contentWidth, 7, 2, 2, "F");
+          doc.setTextColor(255, 255, 255);
+          doc.setFont("NotoSansKR", "bold");
+          doc.setFontSize(9);
+          doc.text(`A-${idx + 1}`, margin + 4, y + 4.8);
+          doc.text(title, margin + 18, y + 4.8);
+
+          const badgeText = `유사도 ${level}`;
+          const badgeW = Math.max(18, doc.getTextWidth(badgeText) + 6);
+          doc.setFillColor(badge[0], badge[1], badge[2]);
+          doc.roundedRect(pageWidth - margin - badgeW, y + 1.2, badgeW, 4.5, 1, 1, "F");
+          doc.setFont("NotoSansKR", "normal");
+          doc.setFontSize(7);
+          doc.text(badgeText, pageWidth - margin - badgeW + 3, y + 4.2);
+
+          y += 10;
+          y += writeText(meta, margin + 3, y, { fontSize: 9, color: COLORS.gray }) + 2;
+          y += writeText(`차이점: ${diff}`, margin + 3, y, { width: contentWidth - 6, fontSize: 9 }) + 6;
         });
+      }
+
+      drawSectionHeader("Track B: 타 발주처 유사 RFP", "B");
+      if (trackBItems.length === 0) {
+        y += writeText("타 발주처 기준 유사 RFP가 없습니다.", margin, y) + 6;
+      } else {
+        trackBItems.forEach((item, idx) => {
+          addPageIfNeeded(36);
+
+          const level = item.similarity ?? "-";
+          const badge = similarityColor(level);
+          const title = item.title ?? "제목 없음";
+          const meta = `(${item.year ?? "연도 미상"}, ${item.ministry ?? "부처 미상"})`;
+          const diff = item.difference ?? "-";
+
+          doc.setDrawColor(220, 220, 220);
+          doc.setFillColor(255, 255, 255);
+          doc.roundedRect(margin, y, contentWidth, 28, 2, 2, "FD");
+
+          doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+          doc.roundedRect(margin, y, contentWidth, 7, 2, 2, "F");
+          doc.setTextColor(255, 255, 255);
+          doc.setFont("NotoSansKR", "bold");
+          doc.setFontSize(9);
+          doc.text(`B-${idx + 1}`, margin + 4, y + 4.8);
+          doc.text(title, margin + 18, y + 4.8);
+
+          const badgeText = `유사도 ${level}`;
+          const badgeW = Math.max(18, doc.getTextWidth(badgeText) + 6);
+          doc.setFillColor(badge[0], badge[1], badge[2]);
+          doc.roundedRect(pageWidth - margin - badgeW, y + 1.2, badgeW, 4.5, 1, 1, "F");
+          doc.setFont("NotoSansKR", "normal");
+          doc.setFontSize(7);
+          doc.text(badgeText, pageWidth - margin - badgeW + 3, y + 4.2);
+
+          y += 10;
+          y += writeText(meta, margin + 3, y, { fontSize: 9, color: COLORS.gray }) + 2;
+          y += writeText(`차이점: ${diff}`, margin + 3, y, { width: contentWidth - 6, fontSize: 9 }) + 6;
+        });
+      }
+
+      drawSectionHeader("권장 차별화 전략", "S");
+      if (strategyItems.length === 0) {
+        y += writeText("전략 결과가 없습니다.", margin, y) + 6;
+      } else {
+        strategyItems.forEach((strategy, idx) => {
+          addPageIfNeeded(18);
+
+          doc.setFillColor(COLORS.secondary[0], COLORS.secondary[1], COLORS.secondary[2]);
+          doc.circle(margin + 3, y - 1.2, 2.4, "F");
+          doc.setTextColor(255, 255, 255);
+          doc.setFont("NotoSansKR", "bold");
+          doc.setFontSize(8);
+          doc.text(String(idx + 1), margin + 3, y - 0.3, { align: "center", baseline: "middle" });
+
+          doc.setTextColor(COLORS.dark[0], COLORS.dark[1], COLORS.dark[2]);
+          y += writeText(strategy, margin + 8, y, { width: contentWidth - 8, fontSize: 10 }) + 4;
+        });
+      }
+
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`${i} / ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: "right" });
       }
 
       doc.save(`RFP_분석결과_${new Date().toISOString().slice(0, 10)}.pdf`);
@@ -231,7 +336,6 @@ const RFPSearchPageResult: React.FC = () => {
       alert("PDF 생성 중 오류가 발생했습니다.");
     }
   };
-
   const unpackFastApiData = (fastapi: any) => {
     const data = fastapi?.data ?? fastapi; // 혹시 이미 data만 온 경우도 방어
     const expanded = data as Step2ResultExpanded;
