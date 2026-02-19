@@ -4,6 +4,9 @@ import http from "../api/http";
 type UserMe = {
   userId: number;
   email: string;
+  name: string;
+  department: string;
+  position: string;
   role: "MASTER" | "ADMIN" | "MEMBER";
   companyId: number;
   companyName: string;

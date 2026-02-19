@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import "../styles/Global.css";
@@ -11,24 +11,24 @@ const SignupPage: React.FC = () => {
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [name, setName] = useState("");
+  const [department, setDepartment] = useState("");
+  const [position, setPosition] = useState("");
 
   const [passwordError, setPasswordError] = useState("");
   const [confirmError, setConfirmError] = useState("");
-
   const [codeError, setCodeError] = useState(false);
+
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"error" | "success" | "">("");
   const [isEmailVerified, setIsEmailVerified] = useState(false);
 
   const [showTimer, setShowTimer] = useState(false);
   const [timeLeft, setTimeLeft] = useState(600);
-
   const [signupLoading, setSignupLoading] = useState(false);
 
   useEffect(() => {
-    if (!showTimer) return;
-    if (timeLeft <= 0) return;
-
+    if (!showTimer || timeLeft <= 0) return;
     const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
     return () => clearInterval(timer);
   }, [showTimer, timeLeft]);
@@ -57,7 +57,6 @@ const SignupPage: React.FC = () => {
 
     try {
       const emailValue = email.trim();
-
       const checkRes = await http.post("/api/auth/email/check", { email: emailValue });
       const available = Boolean(checkRes.data?.available);
 
@@ -71,7 +70,6 @@ const SignupPage: React.FC = () => {
 
       setMessage("인증코드를 발송했습니다.");
       setMessageType("success");
-
       setTimeLeft(300);
       setShowTimer(true);
 
@@ -114,13 +112,12 @@ const SignupPage: React.FC = () => {
         setCodeError(false);
         setShowTimer(false);
         setIsEmailVerified(true);
-
         setMessage(res.data?.message || "인증 완료");
         setMessageType("success");
       } else {
         setCodeError(true);
         setIsEmailVerified(false);
-        setMessage("인증번호가 틀립니다.");
+        setMessage("인증번호가 올바르지 않습니다.");
         setMessageType("error");
       }
     } catch (error: any) {
@@ -131,7 +128,7 @@ const SignupPage: React.FC = () => {
   };
 
   const validatePassword = (pw: string) => {
-    const forbidden = /[()<>\"';]/;
+    const forbidden = /[()<>"';]/;
     if (forbidden.test(pw)) return "사용할 수 없는 특수문자가 포함되어 있습니다.";
 
     const hasEng = /[A-Za-z]/.test(pw);
@@ -145,7 +142,7 @@ const SignupPage: React.FC = () => {
     } else if (typeCount >= 2) {
       if (pw.length < 10 || pw.length > 16) return "2종 조합은 10~16자리여야 합니다.";
     } else {
-      return "영문, 숫자, 특수문자 중 2종류 이상 조합해야 합니다.";
+      return "영문, 숫자, 특수문자 중 2종류 이상 조합이어야 합니다.";
     }
     return "";
   };
@@ -153,38 +150,46 @@ const SignupPage: React.FC = () => {
   const handlePassword = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setPassword(value);
-
     setPasswordError(validatePassword(value));
 
-    if (passwordConfirm && value !== passwordConfirm) setConfirmError("비밀번호가 일치하지 않습니다.");
-    else setConfirmError("");
+    if (passwordConfirm && value !== passwordConfirm) {
+      setConfirmError("비밀번호가 일치하지 않습니다.");
+    } else {
+      setConfirmError("");
+    }
   };
 
   const handleConfirm = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setPasswordConfirm(value);
 
-    if (password !== value) setConfirmError("비밀번호가 일치하지 않습니다.");
-    else setConfirmError("");
+    if (password !== value) {
+      setConfirmError("비밀번호가 일치하지 않습니다.");
+    } else {
+      setConfirmError("");
+    }
   };
 
   const isValid =
     isEmailVerified &&
     !passwordError &&
     !confirmError &&
+    name.trim().length > 0 &&
+    department.trim().length > 0 &&
+    position.trim().length > 0 &&
     password.length > 0 &&
     passwordConfirm.length > 0;
 
-  // ✅ 여기서 가입 완료
   const handleSignup = async () => {
     setMessage("");
     setMessageType("");
 
     if (!isValid) {
-      setMessage("이메일 인증과 비밀번호 입력을 완료해주세요.");
+      setMessage("이메일 인증과 필수 입력값을 모두 확인해주세요.");
       setMessageType("error");
       return;
     }
+
     if (!code || code.trim().length !== 6) {
       setMessage("인증번호 6자리를 입력해주세요.");
       setMessageType("error");
@@ -198,7 +203,10 @@ const SignupPage: React.FC = () => {
         email: email.trim(),
         password,
         passwordConfirm,
-        authCode: code.trim(), // ✅ DTO에 맞춤
+        authCode: code.trim(),
+        name: name.trim(),
+        department: department.trim(),
+        position: position.trim(),
       };
 
       await http.post("/api/auth/company-signup", payload);
@@ -224,8 +232,6 @@ const SignupPage: React.FC = () => {
         <Title>회원가입</Title>
 
         <ContentArea>
-          {/* ...입력 UI는 기존 그대로... */}
-
           <div className="inputGroup">
             <div className="label">이메일 입력</div>
             <Row>
@@ -267,7 +273,40 @@ const SignupPage: React.FC = () => {
                 확인
               </button>
             </Row>
-            {codeError && <ErrorText>인증번호가 틀립니다</ErrorText>}
+            {codeError && <ErrorText>인증번호가 올바르지 않습니다.</ErrorText>}
+          </div>
+
+          <div className="inputGroup">
+            <div className="label">이름</div>
+            <input
+              className="input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="이름"
+              disabled={!isEmailVerified}
+            />
+          </div>
+
+          <div className="inputGroup">
+            <div className="label">부서</div>
+            <input
+              className="input"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              placeholder="부서"
+              disabled={!isEmailVerified}
+            />
+          </div>
+
+          <div className="inputGroup">
+            <div className="label">직책</div>
+            <input
+              className="input"
+              value={position}
+              onChange={(e) => setPosition(e.target.value)}
+              placeholder="직책"
+              disabled={!isEmailVerified}
+            />
           </div>
 
           <div className="inputGroup">
@@ -314,7 +353,6 @@ const SignupPage: React.FC = () => {
 
 export default SignupPage;
 
-/* styles (그대로) */
 const Title = styled.div`
   position: absolute;
   top: var(--spacing-2xl);
@@ -355,7 +393,7 @@ const Row = styled.div`
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  
+
   button {
     white-space: nowrap;
     padding: 0 var(--spacing-lg);
@@ -413,16 +451,22 @@ const MessageText = styled.p<{ type: "error" | "success" | "" }>`
   border-radius: var(--radius-md);
   font-size: 14px;
   font-weight: var(--font-weight-medium);
-  background: ${({ type }) => 
-    type === "error" ? "rgba(239, 68, 68, 0.1)" : 
-    type === "success" ? "rgba(16, 185, 129, 0.1)" : 
-    "transparent"};
-  color: ${({ type }) => 
-    type === "error" ? "var(--color-error)" : 
-    type === "success" ? "var(--color-success)" : 
-    "var(--color-text-primary)"};
-  border: 1px solid ${({ type }) => 
-    type === "error" ? "rgba(239, 68, 68, 0.3)" : 
-    type === "success" ? "rgba(16, 185, 129, 0.3)" : 
-    "var(--color-border-light)"};
+  background: ${({ type }) =>
+    type === "error"
+      ? "rgba(239, 68, 68, 0.1)"
+      : type === "success"
+      ? "rgba(16, 185, 129, 0.1)"
+      : "transparent"};
+  color: ${({ type }) =>
+    type === "error"
+      ? "var(--color-error)"
+      : type === "success"
+      ? "var(--color-success)"
+      : "var(--color-text-primary)"};
+  border: 1px solid ${({ type }) =>
+    type === "error"
+      ? "rgba(239, 68, 68, 0.3)"
+      : type === "success"
+      ? "rgba(16, 185, 129, 0.3)"
+      : "var(--color-border-light)"};
 `;
